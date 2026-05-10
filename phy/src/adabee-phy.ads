@@ -4,6 +4,7 @@
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
 with AdaBee.Time_Units;
+with AdaBee.PHY_Constants;
 
 --  @summary
 --  IEEE 802.15.4 physical layer (PHY) interface.
@@ -107,8 +108,8 @@ is
    type LQI_Number is range 0 .. 255;
    --  Link Quality Indicator
 
-   type Symbol_Count is range 0 .. 2 ** 24 - 1 with Size => 24;
-   --  Quantity of symbols
+   subtype Symbol_Count is AdaBee.PHY_Constants.Symbol_Count;
+   use type AdaBee.PHY_Constants.Symbol_Count;
 
    subtype Radio_Clock_Time_Range is
      AdaBee.Time_Units.Time range 0.0 .. (100.0 * 365.0 * 24.0 * 60.0 * 60.0);
