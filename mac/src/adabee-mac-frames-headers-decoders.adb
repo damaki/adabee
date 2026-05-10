@@ -15,6 +15,12 @@ is
      (Byte : Interfaces.Unsigned_8) return Frame_Type_Field
    is (To_Frame_Type (Bits_3 (Byte and 2#111#)));
 
+   function Address_Field_Length (Mode : Address_Mode_Field) return Natural
+   is (case Mode is
+         when Not_Present | Reserved => 0,
+         when Short                  => 2,
+         when Extended               => 8);
+
    procedure Decode_Frame_Control_Field
      (Buffer        : Byte_Array;
       Frame_Control : out Frame_Control_Field;
@@ -67,83 +73,47 @@ is
    procedure Decode_Sequence_Number_Field
      (Buffer          : Byte_Array;
       Offset          : in out Natural;
-      Sequence_Number : out Variant_Sequence_Number;
-      Result          : out Status_Code)
+      Sequence_Number : out Variant_Sequence_Number)
    with
      Inline,
      Global  => null,
-     Depends =>
-       (Sequence_Number => (Buffer, Offset),
-        Result          => (Buffer, Offset),
-        Offset          => (Buffer, Offset)),
-     Pre     => not Sequence_Number'Constrained,
-     Post    =>
-       (if Result = Success
-        then (Offset = Offset'Old + 1 and then Offset <= Buffer'Length)
-        else Offset = Offset'Old);
+     Depends => (Sequence_Number => (Buffer, Offset), Offset => Offset),
+     Pre     =>
+       not Sequence_Number'Constrained and then Offset < Buffer'Length,
+     Post    => Offset = Offset'Old + 1;
 
    procedure Decode_PAN_ID_Field
      (Buffer : Byte_Array;
       Offset : in out Natural;
-      PAN_ID : out Variant_PAN_ID;
-      Result : out Status_Code)
+      PAN_ID : out Variant_PAN_ID)
    with
      Inline,
      Global  => null,
-     Depends =>
-       (PAN_ID => (Buffer, Offset),
-        Result => (Buffer, Offset),
-        Offset => (Buffer, Offset)),
-     Pre     => not PAN_ID'Constrained,
-     Post    =>
-       (if Result = Success
-        then
-          (Offset = Offset'Old + 2
-           and then Offset <= Buffer'Length
-           and then PAN_ID.Present)
-        else Offset = Offset'Old);
+     Depends => (PAN_ID => (Buffer, Offset), Offset => Offset),
+     Pre     => not PAN_ID'Constrained and then Offset <= Buffer'Length - 2,
+     Post    => Offset = Offset'Old + 2 and then PAN_ID.Present;
 
    procedure Decode_Extended_Address_Field
      (Buffer  : Byte_Array;
       Offset  : in out Natural;
-      Address : out Variant_Address;
-      Result  : out Status_Code)
+      Address : out Variant_Address)
    with
      Inline,
      Global  => null,
-     Depends =>
-       (Address => (Buffer, Offset),
-        Result  => (Buffer, Offset),
-        Offset  => (Buffer, Offset)),
-     Pre     => not Address'Constrained,
-     Post    =>
-       (if Result = Success
-        then
-          (Offset = Offset'Old + 8
-           and then Offset <= Buffer'Length
-           and then Address.Mode = Extended)
-        else Offset = Offset'Old);
+     Depends => (Address => (Buffer, Offset), Offset => Offset),
+     Pre     => not Address'Constrained and then Offset <= Buffer'Length - 8,
+     Post    => Offset = Offset'Old + 8 and then Address.Mode = Extended;
 
    procedure Decode_Short_Address_Field
      (Buffer  : Byte_Array;
       Offset  : in out Natural;
-      Address : out Variant_Address;
-      Result  : out Status_Code)
+      Address : out Variant_Address)
    with
      Inline,
      Global  => null,
-     Depends =>
-       (Address => (Buffer, Offset),
-        Result  => (Buffer, Offset),
-        Offset  => (Buffer, Offset)),
-     Pre     => not Address'Constrained,
-     Post    =>
-       (if Result = Success
-        then
-          (Offset = Offset'Old + 2
-           and then Offset <= Buffer'Length
-           and then Address.Mode = Short)
-        else Offset = Offset'Old);
+     Depends => (Address => (Buffer, Offset), Offset => Offset),
+     Pre     => not Address'Constrained and then Offset <= Buffer'Length - 2,
+     Post    => Offset = Offset'Old + 2 and then Address.Mode = Short;
 
    procedure Decode_Aux_Security_Header
      (Buffer : Byte_Array;
@@ -323,13 +293,12 @@ is
       Length : out Natural;
       Result : out Status_Code)
    is
-      Frame_Control : Frame_Control_Field;
+      Frame_Control       : Frame_Control_Field;
+      Addr_Fields_Length  : Natural;
+      Dest_PAN_ID_Present : Boolean;
+      Src_PAN_ID_Present  : Boolean;
 
    begin
-      Length := 0;
-
-      --  Initialise the MAC header to some default values to help prove
-      --  initialisation.
       MHR :=
         (Frame_Type          => Frame_Type_Field'First,
          Frame_Pending       => Not_Pending,
@@ -346,192 +315,185 @@ is
       Decode_Frame_Control_Field
         (Buffer => Buffer, Frame_Control => Frame_Control, Result => Result);
 
-      if Result = Success then
-         MHR.Frame_Type := Frame_Control.Frame_Type;
-         MHR.Frame_Pending := Frame_Control.Frame_Pending;
-         MHR.AR := Frame_Control.AR;
-         MHR.IE_Present := Frame_Control.IE_Present;
-         MHR.Frame_Version := Frame_Control.Frame_Version;
-
-         Length := 2;
-
-         pragma Assert (Length <= Buffer'Length);
-
-         --  Decode the Sequence Number (if present)
-
-         if Frame_Control.SN_Suppression = Not_Suppressed then
-            Decode_Sequence_Number_Field
-              (Buffer          => Buffer,
-               Offset          => Length,
-               Sequence_Number => MHR.Sequence_Number,
-               Result          => Result);
-         end if;
+      if Result /= Success then
+         Length := 0;
+         return;
       end if;
 
-      pragma Assert (Length <= 3);
+      MHR.Frame_Type := Frame_Control.Frame_Type;
+      MHR.Frame_Pending := Frame_Control.Frame_Pending;
+      MHR.AR := Frame_Control.AR;
+      MHR.IE_Present := Frame_Control.IE_Present;
+      MHR.Frame_Version := Frame_Control.Frame_Version;
+
+      Length := 2;
+
       pragma Assert (Length <= Buffer'Length);
-      pragma Assert (if Result = Success then Length >= 2);
+
+      --  Calculate the length of the MHR addressing fields (including the
+      --  sequence number), then do a length check on the buffer to verify
+      --  that the buffer is big enough to hold all those fields.
+
+      Dest_PAN_ID_Present :=
+        Is_Destination_PAN_ID_Present
+          (Frame_Version            => Frame_Control.Frame_Version,
+           Destination_Address_Mode => Frame_Control.Dest_Address_Mode,
+           Source_Address_Mode      => Frame_Control.Src_Address_Mode,
+           PAN_ID_Compression       => Frame_Control.PAN_ID_Compression);
+
+      Src_PAN_ID_Present :=
+        Is_Source_PAN_ID_Present
+          (Frame_Version            => Frame_Control.Frame_Version,
+           Destination_Address_Mode => Frame_Control.Dest_Address_Mode,
+           Source_Address_Mode      => Frame_Control.Src_Address_Mode,
+           PAN_ID_Compression       => Frame_Control.PAN_ID_Compression);
+
+      Addr_Fields_Length :=
+        (if Frame_Control.SN_Suppression = Not_Suppressed then 1 else 0)
+        + Address_Field_Length (Frame_Control.Dest_Address_Mode)
+        + Address_Field_Length (Frame_Control.Src_Address_Mode)
+        + (if Dest_PAN_ID_Present then 2 else 0)
+        + (if Src_PAN_ID_Present then 2 else 0);
+
+      if Buffer'Length < Length + Addr_Fields_Length then
+         Result := Limit_Reached;
+         return;
+      end if;
+
+      --  Decode the Sequence Number (if present)
+
+      if Frame_Control.SN_Suppression = Not_Suppressed then
+         Decode_Sequence_Number_Field
+           (Buffer          => Buffer,
+            Offset          => Length,
+            Sequence_Number => MHR.Sequence_Number);
+      end if;
+
+      pragma Assert (Length in 2 .. 3);
+      pragma Assert (Length <= Buffer'Length);
 
       --  Decode the Destination PAN ID field (if present)
-      if Result = Success then
-         if Is_Destination_PAN_ID_Present
-              (Frame_Version            => Frame_Control.Frame_Version,
-               Destination_Address_Mode => Frame_Control.Dest_Address_Mode,
-               Source_Address_Mode      => Frame_Control.Src_Address_Mode,
-               PAN_ID_Compression       => Frame_Control.PAN_ID_Compression)
-         then
-            Decode_PAN_ID_Field
-              (Buffer => Buffer,
-               Offset => Length,
-               PAN_ID => MHR.Destination_PAN_ID,
-               Result => Result);
-         end if;
+      if Dest_PAN_ID_Present then
+         Decode_PAN_ID_Field
+           (Buffer => Buffer,
+            Offset => Length,
+            PAN_ID => MHR.Destination_PAN_ID);
       end if;
 
-      pragma Assert (Length <= 5);
+      pragma Assert (Length in 2 .. 5);
       pragma Assert (Length <= Buffer'Length);
-      pragma Assert (if Result = Success then Length >= 2);
 
       --  Decode the Destination Address field (if present)
-      if Result = Success then
-         case Frame_Control.Dest_Address_Mode is
-            when Extended    =>
-               Decode_Extended_Address_Field
-                 (Buffer  => Buffer,
-                  Offset  => Length,
-                  Address => MHR.Destination_Address,
-                  Result  => Result);
+      case Frame_Control.Dest_Address_Mode is
+         when Extended    =>
+            Decode_Extended_Address_Field
+              (Buffer  => Buffer,
+               Offset  => Length,
+               Address => MHR.Destination_Address);
 
-            when Short       =>
-               Decode_Short_Address_Field
-                 (Buffer  => Buffer,
-                  Offset  => Length,
-                  Address => MHR.Destination_Address,
-                  Result  => Result);
+         when Short       =>
+            Decode_Short_Address_Field
+              (Buffer  => Buffer,
+               Offset  => Length,
+               Address => MHR.Destination_Address);
 
-            when Reserved    =>
-               raise Program_Error; --  Unreachable
+         when Reserved    =>
+            raise Program_Error; --  Unreachable
 
-            when Not_Present =>
-               null;
-         end case;
+         when Not_Present =>
+            null;
+      end case;
 
-         pragma
-           Assert
-             (if Result = Success
-              then
-                MHR.Destination_Address.Mode
-                = Frame_Control.Dest_Address_Mode);
-      end if;
+      pragma
+        Assert
+          (MHR.Destination_Address.Mode = Frame_Control.Dest_Address_Mode);
 
-      pragma Assert (Length <= 13);
+      pragma Assert (Length in 2 .. 13);
       pragma Assert (Length <= Buffer'Length);
-      pragma Assert (if Result = Success then Length >= 2);
 
       --  Decode the Source PAN ID field (if present)
-      if Result = Success then
-         if Is_Source_PAN_ID_Present
-              (Frame_Version            => Frame_Control.Frame_Version,
-               Destination_Address_Mode => Frame_Control.Dest_Address_Mode,
-               Source_Address_Mode      => Frame_Control.Src_Address_Mode,
-               PAN_ID_Compression       => Frame_Control.PAN_ID_Compression)
-         then
-            Decode_PAN_ID_Field
-              (Buffer => Buffer,
-               Offset => Length,
-               PAN_ID => MHR.Source_PAN_ID,
-               Result => Result);
-         end if;
+      if Src_PAN_ID_Present then
+         Decode_PAN_ID_Field
+           (Buffer => Buffer, Offset => Length, PAN_ID => MHR.Source_PAN_ID);
       end if;
 
-      pragma Assert (Length <= 15);
+      pragma Assert (Length in 2 .. 15);
       pragma Assert (Length <= Buffer'Length);
-      pragma Assert (if Result = Success then Length >= 2);
 
       --  Decode the Source Address field (if present)
-      if Result = Success then
-         case Frame_Control.Src_Address_Mode is
-            when Extended    =>
-               Decode_Extended_Address_Field
-                 (Buffer  => Buffer,
-                  Offset  => Length,
-                  Address => MHR.Source_Address,
-                  Result  => Result);
+      case Frame_Control.Src_Address_Mode is
+         when Extended    =>
+            Decode_Extended_Address_Field
+              (Buffer  => Buffer,
+               Offset  => Length,
+               Address => MHR.Source_Address);
 
-            when Short       =>
-               Decode_Short_Address_Field
-                 (Buffer  => Buffer,
-                  Offset  => Length,
-                  Address => MHR.Source_Address,
-                  Result  => Result);
+         when Short       =>
+            Decode_Short_Address_Field
+              (Buffer  => Buffer,
+               Offset  => Length,
+               Address => MHR.Source_Address);
 
-            when Reserved    =>
-               raise Program_Error; --  Unreachable
+         when Reserved    =>
+            raise Program_Error; --  Unreachable
 
-            when Not_Present =>
-               null;
-         end case;
+         when Not_Present =>
+            null;
+      end case;
 
-         pragma
-           Assert
-             (if Result = Success
-              then MHR.Source_Address.Mode = Frame_Control.Src_Address_Mode);
-      end if;
-
-      pragma Assert (Length <= 23);
+      pragma Assert (MHR.Source_Address.Mode = Frame_Control.Src_Address_Mode);
+      pragma Assert (Length in 2 .. 23);
       pragma Assert (Length <= Buffer'Length);
-      pragma Assert (if Result = Success then Length >= 2);
 
-      if Result = Success and then Frame_Control.Security_Enabled = Enabled
-      then
+      if Frame_Control.Security_Enabled = Enabled then
          Decode_Aux_Security_Header
            (ASH    => MHR.Aux_Security_Header,
             Buffer => Buffer,
             Offset => Length,
             Result => Result);
+
+         if Result /= Success then
+            return;
+         end if;
       end if;
 
       --  Reconstruct the Source PAN ID based on PAN ID compression
 
-      if Result = Success then
-         if Frame_Control.Frame_Version
-            in IEEE_802_15_4_2003 | IEEE_802_15_4_2006
+      if Frame_Control.Frame_Version in IEEE_802_15_4_2003 | IEEE_802_15_4_2006
+      then
+
+         --  IEEE 802.15.4-2024 Section 7.2.2.6:
+         --
+         --  If both destination and source addressing information is
+         --  present, the MAC sublayer shall compare the destination and
+         --  source PAN identifiers. If the PAN IDs are identical, the
+         --  PAN ID Compression field shall be set to one, and the Source
+         --  PAN ID field shall be omitted from the transmitted frame.
+
+         if Frame_Control.Dest_Address_Mode /= Not_Present
+           and then Frame_Control.Src_Address_Mode /= Not_Present
+           and then Frame_Control.PAN_ID_Compression = Compressed
          then
+            MHR.Source_PAN_ID := MHR.Destination_PAN_ID;
+         end if;
 
-            --  IEEE 802.15.4-2024 Section 7.2.2.6:
-            --
-            --  If both destination and source addressing information is
-            --  present, the MAC sublayer shall compare the destination and
-            --  source PAN identifiers. If the PAN IDs are identical, the
-            --  PAN ID Compression field shall be set to one, and the Source
-            --  PAN ID field shall be omitted from the transmitted frame.
+      else
+         --  If both the destination and source addressing information is
+         --  present and either is a short address, the MAC sublayer shall
+         --  compare the destination and source PAN IDs and the PAN ID
+         --  Compression field shall be set to zero if and only if the PAN
+         --  identifiers are identical.
 
-            if Frame_Control.Dest_Address_Mode /= Not_Present
-              and then Frame_Control.Src_Address_Mode /= Not_Present
-              and then Frame_Control.PAN_ID_Compression = Compressed
-            then
-               MHR.Source_PAN_ID := MHR.Destination_PAN_ID;
-            end if;
-
-         else
-            --  If both the destination and source addressing information is
-            --  present and either is a short address, the MAC sublayer shall
-            --  compare the destination and source PAN IDs and the PAN ID
-            --  Compression field shall be set to zero if and only if the PAN
-            --  identifiers are identical.
-
-            if Frame_Control.Src_Address_Mode /= Not_Present
-              and then Frame_Control.Dest_Address_Mode /= Not_Present
-              and then
-                (Frame_Control.Src_Address_Mode = Short
-                 or else Frame_Control.Dest_Address_Mode = Short)
-              and then Frame_Control.PAN_ID_Compression = Not_Compressed
-            then
-               MHR.Source_PAN_ID := MHR.Destination_PAN_ID;
-            end if;
+         if Frame_Control.Src_Address_Mode /= Not_Present
+           and then Frame_Control.Dest_Address_Mode /= Not_Present
+           and then
+             (Frame_Control.Src_Address_Mode = Short
+              or else Frame_Control.Dest_Address_Mode = Short)
+           and then Frame_Control.PAN_ID_Compression = Not_Compressed
+         then
+            MHR.Source_PAN_ID := MHR.Destination_PAN_ID;
          end if;
       end if;
-
    end Decode_Normal_MAC_Header;
 
    ------------------------------
@@ -544,11 +506,10 @@ is
       Length : out Natural;
       Result : out Status_Code)
    is
-      Frame_Control : MP_Long_Frame_Control_Field;
+      Frame_Control      : MP_Long_Frame_Control_Field;
+      Addr_Fields_Length : Natural;
 
    begin
-      --  Initialise the MAC header to some default values to help prove
-      --  initialisation.
       MHR :=
         (Frame_Type          => Multipurpose,
          Frame_Pending       => Not_Pending,
@@ -568,115 +529,103 @@ is
          Length        => Length,
          Result        => Result);
 
-      if Result = Success then
-         MHR.Frame_Type := Frame_Control.Frame_Type;
-         MHR.Frame_Pending := Frame_Control.Frame_Pending;
-         MHR.AR := Frame_Control.Ack_Required;
-         MHR.IE_Present := Frame_Control.IE_Present;
-         MHR.Frame_Version := Frame_Control.Frame_Version;
-
-         --  Decode the Sequence Number (if present)
-
-         if Frame_Control.SN_Suppression = Not_Suppressed then
-            Decode_Sequence_Number_Field
-              (Buffer          => Buffer,
-               Offset          => Length,
-               Sequence_Number => MHR.Sequence_Number,
-               Result          => Result);
-         end if;
+      if Result /= Success then
+         return;
       end if;
 
-      pragma Assert (Length <= 3);
+      MHR.Frame_Type := Frame_Control.Frame_Type;
+      MHR.Frame_Pending := Frame_Control.Frame_Pending;
+      MHR.AR := Frame_Control.Ack_Required;
+      MHR.IE_Present := Frame_Control.IE_Present;
+      MHR.Frame_Version := Frame_Control.Frame_Version;
+
+      --  Calculate the length of the MHR addressing fields (including the
+      --  sequence number), then do a length check on the buffer to verify
+      --  that the buffer is big enough to hold all those fields.
+
+      Addr_Fields_Length :=
+        (if Frame_Control.SN_Suppression = Not_Suppressed then 1 else 0)
+        + Address_Field_Length (Frame_Control.Dest_Address_Mode)
+        + Address_Field_Length (Frame_Control.Src_Address_Mode)
+        + (if Frame_Control.PAN_ID_Present = Present then 2 else 0);
+
+      if Buffer'Length < Length + Addr_Fields_Length then
+         Result := Limit_Reached;
+         return;
+      end if;
+
+      --  Decode the Sequence Number (if present)
+
+      if Frame_Control.SN_Suppression = Not_Suppressed then
+         Decode_Sequence_Number_Field
+           (Buffer          => Buffer,
+            Offset          => Length,
+            Sequence_Number => MHR.Sequence_Number);
+      end if;
+
+      pragma Assert (Length in 1 .. 3);
       pragma Assert (Length <= Buffer'Length);
-      pragma Assert (if Result = Success then Length >= 1);
 
       --  Decode the Destination PAN ID field (if present)
-      if Result = Success then
-         if Frame_Control.PAN_ID_Present = Present then
-            Decode_PAN_ID_Field
-              (Buffer => Buffer,
-               Offset => Length,
-               PAN_ID => MHR.Destination_PAN_ID,
-               Result => Result);
-         end if;
+      if Frame_Control.PAN_ID_Present = Present then
+         Decode_PAN_ID_Field
+           (Buffer => Buffer,
+            Offset => Length,
+            PAN_ID => MHR.Destination_PAN_ID);
       end if;
 
-      pragma Assert (Length <= 5);
+      pragma Assert (Length in 1 .. 5);
       pragma Assert (Length <= Buffer'Length);
-      pragma Assert (if Result = Success then Length >= 1);
 
       --  Decode the Destination Address field (if present)
-      if Result = Success then
-         case Frame_Control.Dest_Address_Mode is
-            when Extended    =>
-               Decode_Extended_Address_Field
-                 (Buffer  => Buffer,
-                  Offset  => Length,
-                  Address => MHR.Destination_Address,
-                  Result  => Result);
+      case Frame_Control.Dest_Address_Mode is
+         when Extended    =>
+            Decode_Extended_Address_Field
+              (Buffer  => Buffer,
+               Offset  => Length,
+               Address => MHR.Destination_Address);
 
-            when Short       =>
-               Decode_Short_Address_Field
-                 (Buffer  => Buffer,
-                  Offset  => Length,
-                  Address => MHR.Destination_Address,
-                  Result  => Result);
+         when Short       =>
+            Decode_Short_Address_Field
+              (Buffer  => Buffer,
+               Offset  => Length,
+               Address => MHR.Destination_Address);
 
-            when Reserved    =>
-               raise Program_Error; --  Unreachable
+         when Reserved    =>
+            raise Program_Error; --  Unreachable
 
-            when Not_Present =>
-               null;
-         end case;
+         when Not_Present =>
+            null;
+      end case;
 
-         pragma
-           Assert
-             (if Result = Success
-              then
-                MHR.Destination_Address.Mode
-                = Frame_Control.Dest_Address_Mode);
-      end if;
-
-      pragma Assert (Length <= 13);
+      pragma Assert (Length in 1 .. 13);
       pragma Assert (Length <= Buffer'Length);
-      pragma Assert (if Result = Success then Length >= 1);
 
       --  Decode the Source Address field (if present)
-      if Result = Success then
-         case Frame_Control.Src_Address_Mode is
-            when Extended    =>
-               Decode_Extended_Address_Field
-                 (Buffer  => Buffer,
-                  Offset  => Length,
-                  Address => MHR.Source_Address,
-                  Result  => Result);
+      case Frame_Control.Src_Address_Mode is
+         when Extended    =>
+            Decode_Extended_Address_Field
+              (Buffer  => Buffer,
+               Offset  => Length,
+               Address => MHR.Source_Address);
 
-            when Short       =>
-               Decode_Short_Address_Field
-                 (Buffer  => Buffer,
-                  Offset  => Length,
-                  Address => MHR.Source_Address,
-                  Result  => Result);
+         when Short       =>
+            Decode_Short_Address_Field
+              (Buffer  => Buffer,
+               Offset  => Length,
+               Address => MHR.Source_Address);
 
-            when Reserved    =>
-               raise Program_Error; --  Unreachable
+         when Reserved    =>
+            raise Program_Error; --  Unreachable
 
-            when Not_Present =>
-               null;
-         end case;
+         when Not_Present =>
+            null;
+      end case;
 
-         pragma
-           Assert
-             (if Result = Success
-              then MHR.Source_Address.Mode = Frame_Control.Src_Address_Mode);
-      end if;
-
-      pragma Assert (Length <= 21);
+      pragma Assert (Length in 1 .. 21);
       pragma Assert (Length <= Buffer'Length);
-      pragma Assert (if Result = Success then Length >= 1);
 
-      if Result = Success and then Frame_Control.Security_Enabled = Enabled
-      then
+      if Frame_Control.Security_Enabled = Enabled then
          Decode_Aux_Security_Header
            (ASH    => MHR.Aux_Security_Header,
             Buffer => Buffer,
@@ -816,21 +765,13 @@ is
    procedure Decode_Sequence_Number_Field
      (Buffer          : Byte_Array;
       Offset          : in out Natural;
-      Sequence_Number : out Variant_Sequence_Number;
-      Result          : out Status_Code) is
+      Sequence_Number : out Variant_Sequence_Number) is
    begin
-      if Offset >= Buffer'Length then
-         Sequence_Number := (Suppression => Suppressed);
-         Result := Limit_Reached;
+      Sequence_Number :=
+        (Suppression => Not_Suppressed,
+         Number      => Buffer (Buffer'First + Offset));
 
-      else
-         Sequence_Number :=
-           (Suppression => Not_Suppressed,
-            Number      => Buffer (Buffer'First + Offset));
-
-         Offset := Offset + 1;
-         Result := Success;
-      end if;
+      Offset := Offset + 1;
    end Decode_Sequence_Number_Field;
 
    --------------------------
@@ -840,25 +781,14 @@ is
    procedure Decode_PAN_ID_Field
      (Buffer : Byte_Array;
       Offset : in out Natural;
-      PAN_ID : out Variant_PAN_ID;
-      Result : out Status_Code)
+      PAN_ID : out Variant_PAN_ID)
    is
-      Pos : Positive;
-
+      Pos : constant Natural := Buffer'First + Offset;
    begin
-      if Buffer'Length < 2 or else Offset > Buffer'Length - 2 then
-         PAN_ID := (Present => False);
-         Result := Limit_Reached;
+      PAN_ID :=
+        (Present => True, PAN_ID => From_Bytes (Buffer (Pos .. Pos + 1)));
 
-      else
-         Pos := Buffer'First + Offset;
-
-         PAN_ID :=
-           (Present => True, PAN_ID => From_Bytes (Buffer (Pos .. Pos + 1)));
-
-         Offset := Offset + 2;
-         Result := Success;
-      end if;
+      Offset := Offset + 2;
    end Decode_PAN_ID_Field;
 
    ------------------------------------
@@ -868,26 +798,15 @@ is
    procedure Decode_Extended_Address_Field
      (Buffer  : Byte_Array;
       Offset  : in out Natural;
-      Address : out Variant_Address;
-      Result  : out Status_Code)
+      Address : out Variant_Address)
    is
-      Pos : Positive;
-
+      Pos : constant Positive := Buffer'First + Offset;
    begin
-      if Buffer'Length < 8 or else Offset > Buffer'Length - 8 then
-         Address := (Mode => Not_Present);
-         Result := Limit_Reached;
+      Address :=
+        (Mode             => Extended,
+         Extended_Address => From_Bytes (Buffer (Pos .. Pos + 7)));
 
-      else
-         Pos := Buffer'First + Offset;
-
-         Address :=
-           (Mode             => Extended,
-            Extended_Address => From_Bytes (Buffer (Pos .. Pos + 7)));
-
-         Offset := Offset + 8;
-         Result := Success;
-      end if;
+      Offset := Offset + 8;
    end Decode_Extended_Address_Field;
 
    ---------------------------------
@@ -897,26 +816,15 @@ is
    procedure Decode_Short_Address_Field
      (Buffer  : Byte_Array;
       Offset  : in out Natural;
-      Address : out Variant_Address;
-      Result  : out Status_Code)
+      Address : out Variant_Address)
    is
-      Pos : Positive;
+      Pos : constant Positive := Buffer'First + Offset;
 
    begin
-      if Buffer'Length < 2 or else Offset > Buffer'Length - 2 then
-         Address := (Mode => Not_Present);
-         Result := Limit_Reached;
+      Address :=
+        (Mode => Short, Short_Address => From_Bytes (Buffer (Pos .. Pos + 1)));
 
-      else
-         Pos := Buffer'First + Offset;
-
-         Address :=
-           (Mode          => Short,
-            Short_Address => From_Bytes (Buffer (Pos .. Pos + 1)));
-
-         Offset := Offset + 2;
-         Result := Success;
-      end if;
+      Offset := Offset + 2;
    end Decode_Short_Address_Field;
 
    ---------------------------------
@@ -1020,7 +928,6 @@ is
       FC     : out Variant_Frame_Counter;
       Result : out Status_Code)
    is
-
       Pos : Positive;
 
    begin
