@@ -9,6 +9,7 @@ private with Interfaces;
 
 --  @summary
 --  IEEE 802.15.4 MAC frame header (MHR) definitions.
+
 package AdaBee.MAC.Frames.Headers
   with Pure, SPARK_Mode
 is
@@ -36,6 +37,12 @@ is
    with
      Static_Predicate => Unsupported_Frame_Types in Reserved | Frak | Extended;
    --  The set of frame types that are not supported in this implementation
+
+   subtype Supported_Frame_Types is Frame_Type_Field
+   with
+     Static_Predicate =>
+       Supported_Frame_Types
+       in Beacon | Data | Ack | MAC_Command | Multipurpose;
 
    ----------------------------
    -- Security Enabled Field --
@@ -107,6 +114,11 @@ is
       Short       => 2#10#,
       Extended    => 2#11#);
 
+   subtype Valid_Address_Mode_Field is Address_Mode_Field
+   with
+     Static_Predicate =>
+       Valid_Address_Mode_Field in Not_Present | Short | Extended;
+
    --------------------------------------
    -- Destination/Source Address Field --
    --------------------------------------
@@ -125,9 +137,10 @@ is
    subtype Device_Short_Address_Range is
      Short_Address_Field range 0 .. 16#FFFD#;
 
-   type Variant_Address (Mode : Address_Mode_Field := Not_Present) is record
+   type Variant_Address (Mode : Valid_Address_Mode_Field := Not_Present) is
+   record
       case Mode is
-         when Not_Present | Reserved =>
+         when Not_Present =>
             null;
 
          when Short =>
@@ -152,6 +165,12 @@ is
       IEEE_802_15_4_2006 => 2#01#,
       IEEE_802_15_4      => 2#10#,
       Reserved           => 2#11#);
+
+   subtype Valid_Frame_Version_Field is Frame_Version_Field
+   with
+     Static_Predicate =>
+       Valid_Frame_Version_Field
+       in IEEE_802_15_4_2003 | IEEE_802_15_4_2006 | IEEE_802_15_4;
 
    ---------------------------
    -- Sequence Number Field --
@@ -447,11 +466,11 @@ is
    type MAC_Header is record
       --  Frame Control Fields.
       --  Note that some fields are in the discriminant part of other fields.
-      Frame_Type    : Frame_Type_Field;
+      Frame_Type    : Supported_Frame_Types;
       Frame_Pending : Frame_Pending_Field;
       AR            : Ack_Required_Field;
       IE_Present    : IE_Present_Field;
-      Frame_Version : Frame_Version_Field;
+      Frame_Version : Valid_Frame_Version_Field;
 
       --  Other fields
       Sequence_Number     : Variant_Sequence_Number;

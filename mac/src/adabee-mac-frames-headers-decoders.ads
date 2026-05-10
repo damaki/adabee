@@ -6,6 +6,7 @@
 
 --  @summary
 --  Decoders for IEEE 802.15.4 MAC headers
+
 package AdaBee.MAC.Frames.Headers.Decoders
   with Pure, SPARK_Mode
 is
@@ -18,15 +19,7 @@ is
    with
      Global => null,
      Pre    => Buffer'Length > 0,
-     Post   =>
-       (Length <= Buffer'Length
-        and then Length <= Max_MHR_Length
-        and then
-          (if Result = Success
-           then
-             (MHR.Frame_Version /= Reserved
-              and then MHR.Destination_Address.Mode /= Reserved
-              and then MHR.Source_Address.Mode /= Reserved)));
+     Post   => Length <= Buffer'Length and then Length <= Max_MHR_Length;
    --  Decode a MAC header from a byte array buffer.
    --
    --  @param Buffer The buffer containing the MAC header to decode.

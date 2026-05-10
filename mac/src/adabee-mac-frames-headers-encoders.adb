@@ -18,7 +18,7 @@ is
      Depends        =>
        (Buffer => (Buffer, Offset, PAN_ID), Offset => (Offset, PAN_ID)),
      Pre            =>
-       (Buffer'Length >= 2 and then Offset <= Buffer'Length - 2),
+       Buffer'Length >= 2 and then Offset <= Buffer'Length - 2,
      Contract_Cases =>
        (PAN_ID.Present => Offset = Offset'Old + 2,
         others         => (Offset = Offset'Old and then Buffer = Buffer'Old));
@@ -33,9 +33,7 @@ is
      Depends        =>
        (Buffer => (Buffer, Offset, Address), Offset => (Offset, Address)),
      Pre            =>
-       (Buffer'Length >= 8
-        and then Offset <= Buffer'Length - 8
-        and then Address.Mode /= Reserved),
+       Buffer'Length >= 8 and then Offset <= Buffer'Length - 8,
      Contract_Cases =>
        (Address.Mode = Extended => Offset = Offset'Old + 8,
         Address.Mode = Short    => Offset = Offset'Old + 2,
@@ -51,8 +49,8 @@ is
      Global  => null,
      Depends => (Buffer => (Buffer, Offset, ASH), Offset => (Offset, ASH)),
      Pre     =>
-       (Buffer'Length >= Max_Aux_Security_Header_Length
-        and then Offset <= Buffer'Length - Max_Aux_Security_Header_Length),
+       Buffer'Length >= Max_Aux_Security_Header_Length
+        and then Offset <= Buffer'Length - Max_Aux_Security_Header_Length,
      Post    =>
        (Offset in Offset'Old .. Offset'Old + Max_Aux_Security_Header_Length);
 
@@ -108,9 +106,6 @@ is
 
          when Multipurpose                      =>
             Encode_Multipurpose_MAC_Header (MHR, Buffer, Length);
-
-         when Unsupported_Frame_Types           =>
-            pragma Assert (False);
       end case;
    end Encode_MAC_Header;
 
@@ -207,53 +202,37 @@ is
    ------------------------------------
 
    procedure Encode_Multipurpose_MAC_Header
-     (MHR : MAC_Header; Buffer : in out Byte_Array; Length : out Natural) is
+     (MHR : MAC_Header; Buffer : in out Byte_Array; Length : out Natural)
+   is
+      FC : MP_Long_Frame_Control_Field;
    begin
 
-      if not MHR.Destination_PAN_ID.Present
-        and then MHR.Aux_Security_Header.Security_Enabled = Disabled
-        and then MHR.Sequence_Number.Suppression = Suppressed
-        and then MHR.Frame_Pending = Not_Pending
-        and then MHR.Frame_Version = IEEE_802_15_4_2003
-        and then MHR.AR = Not_Required
-        and then MHR.IE_Present = Not_Present
-      then
-         --  Use short Frame Control
+      FC :=
+        (Frame_Type         => Multipurpose,
+         Long_Frame_Control => Long,
+         Dest_Address_Mode  => MHR.Destination_Address.Mode,
+         Src_Address_Mode   => MHR.Source_Address.Mode,
+         PAN_ID_Present     =>
+           (if MHR.Destination_PAN_ID.Present then Present else Not_Present),
+         Security_Enabled   => MHR.Aux_Security_Header.Security_Enabled,
+         SN_Suppression     => MHR.Sequence_Number.Suppression,
+         Frame_Pending      => MHR.Frame_Pending,
+         Frame_Version      => IEEE_802_15_4_2003,
+         Ack_Required       => MHR.AR,
+         IE_Present         => MHR.IE_Present);
 
-         Buffer (Buffer'First) :=
-           To_Bytes
-             (MP_Short_Frame_Control_Field'
-                (Frame_Type         => Multipurpose,
-                 Long_Frame_Control => Short,
-                 Dest_Address_Mode  => MHR.Destination_Address.Mode,
-                 Src_Address_Mode   => MHR.Source_Address.Mode));
+      if To_Bytes (FC) (2) = 0 then
+         --  Upper byte is zero, so use short frame control format
 
+         FC.Long_Frame_Control := Short;
+         Buffer (Buffer'First) := To_Bytes (FC) (1);
          Length := 1;
 
       else
-         --  Use long frame control
+         --  Upper byte is non-zero, use long frame control format
 
-         Buffer (Buffer'First .. Buffer'First + 1) :=
-           To_Bytes
-             (MP_Long_Frame_Control_Field'
-                (Frame_Type         => Multipurpose,
-                 Long_Frame_Control => Long,
-                 Dest_Address_Mode  => MHR.Destination_Address.Mode,
-                 Src_Address_Mode   => MHR.Source_Address.Mode,
-                 PAN_ID_Present     =>
-                   (if MHR.Destination_PAN_ID.Present
-                    then Present
-                    else Not_Present),
-                 Security_Enabled   =>
-                   MHR.Aux_Security_Header.Security_Enabled,
-                 SN_Suppression     => MHR.Sequence_Number.Suppression,
-                 Frame_Pending      => MHR.Frame_Pending,
-                 Frame_Version      => IEEE_802_15_4_2003,
-                 Ack_Required       => MHR.AR,
-                 IE_Present         => MHR.IE_Present));
-
+         Buffer (Buffer'First .. Buffer'First + 1) := To_Bytes (FC);
          Length := 2;
-
       end if;
 
       pragma Assert (Length in 1 .. 2);
@@ -330,10 +309,6 @@ is
          when Short       =>
             Buffer (Pos .. Pos + 1) := To_Bytes (Address.Short_Address);
             Offset := Offset + 2;
-
-         when Reserved    =>
-            --  Unreachable (unless precondition is violated)
-            raise Program_Error;
 
          when Not_Present =>
             null;
