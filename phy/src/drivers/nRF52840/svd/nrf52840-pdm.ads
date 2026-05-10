@@ -1,0 +1,722 @@
+pragma Style_Checks (Off);
+
+--  Copyright (c) 2010 - 2018, Nordic Semiconductor ASA
+--
+--  All rights reserved.
+--
+--  Redistribution and use in source and binary forms, with or without
+--  modification, are permitted provided that the following conditions are met:
+--
+--  1. Redistributions of source code must retain the above copyright notice,
+--  this list of conditions and the following disclaimer.
+--
+--  2. Redistributions in binary form, except as embedded into a Nordic
+--  Semiconductor ASA integrated circuit in a product or a software update
+--  for such product, must reproduce the above copyright notice, this list
+--  of conditions and the following disclaimer in the documentation and/or
+--  other materials provided with the distribution.
+--
+--  3. Neither the name of Nordic Semiconductor ASA nor the names of its
+--  contributors may be used to endorse or promote products derived from
+--  this software without specific prior written permission.
+--
+--  4. This software, with or without modification, must only be used with a
+--  Nordic Semiconductor ASA integrated circuit.
+--
+--  5. Any software provided in binary form under this license must not be
+--  reverse engineered, decompiled, modified and/or disassembled.
+--
+--  THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY
+--  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+--  WARRANTIES OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A
+--  PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR
+--  ASA OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+--  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+--  TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+--  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+--  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+--  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+--  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+--
+
+--  This spec has been automatically generated from nrf52840.svd
+
+pragma Restrictions (No_Elaboration_Code);
+
+with System;
+
+package NRF52840.PDM is
+   pragma Preelaborate;
+
+   ---------------
+   -- Registers --
+   ---------------
+
+   subtype TASKS_START_TASKS_START_Field is NRF52840.Bit;
+
+   --  Starts continuous PDM transfer
+   type TASKS_START_Register is record
+      --  Write-only.
+      TASKS_START   : TASKS_START_TASKS_START_Field := 16#0#;
+      --  unspecified
+      Reserved_1_31 : NRF52840.UInt31 := 16#0#;
+   end record
+     with Object_Size => 32, Bit_Order => System.Low_Order_First;
+
+   for TASKS_START_Register use record
+      TASKS_START   at 0 range 0 .. 0;
+      Reserved_1_31 at 0 range 1 .. 31;
+   end record;
+
+   subtype TASKS_STOP_TASKS_STOP_Field is NRF52840.Bit;
+
+   --  Stops PDM transfer
+   type TASKS_STOP_Register is record
+      --  Write-only.
+      TASKS_STOP    : TASKS_STOP_TASKS_STOP_Field := 16#0#;
+      --  unspecified
+      Reserved_1_31 : NRF52840.UInt31 := 16#0#;
+   end record
+     with Object_Size => 32, Bit_Order => System.Low_Order_First;
+
+   for TASKS_STOP_Register use record
+      TASKS_STOP    at 0 range 0 .. 0;
+      Reserved_1_31 at 0 range 1 .. 31;
+   end record;
+
+   subtype EVENTS_STARTED_EVENTS_STARTED_Field is NRF52840.Bit;
+
+   --  PDM transfer has started
+   type EVENTS_STARTED_Register is record
+      EVENTS_STARTED : EVENTS_STARTED_EVENTS_STARTED_Field := 16#0#;
+      --  unspecified
+      Reserved_1_31  : NRF52840.UInt31 := 16#0#;
+   end record
+     with Object_Size => 32, Bit_Order => System.Low_Order_First;
+
+   for EVENTS_STARTED_Register use record
+      EVENTS_STARTED at 0 range 0 .. 0;
+      Reserved_1_31  at 0 range 1 .. 31;
+   end record;
+
+   subtype EVENTS_STOPPED_EVENTS_STOPPED_Field is NRF52840.Bit;
+
+   --  PDM transfer has finished
+   type EVENTS_STOPPED_Register is record
+      EVENTS_STOPPED : EVENTS_STOPPED_EVENTS_STOPPED_Field := 16#0#;
+      --  unspecified
+      Reserved_1_31  : NRF52840.UInt31 := 16#0#;
+   end record
+     with Object_Size => 32, Bit_Order => System.Low_Order_First;
+
+   for EVENTS_STOPPED_Register use record
+      EVENTS_STOPPED at 0 range 0 .. 0;
+      Reserved_1_31  at 0 range 1 .. 31;
+   end record;
+
+   subtype EVENTS_END_EVENTS_END_Field is NRF52840.Bit;
+
+   --  The PDM has written the last sample specified by SAMPLE.MAXCNT (or the
+   --  last sample after a STOP task has been received) to Data RAM
+   type EVENTS_END_Register is record
+      EVENTS_END    : EVENTS_END_EVENTS_END_Field := 16#0#;
+      --  unspecified
+      Reserved_1_31 : NRF52840.UInt31 := 16#0#;
+   end record
+     with Object_Size => 32, Bit_Order => System.Low_Order_First;
+
+   for EVENTS_END_Register use record
+      EVENTS_END    at 0 range 0 .. 0;
+      Reserved_1_31 at 0 range 1 .. 31;
+   end record;
+
+   --  Enable or disable interrupt for STARTED event
+   type INTEN_STARTED_Field is
+     (--  Disable
+      Disabled,
+      --  Enable
+      Enabled)
+     with Size => 1;
+   for INTEN_STARTED_Field use
+     (Disabled => 0,
+      Enabled => 1);
+
+   --  Enable or disable interrupt for STOPPED event
+   type INTEN_STOPPED_Field is
+     (--  Disable
+      Disabled,
+      --  Enable
+      Enabled)
+     with Size => 1;
+   for INTEN_STOPPED_Field use
+     (Disabled => 0,
+      Enabled => 1);
+
+   --  Enable or disable interrupt for END event
+   type INTEN_END_Field is
+     (--  Disable
+      Disabled,
+      --  Enable
+      Enabled)
+     with Size => 1;
+   for INTEN_END_Field use
+     (Disabled => 0,
+      Enabled => 1);
+
+   --  Enable or disable interrupt
+   type INTEN_Register is record
+      --  Enable or disable interrupt for STARTED event
+      STARTED       : INTEN_STARTED_Field := NRF52840.PDM.Disabled;
+      --  Enable or disable interrupt for STOPPED event
+      STOPPED       : INTEN_STOPPED_Field := NRF52840.PDM.Disabled;
+      --  Enable or disable interrupt for END event
+      END_k         : INTEN_END_Field := NRF52840.PDM.Disabled;
+      --  unspecified
+      Reserved_3_31 : NRF52840.UInt29 := 16#0#;
+   end record
+     with Object_Size => 32, Bit_Order => System.Low_Order_First;
+
+   for INTEN_Register use record
+      STARTED       at 0 range 0 .. 0;
+      STOPPED       at 0 range 1 .. 1;
+      END_k         at 0 range 2 .. 2;
+      Reserved_3_31 at 0 range 3 .. 31;
+   end record;
+
+   --  Write '1' to enable interrupt for STARTED event
+   type INTENSET_STARTED_Field is
+     (--  Read: Disabled
+      Disabled,
+      --  Read: Enabled
+      Enabled)
+     with Size => 1;
+   for INTENSET_STARTED_Field use
+     (Disabled => 0,
+      Enabled => 1);
+
+   --  Write '1' to enable interrupt for STARTED event
+   type INTENSET_STARTED_Field_1 is
+     (--  Reset value for the field
+      INTENSET_STARTED_Field_Reset,
+      --  Enable
+      Set)
+     with Size => 1;
+   for INTENSET_STARTED_Field_1 use
+     (INTENSET_STARTED_Field_Reset => 0,
+      Set => 1);
+
+   --  Write '1' to enable interrupt for STOPPED event
+   type INTENSET_STOPPED_Field is
+     (--  Read: Disabled
+      Disabled,
+      --  Read: Enabled
+      Enabled)
+     with Size => 1;
+   for INTENSET_STOPPED_Field use
+     (Disabled => 0,
+      Enabled => 1);
+
+   --  Write '1' to enable interrupt for STOPPED event
+   type INTENSET_STOPPED_Field_1 is
+     (--  Reset value for the field
+      INTENSET_STOPPED_Field_Reset,
+      --  Enable
+      Set)
+     with Size => 1;
+   for INTENSET_STOPPED_Field_1 use
+     (INTENSET_STOPPED_Field_Reset => 0,
+      Set => 1);
+
+   --  Write '1' to enable interrupt for END event
+   type INTENSET_END_Field is
+     (--  Read: Disabled
+      Disabled,
+      --  Read: Enabled
+      Enabled)
+     with Size => 1;
+   for INTENSET_END_Field use
+     (Disabled => 0,
+      Enabled => 1);
+
+   --  Write '1' to enable interrupt for END event
+   type INTENSET_END_Field_1 is
+     (--  Reset value for the field
+      INTENSET_END_Field_Reset,
+      --  Enable
+      Set)
+     with Size => 1;
+   for INTENSET_END_Field_1 use
+     (INTENSET_END_Field_Reset => 0,
+      Set => 1);
+
+   --  Enable interrupt
+   type INTENSET_Register is record
+      --  Write '1' to enable interrupt for STARTED event
+      STARTED       : INTENSET_STARTED_Field_1 :=
+                       INTENSET_STARTED_Field_Reset;
+      --  Write '1' to enable interrupt for STOPPED event
+      STOPPED       : INTENSET_STOPPED_Field_1 :=
+                       INTENSET_STOPPED_Field_Reset;
+      --  Write '1' to enable interrupt for END event
+      END_k         : INTENSET_END_Field_1 := INTENSET_END_Field_Reset;
+      --  unspecified
+      Reserved_3_31 : NRF52840.UInt29 := 16#0#;
+   end record
+     with Object_Size => 32, Bit_Order => System.Low_Order_First;
+
+   for INTENSET_Register use record
+      STARTED       at 0 range 0 .. 0;
+      STOPPED       at 0 range 1 .. 1;
+      END_k         at 0 range 2 .. 2;
+      Reserved_3_31 at 0 range 3 .. 31;
+   end record;
+
+   --  Write '1' to disable interrupt for STARTED event
+   type INTENCLR_STARTED_Field is
+     (--  Read: Disabled
+      Disabled,
+      --  Read: Enabled
+      Enabled)
+     with Size => 1;
+   for INTENCLR_STARTED_Field use
+     (Disabled => 0,
+      Enabled => 1);
+
+   --  Write '1' to disable interrupt for STARTED event
+   type INTENCLR_STARTED_Field_1 is
+     (--  Reset value for the field
+      INTENCLR_STARTED_Field_Reset,
+      --  Disable
+      Clear)
+     with Size => 1;
+   for INTENCLR_STARTED_Field_1 use
+     (INTENCLR_STARTED_Field_Reset => 0,
+      Clear => 1);
+
+   --  Write '1' to disable interrupt for STOPPED event
+   type INTENCLR_STOPPED_Field is
+     (--  Read: Disabled
+      Disabled,
+      --  Read: Enabled
+      Enabled)
+     with Size => 1;
+   for INTENCLR_STOPPED_Field use
+     (Disabled => 0,
+      Enabled => 1);
+
+   --  Write '1' to disable interrupt for STOPPED event
+   type INTENCLR_STOPPED_Field_1 is
+     (--  Reset value for the field
+      INTENCLR_STOPPED_Field_Reset,
+      --  Disable
+      Clear)
+     with Size => 1;
+   for INTENCLR_STOPPED_Field_1 use
+     (INTENCLR_STOPPED_Field_Reset => 0,
+      Clear => 1);
+
+   --  Write '1' to disable interrupt for END event
+   type INTENCLR_END_Field is
+     (--  Read: Disabled
+      Disabled,
+      --  Read: Enabled
+      Enabled)
+     with Size => 1;
+   for INTENCLR_END_Field use
+     (Disabled => 0,
+      Enabled => 1);
+
+   --  Write '1' to disable interrupt for END event
+   type INTENCLR_END_Field_1 is
+     (--  Reset value for the field
+      INTENCLR_END_Field_Reset,
+      --  Disable
+      Clear)
+     with Size => 1;
+   for INTENCLR_END_Field_1 use
+     (INTENCLR_END_Field_Reset => 0,
+      Clear => 1);
+
+   --  Disable interrupt
+   type INTENCLR_Register is record
+      --  Write '1' to disable interrupt for STARTED event
+      STARTED       : INTENCLR_STARTED_Field_1 :=
+                       INTENCLR_STARTED_Field_Reset;
+      --  Write '1' to disable interrupt for STOPPED event
+      STOPPED       : INTENCLR_STOPPED_Field_1 :=
+                       INTENCLR_STOPPED_Field_Reset;
+      --  Write '1' to disable interrupt for END event
+      END_k         : INTENCLR_END_Field_1 := INTENCLR_END_Field_Reset;
+      --  unspecified
+      Reserved_3_31 : NRF52840.UInt29 := 16#0#;
+   end record
+     with Object_Size => 32, Bit_Order => System.Low_Order_First;
+
+   for INTENCLR_Register use record
+      STARTED       at 0 range 0 .. 0;
+      STOPPED       at 0 range 1 .. 1;
+      END_k         at 0 range 2 .. 2;
+      Reserved_3_31 at 0 range 3 .. 31;
+   end record;
+
+   --  Enable or disable PDM module
+   type ENABLE_ENABLE_Field is
+     (--  Disable
+      Disabled,
+      --  Enable
+      Enabled)
+     with Size => 1;
+   for ENABLE_ENABLE_Field use
+     (Disabled => 0,
+      Enabled => 1);
+
+   --  PDM module enable register
+   type ENABLE_Register is record
+      --  Enable or disable PDM module
+      ENABLE        : ENABLE_ENABLE_Field := NRF52840.PDM.Disabled;
+      --  unspecified
+      Reserved_1_31 : NRF52840.UInt31 := 16#0#;
+   end record
+     with Object_Size => 32, Bit_Order => System.Low_Order_First;
+
+   for ENABLE_Register use record
+      ENABLE        at 0 range 0 .. 0;
+      Reserved_1_31 at 0 range 1 .. 31;
+   end record;
+
+   --  Mono or stereo operation
+   type MODE_OPERATION_Field is
+     (--  Sample and store one pair (Left + Right) of 16bit samples per RAM word
+--  R=[31:16]; L=[15:0]
+      Stereo,
+      --  Sample and store two successive Left samples (16 bit each) per RAM word
+--  L1=[31:16]; L0=[15:0]
+      Mono)
+     with Size => 1;
+   for MODE_OPERATION_Field use
+     (Stereo => 0,
+      Mono => 1);
+
+   --  Defines on which PDM_CLK edge Left (or mono) is sampled
+   type MODE_EDGE_Field is
+     (--  Left (or mono) is sampled on falling edge of PDM_CLK
+      LeftFalling,
+      --  Left (or mono) is sampled on rising edge of PDM_CLK
+      LeftRising)
+     with Size => 1;
+   for MODE_EDGE_Field use
+     (LeftFalling => 0,
+      LeftRising => 1);
+
+   --  Defines the routing of the connected PDM microphones' signals
+   type MODE_Register is record
+      --  Mono or stereo operation
+      OPERATION     : MODE_OPERATION_Field := NRF52840.PDM.Stereo;
+      --  Defines on which PDM_CLK edge Left (or mono) is sampled
+      EDGE          : MODE_EDGE_Field := NRF52840.PDM.LeftFalling;
+      --  unspecified
+      Reserved_2_31 : NRF52840.UInt30 := 16#0#;
+   end record
+     with Object_Size => 32, Bit_Order => System.Low_Order_First;
+
+   for MODE_Register use record
+      OPERATION     at 0 range 0 .. 0;
+      EDGE          at 0 range 1 .. 1;
+      Reserved_2_31 at 0 range 2 .. 31;
+   end record;
+
+   --  Left output gain adjustment, in 0.5 dB steps, around the default module
+   --  gain (see electrical parameters) 0x00 -20 dB gain adjust 0x01 -19.5 dB
+   --  gain adjust (...) 0x27 -0.5 dB gain adjust 0x28 0 dB gain adjust 0x29
+   --  +0.5 dB gain adjust (...) 0x4F +19.5 dB gain adjust 0x50 +20 dB gain
+   --  adjust
+   type GAINL_GAINL_Field is
+     (--  -20dB gain adjustment (minimum)
+      MinGain,
+      --  0dB gain adjustment
+      DefaultGain,
+      --  +20dB gain adjustment (maximum)
+      MaxGain)
+     with Size => 7;
+   for GAINL_GAINL_Field use
+     (MinGain => 0,
+      DefaultGain => 40,
+      MaxGain => 80);
+
+   --  Left output gain adjustment
+   type GAINL_Register is record
+      --  Left output gain adjustment, in 0.5 dB steps, around the default
+      --  module gain (see electrical parameters) 0x00 -20 dB gain adjust 0x01
+      --  -19.5 dB gain adjust (...) 0x27 -0.5 dB gain adjust 0x28 0 dB gain
+      --  adjust 0x29 +0.5 dB gain adjust (...) 0x4F +19.5 dB gain adjust 0x50
+      --  +20 dB gain adjust
+      GAINL         : GAINL_GAINL_Field := NRF52840.PDM.DefaultGain;
+      --  unspecified
+      Reserved_7_31 : NRF52840.UInt25 := 16#0#;
+   end record
+     with Object_Size => 32, Bit_Order => System.Low_Order_First;
+
+   for GAINL_Register use record
+      GAINL         at 0 range 0 .. 6;
+      Reserved_7_31 at 0 range 7 .. 31;
+   end record;
+
+   --  Right output gain adjustment, in 0.5 dB steps, around the default module
+   --  gain (see electrical parameters)
+   type GAINR_GAINR_Field is
+     (--  -20dB gain adjustment (minimum)
+      MinGain,
+      --  0dB gain adjustment
+      DefaultGain,
+      --  +20dB gain adjustment (maximum)
+      MaxGain)
+     with Size => 7;
+   for GAINR_GAINR_Field use
+     (MinGain => 0,
+      DefaultGain => 40,
+      MaxGain => 80);
+
+   --  Right output gain adjustment
+   type GAINR_Register is record
+      --  Right output gain adjustment, in 0.5 dB steps, around the default
+      --  module gain (see electrical parameters)
+      GAINR         : GAINR_GAINR_Field := NRF52840.PDM.DefaultGain;
+      --  unspecified
+      Reserved_7_31 : NRF52840.UInt25 := 16#0#;
+   end record
+     with Object_Size => 32, Bit_Order => System.Low_Order_First;
+
+   for GAINR_Register use record
+      GAINR         at 0 range 0 .. 6;
+      Reserved_7_31 at 0 range 7 .. 31;
+   end record;
+
+   --  Selects the ratio between PDM_CLK and output sample rate
+   type RATIO_RATIO_Field is
+     (--  Ratio of 64
+      Ratio64,
+      --  Ratio of 80
+      Ratio80)
+     with Size => 1;
+   for RATIO_RATIO_Field use
+     (Ratio64 => 0,
+      Ratio80 => 1);
+
+   --  Selects the ratio between PDM_CLK and output sample rate. Change
+   --  PDMCLKCTRL accordingly.
+   type RATIO_Register is record
+      --  Selects the ratio between PDM_CLK and output sample rate
+      RATIO         : RATIO_RATIO_Field := NRF52840.PDM.Ratio64;
+      --  unspecified
+      Reserved_1_31 : NRF52840.UInt31 := 16#0#;
+   end record
+     with Object_Size => 32, Bit_Order => System.Low_Order_First;
+
+   for RATIO_Register use record
+      RATIO         at 0 range 0 .. 0;
+      Reserved_1_31 at 0 range 1 .. 31;
+   end record;
+
+   ----------------------------------
+   -- PDM_PSEL cluster's Registers --
+   ----------------------------------
+
+   subtype CLK_PSEL_PIN_Field is NRF52840.UInt5;
+   subtype CLK_PSEL_PORT_Field is NRF52840.Bit;
+
+   --  Connection
+   type CLK_CONNECT_Field is
+     (--  Connect
+      Connected,
+      --  Disconnect
+      Disconnected)
+     with Size => 1;
+   for CLK_CONNECT_Field use
+     (Connected => 0,
+      Disconnected => 1);
+
+   --  Pin number configuration for PDM CLK signal
+   type CLK_PSEL_Register is record
+      --  Pin number
+      PIN           : CLK_PSEL_PIN_Field := 16#1F#;
+      --  Port number
+      PORT          : CLK_PSEL_PORT_Field := 16#1#;
+      --  unspecified
+      Reserved_6_30 : NRF52840.UInt25 := 16#1FFFFFF#;
+      --  Connection
+      CONNECT       : CLK_CONNECT_Field := NRF52840.PDM.Disconnected;
+   end record
+     with Object_Size => 32, Bit_Order => System.Low_Order_First;
+
+   for CLK_PSEL_Register use record
+      PIN           at 0 range 0 .. 4;
+      PORT          at 0 range 5 .. 5;
+      Reserved_6_30 at 0 range 6 .. 30;
+      CONNECT       at 0 range 31 .. 31;
+   end record;
+
+   subtype DIN_PSEL_PIN_Field is NRF52840.UInt5;
+   subtype DIN_PSEL_PORT_Field is NRF52840.Bit;
+
+   --  Connection
+   type DIN_CONNECT_Field is
+     (--  Connect
+      Connected,
+      --  Disconnect
+      Disconnected)
+     with Size => 1;
+   for DIN_CONNECT_Field use
+     (Connected => 0,
+      Disconnected => 1);
+
+   --  Pin number configuration for PDM DIN signal
+   type DIN_PSEL_Register is record
+      --  Pin number
+      PIN           : DIN_PSEL_PIN_Field := 16#1F#;
+      --  Port number
+      PORT          : DIN_PSEL_PORT_Field := 16#1#;
+      --  unspecified
+      Reserved_6_30 : NRF52840.UInt25 := 16#1FFFFFF#;
+      --  Connection
+      CONNECT       : DIN_CONNECT_Field := NRF52840.PDM.Disconnected;
+   end record
+     with Object_Size => 32, Bit_Order => System.Low_Order_First;
+
+   for DIN_PSEL_Register use record
+      PIN           at 0 range 0 .. 4;
+      PORT          at 0 range 5 .. 5;
+      Reserved_6_30 at 0 range 6 .. 30;
+      CONNECT       at 0 range 31 .. 31;
+   end record;
+
+   --  Unspecified
+   type PDM_PSEL_Cluster is record
+      --  Pin number configuration for PDM CLK signal
+      CLK : aliased CLK_PSEL_Register;
+      pragma Volatile_Full_Access (CLK);
+      --  Pin number configuration for PDM DIN signal
+      DIN : aliased DIN_PSEL_Register;
+      pragma Volatile_Full_Access (DIN);
+   end record
+     with Size => 64;
+
+   for PDM_PSEL_Cluster use record
+      CLK at 16#0# range 0 .. 31;
+      DIN at 16#4# range 0 .. 31;
+   end record;
+
+   ------------------------------------
+   -- PDM_SAMPLE cluster's Registers --
+   ------------------------------------
+
+   subtype MAXCNT_SAMPLE_BUFFSIZE_Field is NRF52840.UInt15;
+
+   --  Number of samples to allocate memory for in EasyDMA mode
+   type MAXCNT_SAMPLE_Register is record
+      --  Length of DMA RAM allocation in number of samples
+      BUFFSIZE       : MAXCNT_SAMPLE_BUFFSIZE_Field := 16#0#;
+      --  unspecified
+      Reserved_15_31 : NRF52840.UInt17 := 16#0#;
+   end record
+     with Object_Size => 32, Bit_Order => System.Low_Order_First;
+
+   for MAXCNT_SAMPLE_Register use record
+      BUFFSIZE       at 0 range 0 .. 14;
+      Reserved_15_31 at 0 range 15 .. 31;
+   end record;
+
+   --  Unspecified
+   type PDM_SAMPLE_Cluster is record
+      --  RAM address pointer to write samples to with EasyDMA
+      PTR    : aliased NRF52840.UInt32;
+      --  Number of samples to allocate memory for in EasyDMA mode
+      MAXCNT : aliased MAXCNT_SAMPLE_Register;
+      pragma Volatile_Full_Access (MAXCNT);
+   end record
+     with Size => 64;
+
+   for PDM_SAMPLE_Cluster use record
+      PTR    at 16#0# range 0 .. 31;
+      MAXCNT at 16#4# range 0 .. 31;
+   end record;
+
+   -----------------
+   -- Peripherals --
+   -----------------
+
+   --  Pulse Density Modulation (Digital Microphone) Interface
+   type PDM_Peripheral is record
+      --  Starts continuous PDM transfer
+      TASKS_START    : aliased TASKS_START_Register;
+      pragma Volatile_Full_Access (TASKS_START);
+      --  Stops PDM transfer
+      TASKS_STOP     : aliased TASKS_STOP_Register;
+      pragma Volatile_Full_Access (TASKS_STOP);
+      --  PDM transfer has started
+      EVENTS_STARTED : aliased EVENTS_STARTED_Register;
+      pragma Volatile_Full_Access (EVENTS_STARTED);
+      --  PDM transfer has finished
+      EVENTS_STOPPED : aliased EVENTS_STOPPED_Register;
+      pragma Volatile_Full_Access (EVENTS_STOPPED);
+      --  The PDM has written the last sample specified by SAMPLE.MAXCNT (or
+      --  the last sample after a STOP task has been received) to Data RAM
+      EVENTS_END     : aliased EVENTS_END_Register;
+      pragma Volatile_Full_Access (EVENTS_END);
+      --  Enable or disable interrupt
+      INTEN          : aliased INTEN_Register;
+      pragma Volatile_Full_Access (INTEN);
+      --  Enable interrupt
+      INTENSET       : aliased INTENSET_Register;
+      pragma Volatile_Full_Access (INTENSET);
+      --  Disable interrupt
+      INTENCLR       : aliased INTENCLR_Register;
+      pragma Volatile_Full_Access (INTENCLR);
+      --  PDM module enable register
+      ENABLE         : aliased ENABLE_Register;
+      pragma Volatile_Full_Access (ENABLE);
+      --  PDM clock generator control
+      PDMCLKCTRL     : aliased NRF52840.UInt32;
+      --  Defines the routing of the connected PDM microphones' signals
+      MODE           : aliased MODE_Register;
+      pragma Volatile_Full_Access (MODE);
+      --  Left output gain adjustment
+      GAINL          : aliased GAINL_Register;
+      pragma Volatile_Full_Access (GAINL);
+      --  Right output gain adjustment
+      GAINR          : aliased GAINR_Register;
+      pragma Volatile_Full_Access (GAINR);
+      --  Selects the ratio between PDM_CLK and output sample rate. Change
+      --  PDMCLKCTRL accordingly.
+      RATIO          : aliased RATIO_Register;
+      pragma Volatile_Full_Access (RATIO);
+      --  Unspecified
+      PSEL           : aliased PDM_PSEL_Cluster;
+      --  Unspecified
+      SAMPLE         : aliased PDM_SAMPLE_Cluster;
+   end record
+     with Volatile;
+
+   for PDM_Peripheral use record
+      TASKS_START    at 16#0# range 0 .. 31;
+      TASKS_STOP     at 16#4# range 0 .. 31;
+      EVENTS_STARTED at 16#100# range 0 .. 31;
+      EVENTS_STOPPED at 16#104# range 0 .. 31;
+      EVENTS_END     at 16#108# range 0 .. 31;
+      INTEN          at 16#300# range 0 .. 31;
+      INTENSET       at 16#304# range 0 .. 31;
+      INTENCLR       at 16#308# range 0 .. 31;
+      ENABLE         at 16#500# range 0 .. 31;
+      PDMCLKCTRL     at 16#504# range 0 .. 31;
+      MODE           at 16#508# range 0 .. 31;
+      GAINL          at 16#518# range 0 .. 31;
+      GAINR          at 16#51C# range 0 .. 31;
+      RATIO          at 16#520# range 0 .. 31;
+      PSEL           at 16#540# range 0 .. 63;
+      SAMPLE         at 16#560# range 0 .. 63;
+   end record;
+
+   --  Pulse Density Modulation (Digital Microphone) Interface
+   PDM_Periph : aliased PDM_Peripheral
+     with Import, Address => PDM_Base;
+
+end NRF52840.PDM;

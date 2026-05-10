@@ -1,0 +1,42 @@
+with "config/adabee_phy_config.gpr";
+project Adabee_Phy is
+
+   for Library_Name use "Adabee_Phy";
+   for Library_Version use Project'Library_Name & ".so." & Adabee_Phy_Config.Crate_Version;
+
+   Driver_Sources := ();
+
+   case Adabee_Phy_Config.Driver is
+      when "stub" =>
+         Driver_Sources := ("src/drivers/stub");
+
+      when "nRF52840" =>
+         Driver_Sources := ("src/drivers",
+                            "src/drivers/nRF52840",
+                            "src/drivers/nRF52840/svd");
+   end case;
+
+   for Source_Dirs use ("src/", "config/") & Driver_Sources;
+
+   for Object_Dir use "obj/" & Adabee_Phy_Config.Build_Profile;
+   for Create_Missing_Dirs use "True";
+   for Library_Dir use "lib";
+
+   type Library_Type_Type is ("relocatable", "static", "static-pic");
+   Library_Type : Library_Type_Type :=
+     external ("ADABEE_PHY_LIBRARY_TYPE", external ("LIBRARY_TYPE", "static"));
+   for Library_Kind use Library_Type;
+
+   package Compiler is
+      for Default_Switches ("Ada") use Adabee_Phy_Config.Ada_Compiler_Switches;
+   end Compiler;
+
+   package Binder is
+      for Switches ("Ada") use ("-Es"); --  Symbolic traceback
+   end Binder;
+
+   package Install is
+      for Artifacts (".") use ("share");
+   end Install;
+
+end Adabee_Phy;
