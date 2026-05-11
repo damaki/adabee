@@ -41,6 +41,8 @@ is
    subtype Byte_Array_6 is Byte_Array (1 .. 6);
    subtype Byte_Array_8 is Byte_Array (1 .. 8);
 
+   type Byte_Array_2_Aligned_2 is new Byte_Array (1 .. 2) with Alignment => 2;
+
    ------------------
    -- Common Types --
    ------------------

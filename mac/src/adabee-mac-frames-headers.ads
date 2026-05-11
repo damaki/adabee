@@ -780,8 +780,11 @@ is
 
    function From_Bytes is new
      Ada.Unchecked_Conversion
-       (Source => Byte_Array_2,
+       (Source => Byte_Array_2_Aligned_2,
         Target => Frame_Control_Field);
+
+   function From_Bytes (Bytes : Byte_Array_2) return Frame_Control_Field
+   is (From_Bytes (Byte_Array_2_Aligned_2 (Bytes)));
 
    function To_Bytes is new
      Ada.Unchecked_Conversion
@@ -800,8 +803,12 @@ is
 
    function From_Bytes is new
      Ada.Unchecked_Conversion
-       (Source => Byte_Array_2,
+       (Source => Byte_Array_2_Aligned_2,
         Target => MP_Long_Frame_Control_Field);
+
+   function From_Bytes
+     (Bytes : Byte_Array_2) return MP_Long_Frame_Control_Field
+   is (From_Bytes (Byte_Array_2_Aligned_2 (Bytes)));
 
    function To_Bytes is new
      Ada.Unchecked_Conversion
