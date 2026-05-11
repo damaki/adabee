@@ -4,6 +4,7 @@
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
 with Ada.Unchecked_Conversion;
+with System;
 
 private with Interfaces;
 
@@ -226,7 +227,11 @@ is
       Frame_Version      : Frame_Version_Field;
       Src_Address_Mode   : Address_Mode_Field;
    end record
-   with Size => 16;
+   with
+     Size                 => 16,
+     Alignment            => 1,
+     Bit_Order            => System.Low_Order_First,
+     Scalar_Storage_Order => System.Low_Order_First;
 
    for Frame_Control_Field use
      record
@@ -273,7 +278,11 @@ is
       Dest_Address_Mode  : Address_Mode_Field;
       Src_Address_Mode   : Address_Mode_Field;
    end record
-   with Size => 8;
+   with
+     Size                 => 8,
+     Alignment            => 1,
+     Bit_Order            => System.Low_Order_First,
+     Scalar_Storage_Order => System.Low_Order_First;
 
    for MP_Short_Frame_Control_Field use
      record
@@ -296,7 +305,11 @@ is
       Ack_Required       : Ack_Required_Field;
       IE_Present         : IE_Present_Field;
    end record
-   with Size => 16;
+   with
+     Size                 => 16,
+     Alignment            => 1,
+     Bit_Order            => System.Low_Order_First,
+     Scalar_Storage_Order => System.Low_Order_First;
 
    for MP_Long_Frame_Control_Field use
      record
@@ -374,7 +387,10 @@ is
       Nonce_Source   : Nonce_Source_Field;
       Reserved       : Bit;
    end record
-   with Size => 8;
+   with
+     Size                 => 8,
+     Bit_Order            => System.Low_Order_First,
+     Scalar_Storage_Order => System.Low_Order_First;
 
    for Security_Control_Field use
      record
