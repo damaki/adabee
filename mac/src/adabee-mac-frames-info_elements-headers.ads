@@ -61,7 +61,7 @@ is
    -- Header IE Element IDs --
    ---------------------------
 
-   --  Ref. Table 7-7 of IEEE 802.15.4-2020
+   --  Ref. Table 7-7 of IEEE 802.15.4-2024
 
    Vendor_Specific_IE              : constant Element_ID_Field := 16#00#;
    CSL_IE                          : constant Element_ID_Field := 16#1A#;
