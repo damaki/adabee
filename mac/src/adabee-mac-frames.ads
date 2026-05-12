@@ -8,7 +8,7 @@ with AdaBee.PHY_Constants;
 --  @summary
 --  Root package for IEEE 802.15.4 MAC frame definitions and encoders/decoders.
 package AdaBee.MAC.Frames
-  with Pure, SPARK_Mode
+  with Pure, SPARK_Mode, Always_Terminates
 is
 
    ---------------
@@ -42,6 +42,8 @@ is
    subtype Byte_Array_8 is Byte_Array (1 .. 8);
 
    type Byte_Array_2_Aligned_2 is new Byte_Array (1 .. 2) with Alignment => 2;
+   type Byte_Array_3_Aligned_2 is new Byte_Array (1 .. 3) with Alignment => 2;
+   type Byte_Array_6_Aligned_2 is new Byte_Array (1 .. 6) with Alignment => 2;
 
    ------------------
    -- Common Types --

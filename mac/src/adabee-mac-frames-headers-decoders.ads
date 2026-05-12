@@ -8,7 +8,7 @@
 --  Decoders for IEEE 802.15.4 MAC headers
 
 package AdaBee.MAC.Frames.Headers.Decoders
-  with Pure, SPARK_Mode
+  with Pure, SPARK_Mode, Always_Terminates
 is
 
    procedure Decode_MAC_Header

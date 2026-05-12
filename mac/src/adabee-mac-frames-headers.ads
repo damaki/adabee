@@ -12,7 +12,7 @@ private with Interfaces;
 --  IEEE 802.15.4 MAC frame header (MHR) definitions.
 
 package AdaBee.MAC.Frames.Headers
-  with Pure, SPARK_Mode
+  with Pure, SPARK_Mode, Always_Terminates
 is
 
    ----------------------
@@ -229,7 +229,6 @@ is
    end record
    with
      Size                 => 16,
-     Alignment            => 1,
      Bit_Order            => System.Low_Order_First,
      Scalar_Storage_Order => System.Low_Order_First;
 

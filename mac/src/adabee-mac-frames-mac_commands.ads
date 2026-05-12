@@ -5,7 +5,7 @@
 --
 
 package AdaBee.MAC.Frames.MAC_Commands
-  with Pure, SPARK_Mode
+  with Pure, SPARK_Mode, Always_Terminates
 is
    --  Ref. Table 7-11 of IEEE 802.15.4-2024
 

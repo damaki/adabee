@@ -7,7 +7,7 @@
 --  @summary
 --  Root package for the Medium Access Control (MAC) layer
 package AdaBee.MAC
-  with Pure, SPARK_Mode
+  with Pure, SPARK_Mode, Always_Terminates
 is
 
    type Status_Code is

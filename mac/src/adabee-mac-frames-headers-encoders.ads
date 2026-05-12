@@ -7,7 +7,7 @@
 --  @summary
 --  Encoders for IEEE 802.15.4 MAC headers
 package AdaBee.MAC.Frames.Headers.Encoders
-  with Pure, SPARK_Mode
+  with Pure, SPARK_Mode, Always_Terminates
 is
 
    procedure Encode_MAC_Header
