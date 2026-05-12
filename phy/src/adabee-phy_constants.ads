@@ -5,7 +5,7 @@
 --
 
 package AdaBee.PHY_Constants
-  with Pure, SPARK_Mode
+  with Pure, SPARK_Mode, Always_Terminates
 is
 
    type Symbol_Count is range 0 .. 2 ** 24 - 1 with Size => 24;

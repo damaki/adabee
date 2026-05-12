@@ -273,10 +273,12 @@ is
 
    procedure Go_Idle
    with
-     Global  => (Input => Radio_Device, In_Out => Radio_State),
-     Depends => (Radio_State => null, null => (Radio_State, Radio_Device)),
-     Pre     => Current_State not in Off | Sleeping,
-     Post    => Current_State = Idle;
+     Always_Terminates => False,
+     Global            => (Input => Radio_Device, In_Out => Radio_State),
+     Depends           =>
+       (Radio_State => null, null => (Radio_State, Radio_Device)),
+     Pre               => Current_State not in Off | Sleeping,
+     Post              => Current_State = Idle;
    --  Force the PHY into the idle state.
    --
    --  This will cancel any in-progress transmit or receive operation.
@@ -465,15 +467,17 @@ is
      (Events : out Event_Flags_Array;
       Filter : Event_Flags_Array := (others => True))
    with
-     Global         => (In_Out => (Radio_Device, Radio_Events, Radio_State)),
-     Depends        =>
+     Always_Terminates => False,
+     Global            =>
+       (In_Out => (Radio_Device, Radio_Events, Radio_State)),
+     Depends           =>
        (Radio_Events => (Radio_Events, Filter),
         Radio_Device => (Radio_Device, Radio_Events, Radio_State),
         Radio_State  => (Radio_State, Radio_Events),
         Events       => (Radio_Events, Filter)),
-     Pre            => (for some E of Filter => E),
-     Post           => (for some E of Events => E),
-     Contract_Cases =>
+     Pre               => (for some E of Filter => E),
+     Post              => (for some E of Events => E),
+     Contract_Cases    =>
        (Current_State = Off               =>
           not Events (Operation_Complete) and then Current_State = Off,
 
@@ -537,12 +541,14 @@ is
 
    procedure Wait_For_Event (Event : Event_Kind)
    with
-     Global         => (In_Out => (Radio_Device, Radio_Events, Radio_State)),
-     Depends        =>
+     Always_Terminates => False,
+     Global            =>
+       (In_Out => (Radio_Device, Radio_Events, Radio_State)),
+     Depends           =>
        (Radio_Events => (Radio_Events, Event),
         Radio_Device => (Radio_Device, Radio_Events, Radio_State),
         Radio_State  => (Radio_State, Radio_Events)),
-     Pre            =>
+     Pre               =>
        (if Event = Operation_Complete
         then
           Current_State
@@ -551,7 +557,7 @@ is
            | Receiving
            | ED_Scan_Active
            | CCA_Scan_Active),
-     Contract_Cases =>
+     Contract_Cases    =>
        (Current_State = Off               => Current_State = Off,
         Current_State = Sleeping          => Current_State = Sleeping,
         Current_State = Idle              => Current_State = Idle,
