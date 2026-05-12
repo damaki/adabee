@@ -475,7 +475,42 @@ is
         Radio_Device => (Radio_Device, Radio_Events, Radio_State),
         Radio_State  => (Radio_State, Radio_Events),
         Events       => (Radio_Events, Filter)),
-     Pre               => (for some E of Filter => E),
+     Pre               =>
+       --  Must wait for at least one event
+       (for some E of Filter => E)
+
+       --  Cannot wait for Operation_Complete or alarm events while the PHY is
+       --  in a state that never sends them, unless also waiting for another
+       --  event which can occur. This prevents accidentally blocking forever.
+       and then
+         (case Current_State is
+            --  Operation_Complete and alarm events are never sent while the
+            --  PHY is off.
+            when Off               =>
+              (for some E in Filter'Range =>
+                 E
+                 not in Operation_Complete
+                      | Alarm_1_Triggered
+                      | Alarm_2_Triggered
+                 and then Filter (E)),
+
+            --  All events are accepted while the PHY is doing an active
+            --  operation.
+            when Exiting_Sleep
+               | Transmitting
+               | Receiving
+               | ED_Scan_Active
+               | CCA_Scan_Active   => True,
+
+            --  Operation_Complete is never sent while the PHY is these states
+            when Sleeping
+               | Idle
+               | Tx_Complete
+               | Rx_Complete
+               | ED_Scan_Complete
+               | CCA_Scan_Complete =>
+              (for some E in Filter'Range =>
+                 E /= Operation_Complete and then Filter (E))),
      Post              => (for some E of Events => E),
      Contract_Cases    =>
        (Current_State = Off               =>
@@ -549,14 +584,21 @@ is
         Radio_Device => (Radio_Device, Radio_Events, Radio_State),
         Radio_State  => (Radio_State, Radio_Events)),
      Pre               =>
-       (if Event = Operation_Complete
-        then
-          Current_State
-          in Exiting_Sleep
-           | Transmitting
-           | Receiving
-           | ED_Scan_Active
-           | CCA_Scan_Active),
+       (case Event is
+          --  Cannot wait for Operation_Complete while the PHY is in a state
+          --  that will never send it.
+          when Operation_Complete                    =>
+            Current_State
+            in Exiting_Sleep
+             | Transmitting
+             | Receiving
+             | ED_Scan_Active
+             | CCA_Scan_Active,
+
+          --  Cannot wait for an alarm event while the PHY clock is disabled
+          when Alarm_1_Triggered | Alarm_2_Triggered => Current_State /= Off,
+
+          when others                                => True),
      Contract_Cases    =>
        (Current_State = Off               => Current_State = Off,
         Current_State = Sleeping          => Current_State = Sleeping,
