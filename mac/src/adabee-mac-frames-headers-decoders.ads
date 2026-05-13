@@ -20,9 +20,15 @@ is
      Global => null,
      Pre    => Buffer'Length > 0,
      Post   => Length <= Buffer'Length and then Length <= Max_MHR_Length;
-   --  Decode a MAC header from a byte array buffer.
+   --  Decode a MAC header from a byte array buffer (excluding the header IE
+   --  list).
    --
    --  @param Buffer The buffer containing the MAC header to decode.
    --  @param MHR The decoded header fields are stored here.
+   --  @param Length The length of the MHR, excluding the header IE list.
+   --    This length includes the frame control, sequence number, addressing
+   --    fields, and auxiliary security header parts of the MAC header.
+   --  @param Result Success if the MAC header was successfully decoded, or
+   --    any other value to indicate an error.
 
 end AdaBee.MAC.Frames.Headers.Decoders;
