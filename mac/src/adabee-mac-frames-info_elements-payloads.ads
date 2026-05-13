@@ -6,6 +6,8 @@
 with Ada.Unchecked_Conversion;
 with System;
 
+with AdaBee.MAC.Frames.Info_Elements.Generic_Lists;
+
 --  @summary
 --  Definitions for Payload IEs as defined in IEEE 802.15.4-2024 Section 7.4.3
 package AdaBee.MAC.Frames.Info_Elements.Payloads
@@ -65,5 +67,23 @@ is
    MLME_IE                   : constant Group_ID_Field := 16#1#;
    Vendor_Specific_Nested_IE : constant Group_ID_Field := 16#2#;
    Payload_Termination_IE    : constant Group_ID_Field := 16#F#;
+
+   --------------
+   -- IE Lists --
+   --------------
+
+   function Content_Length (Header : Header_Field) return Length_Field
+   is (Header.Length);
+
+   function Is_Termination_IE (Header : Header_Field) return Boolean
+   is (Header.Group_ID = Payload_Termination_IE);
+
+   package Lists is new
+     AdaBee.MAC.Frames.Info_Elements.Generic_Lists
+       (Header_Field      => Header_Field,
+        Length_Type       => Length_Field,
+        From_Bytes        => From_Bytes,
+        Content_Length    => Content_Length,
+        Is_Termination_IE => Is_Termination_IE);
 
 end AdaBee.MAC.Frames.Info_Elements.Payloads;

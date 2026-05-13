@@ -6,8 +6,11 @@
 with Ada.Unchecked_Conversion;
 with System;
 
+with AdaBee.MAC.Frames.Info_Elements.Generic_Lists;
+
 --  @summary
 --  Definitions for Nested IEs as defined in IEEE 802.15.4-2024 Section 7.4.4
+
 package AdaBee.MAC.Frames.Info_Elements.Nested
   with Pure, SPARK_Mode, Always_Terminates
 is
@@ -240,7 +243,7 @@ is
    RCPCS_IE : constant Short_Sub_ID_Field :=
      Ranging_Channel_And_Preamble_Sel_IE;
 
-   ACRRC_IE : constant Short_Sub_ID_Field :=
+   RMMRC_IE : constant Short_Sub_ID_Field :=
      Ranging_Multiple_Msg_Receipt_Cfm_IE;
 
    ACRRC_IE : constant Short_Sub_ID_Field :=
@@ -254,5 +257,26 @@ is
 
    Vendor_Specific_Nested_IE : constant Long_Sub_ID_Field := 16#8#;
    Channel_Hopping_IE        : constant Long_Sub_ID_Field := 16#9#;
+
+   --------------
+   -- IE Lists --
+   --------------
+
+   function Content_Length (Header : Header_Field) return Long_Length_Field
+   is (case Header.IE_Type is
+         when Short => Long_Length_Field (Header.Short_Length),
+         when Long  => Header.Long_Length);
+
+   function Is_Termination_IE
+     (Header : Header_Field with Unreferenced) return Boolean
+   is (False);
+
+   package Lists is new
+     AdaBee.MAC.Frames.Info_Elements.Generic_Lists
+       (Header_Field      => Header_Field,
+        Length_Type       => Long_Length_Field,
+        From_Bytes        => From_Bytes,
+        Content_Length    => Content_Length,
+        Is_Termination_IE => Is_Termination_IE);
 
 end AdaBee.MAC.Frames.Info_Elements.Nested;

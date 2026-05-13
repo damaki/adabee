@@ -7,9 +7,11 @@ with Ada.Unchecked_Conversion;
 with System;
 
 with AdaBee.MAC.Frames.Beacons;
+with AdaBee.MAC.Frames.Info_Elements.Generic_Lists;
 
 --  @summary
 --  Definitions for Header IEs as defined in IEEE 802.15.4-2024 Section 7.4.2
+
 package AdaBee.MAC.Frames.Info_Elements.Headers
   with Pure, SPARK_Mode, Always_Terminates
 is
@@ -81,6 +83,24 @@ is
    DA_IE                           : constant Element_ID_Field := 16#2B#;
    Header_Termination_1_IE         : constant Element_ID_Field := 16#7E#;
    Header_Termination_2_IE         : constant Element_ID_Field := 16#7F#;
+
+   --------------
+   -- IE Lists --
+   --------------
+
+   function Content_Length (Header : Header_Field) return Length_Field
+   is (Header.Length);
+
+   function Is_Termination_IE (Header : Header_Field) return Boolean
+   is (Header.Element_ID in Header_Termination_1_IE | Header_Termination_2_IE);
+
+   package Lists is new
+     AdaBee.MAC.Frames.Info_Elements.Generic_Lists
+       (Header_Field      => Header_Field,
+        Length_Type       => Length_Field,
+        From_Bytes        => From_Bytes,
+        Content_Length    => Content_Length,
+        Is_Termination_IE => Is_Termination_IE);
 
    --------------------------------------------
    -- Simplified Superframe Specification IE --
