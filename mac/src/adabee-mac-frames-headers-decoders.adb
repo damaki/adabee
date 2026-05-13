@@ -356,7 +356,7 @@ is
         + (if Src_PAN_ID_Present then 2 else 0);
 
       if Buffer'Length < Length + Addr_Fields_Length then
-         Result := Limit_Reached;
+         Result := Malformed_Frame;
          return;
       end if;
 
@@ -550,7 +550,7 @@ is
         + (if Frame_Control.PAN_ID_Present = Present then 2 else 0);
 
       if Buffer'Length < Length + Addr_Fields_Length then
-         Result := Limit_Reached;
+         Result := Malformed_Frame;
          return;
       end if;
 
@@ -660,7 +660,7 @@ is
 
       if Buffer'Length < 2 then
          Frame_Control := Null_Frame_Control;
-         Result := Limit_Reached;
+         Result := Malformed_Frame;
 
       else
          Frame_Control :=
@@ -705,7 +705,7 @@ is
       if Buffer'Length = 0 then
          Frame_Control := Null_MP_Frame_Control_Field;
          Length := 0;
-         Result := Limit_Reached;
+         Result := Malformed_Frame;
 
       else
          Short_FC := From_Bytes (Buffer (Buffer'First));
@@ -736,7 +736,7 @@ is
          elsif Buffer'Length < 2 then
             Frame_Control := Null_MP_Frame_Control_Field;
             Length := 1;
-            Result := Limit_Reached;
+            Result := Malformed_Frame;
 
          else
             Frame_Control :=
@@ -908,7 +908,7 @@ is
             FC_Suppression => Not_Suppressed,
             Nonce_Source   => From_Frame_Counter,
             Reserved       => 0);
-         Result := Limit_Reached;
+         Result := Malformed_Frame;
 
       else
          SC := From_Bytes (Buffer (Buffer'First));
@@ -933,7 +933,7 @@ is
    begin
       if Buffer'Length < 4 or else Offset > Buffer'Length - 4 then
          FC := (Suppression => Suppressed);
-         Result := Limit_Reached;
+         Result := Malformed_Frame;
 
       else
          Pos := Buffer'First + Offset;
@@ -965,7 +965,7 @@ is
          when 0 =>
             Key_ID := (Mode => 0);
             if Offset > Buffer'Length then
-               Result := Limit_Reached;
+               Result := Malformed_Frame;
             else
                Result := Success;
             end if;
@@ -973,7 +973,7 @@ is
          when 1 =>
             if Buffer'Length < 1 or else Offset > Buffer'Length - 1 then
                Key_ID := (Mode => 0);
-               Result := Limit_Reached;
+               Result := Malformed_Frame;
 
             else
                Pos := Buffer'First + Offset;
@@ -988,7 +988,7 @@ is
          when 2 =>
             if Buffer'Length < 5 or else Offset > Buffer'Length - 5 then
                Key_ID := (Mode => 0);
-               Result := Limit_Reached;
+               Result := Malformed_Frame;
 
             else
                Pos := Buffer'First + Offset;
@@ -1006,7 +1006,7 @@ is
          when 3 =>
             if Buffer'Length < 9 or else Offset > Buffer'Length - 9 then
                Key_ID := (Mode => 0);
-               Result := Limit_Reached;
+               Result := Malformed_Frame;
 
             else
                Pos := Buffer'First + Offset;
