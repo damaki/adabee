@@ -160,7 +160,10 @@ is
    ---------------------
 
    procedure Parse_IE_List
-     (Buffer : Byte_Array; Length : out Natural; Result : out Status_Code)
+     (Buffer  : Byte_Array;
+      Length  : out Natural;
+      Result  : out Status_Code;
+      Last_IE : out Positive)
    with
      Global => null,
      Post   =>
@@ -171,7 +174,9 @@ is
             Length > 0
             and then
               Formal_Model.Valid_IE_List
-                (Buffer (Buffer'First .. Buffer'First + (Length - 1))));
+                (Buffer (Buffer'First .. Buffer'First + (Length - 1)))
+            and then Valid_IE (Buffer, Last_IE)
+            and then Is_Last_IE (Buffer, Last_IE));
    --  Walks through an IE list to calculate its length and to verify that the
    --  IE list is well formed.
    --
@@ -180,5 +185,7 @@ is
    --  @param Length The length of the IE list in bytes.
    --  @param Result Success if the IE list is well formed, or Malformed_Frame
    --    if the IE list is not well formed.
+   --  @param Last_IE The index of the last IE in the IE list. This is valid
+   --    only when Result = Success.
 
 end AdaBee.MAC.Frames.Info_Elements.Generic_Lists;

@@ -62,7 +62,10 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
    -------------------
 
    procedure Parse_IE_List
-     (Buffer : Byte_Array; Length : out Natural; Result : out Status_Code)
+     (Buffer  : Byte_Array;
+      Length  : out Natural;
+      Result  : out Status_Code;
+      Last_IE : out Positive)
    is
       IE_Count : Natural := 0
       with Ghost;
@@ -79,6 +82,7 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
       if Buffer'Length = 0 then
          Result := Malformed_Frame;
          Length := 0;
+         Last_IE := 1;
          return;
       end if;
 
@@ -131,6 +135,7 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
          if not Valid_IE (Buffer, Pos) then
             Result := Malformed_Frame;
             Length := 0;
+            Last_IE := 1;
             return;
          end if;
 
@@ -141,6 +146,7 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
          --  current IE is the last IE in the buffer).
 
          if Is_Last_IE (Buffer, Pos) then
+            Last_IE := Pos;
             Length := (Pos - Buffer'First) + IE_Length (Buffer, Pos);
             exit;
          end if;
