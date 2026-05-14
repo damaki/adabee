@@ -10,6 +10,7 @@ website = ""
 tags = []
 
 [build-switches]
+"*".ada_version = "Ada2022"
 "*".style_checks = [
   "-gnaty3",  # Specify indentation level of 3
   "-gnatya",  # Check attribute casing
@@ -44,5 +45,5 @@ adabee_phy = "*"
 adabee_common = { path='../common' }
 adabee_phy = { path='../phy' }
 
-[[depends-on]]
-gnatprove = "^15"
+# [[depends-on]]
+# gnatprove = "^15"

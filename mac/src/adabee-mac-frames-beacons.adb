@@ -83,12 +83,12 @@ is
          --  at least one GTS descriptor.
 
          if GTS_Info.GTS_Spec.GTS_Descriptor_Count = 0 then
-            GTS_Info.GTS_Directions := (others => Transmit);
+            GTS_Info.GTS_Directions := [others => Transmit];
             GTS_Info.GTS_List :=
-              (others =>
+              [others =>
                  (Device_Short_Addr => 0,
                   GTS_Starting_Slot => 0,
-                  GTS_Length        => 0));
+                  GTS_Length        => 0)];
 
             Result := Success;
 
