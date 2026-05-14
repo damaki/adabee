@@ -219,7 +219,8 @@ is
         and then
           (if Result = Success
            then
-             (MHR.Frame_Version /= Reserved
+             (Length >= Min_MHR_Length
+              and then MHR.Frame_Version /= Reserved
               and then MHR.Destination_Address.Mode /= Reserved
               and then MHR.Source_Address.Mode /= Reserved)));
 
@@ -239,17 +240,18 @@ is
         and then
           (if Result = Success
            then
-             (MHR.Frame_Version /= Reserved
+             (Length >= Min_MHR_Length
+              and then MHR.Frame_Version /= Reserved
               and then MHR.Destination_Address.Mode /= Reserved
               and then MHR.Source_Address.Mode /= Reserved
               and then MHR.Frame_Type = Multipurpose
               and then not MHR.Source_PAN_ID.Present)));
 
-   -------------------------
-   --  Decode_MAC_Header  --
-   -------------------------
+   ------------------------
+   -- Decode_MHR_Partial --
+   ------------------------
 
-   procedure Decode_MAC_Header
+   procedure Decode_MHR_Partial
      (Buffer : Byte_Array;
       MHR    : out MAC_Header;
       Length : out Natural;
@@ -281,7 +283,148 @@ is
             Length := 0;
             Result := Unsupported_Field;
       end case;
-   end Decode_MAC_Header;
+   end Decode_MHR_Partial;
+
+   ---------------------------
+   -- Decode_MHR_Header_IEs --
+   ---------------------------
+
+   procedure Decode_MHR_Header_IEs
+     (Buffer            : Byte_Array;
+      Header_IE_Last    : out Natural;
+      MAC_Payload_First : out Integer;
+      MAC_Payload_Last  : out Integer;
+      Has_Payload_IEs   : out Boolean;
+      Result            : out Status_Code)
+   is
+      use type AdaBee.MAC.Frames.Info_Elements.Headers.Element_ID_Field;
+
+      Header_IE_List_Length   : Natural;
+      Last_Header_IE_Position : Natural;
+
+      Last_Header_IE : AdaBee.MAC.Frames.Info_Elements.Headers.Header_Field;
+
+   begin
+      AdaBee.MAC.Frames.Info_Elements.Headers.Lists.Parse_IE_List
+        (Buffer  => Buffer,
+         Length  => Header_IE_List_Length,
+         Result  => Result,
+         Last_IE => Last_Header_IE_Position);
+
+      if Result /= Success then
+         Header_IE_Last := 0;
+         MAC_Payload_First := 1;
+         MAC_Payload_Last := 0;
+         Has_Payload_IEs := False;
+
+      else
+         --  Determine whether payload IEs are present
+
+         Header_IE_Last := Buffer'First + (Header_IE_List_Length - 1);
+
+         Last_Header_IE :=
+           AdaBee.MAC.Frames.Info_Elements.Headers.From_Bytes
+             (Buffer (Last_Header_IE_Position .. Last_Header_IE_Position + 1));
+
+         Has_Payload_IEs :=
+           Last_Header_IE.Element_ID
+           = Info_Elements.Headers.Header_Termination_1_IE;
+
+         --  Guard against the case where the presence of HT1 indicates that
+         --  payload IEs are present, but the frame ends immediately after
+         --  the header IEs.
+
+         if Has_Payload_IEs and then Header_IE_Last = Buffer'Last then
+            Result := Malformed_Frame;
+            MAC_Payload_First := 1;
+            MAC_Payload_Last := 0;
+            Has_Payload_IEs := False;
+
+         elsif Header_IE_Last < Buffer'Last then
+            MAC_Payload_First := Header_IE_Last + 1;
+            MAC_Payload_Last := Buffer'Last;
+         else
+            MAC_Payload_First := 1;
+            MAC_Payload_Last := 0;
+         end if;
+      end if;
+   end Decode_MHR_Header_IEs;
+
+   ----------------
+   -- Decode_MHR --
+   ----------------
+
+   procedure Decode_MHR
+     (Buffer            : Byte_Array;
+      MHR               : out MAC_Header;
+      Header_IE_First   : out Positive;
+      Header_IE_Last    : out Natural;
+      MAC_Payload_First : out Integer;
+      MAC_Payload_Last  : out Integer;
+      Has_Payload_IEs   : out Boolean;
+      Result            : out Status_Code)
+   is
+      MHR_Length : Natural;
+   begin
+      Decode_MHR_Partial (Buffer, MHR, MHR_Length, Result);
+
+      if Result = Success then
+
+         --  Check whether an IE list is present and if so, try to decode the
+         --  header IEs to determine its length and where the MAC payload
+         --  starts.
+
+         if MHR.IE_Present = Present then
+            if MHR_Length = Buffer'Length then
+
+               --  The MHR indicates an IE list is present, but there's no
+               --  space for it in the frame.
+
+               Header_IE_First := 1;
+               Header_IE_Last := 0;
+               MAC_Payload_First := 1;
+               MAC_Payload_Last := 0;
+               Has_Payload_IEs := False;
+               Result := Malformed_Frame;
+
+            else
+               Header_IE_First := Buffer'First + (MHR_Length - 1);
+
+               Decode_MHR_Header_IEs
+                 (Buffer            => Buffer (Header_IE_First .. Buffer'Last),
+                  Header_IE_Last    => Header_IE_Last,
+                  MAC_Payload_First => MAC_Payload_First,
+                  MAC_Payload_Last  => MAC_Payload_Last,
+                  Has_Payload_IEs   => Has_Payload_IEs,
+                  Result            => Result);
+            end if;
+
+         else
+            --  No IE list is present, but a MAC payload might be present
+
+            Header_IE_First := 1;
+            Header_IE_Last := 0;
+            Has_Payload_IEs := False;
+
+            if MHR_Length = Buffer'Length then
+               MAC_Payload_First := 1;
+               MAC_Payload_Last := 0;
+            else
+               MAC_Payload_First := Buffer'First + (MHR_Length - 1);
+               MAC_Payload_Last := Buffer'Last;
+            end if;
+         end if;
+
+      else
+         --  MHR decode failed
+
+         Header_IE_First := 1;
+         Header_IE_Last := 0;
+         MAC_Payload_First := 1;
+         MAC_Payload_Last := 0;
+         Has_Payload_IEs := False;
+      end if;
+   end Decode_MHR;
 
    ------------------------------
    -- Decode_Normal_MAC_Header --

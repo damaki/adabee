@@ -172,9 +172,11 @@ is
          (if Result = Success
           then
             Length > 0
+            and then Length <= Buffer'Length
             and then
               Formal_Model.Valid_IE_List
                 (Buffer (Buffer'First .. Buffer'First + (Length - 1)))
+            and then Last_IE in Buffer'Range
             and then Valid_IE (Buffer, Last_IE)
             and then Is_Last_IE (Buffer, Last_IE));
    --  Walks through an IE list to calculate its length and to verify that the
