@@ -136,6 +136,7 @@ is
    end record
    with
      Size                 => 48,
+     Alignment            => 2,
      Bit_Order            => System.Low_Order_First,
      Scalar_Storage_Order => System.Low_Order_First;
 

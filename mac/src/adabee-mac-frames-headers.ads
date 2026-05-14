@@ -388,6 +388,7 @@ is
    end record
    with
      Size                 => 8,
+     Alignment            => 1,
      Bit_Order            => System.Low_Order_First,
      Scalar_Storage_Order => System.Low_Order_First;
 
