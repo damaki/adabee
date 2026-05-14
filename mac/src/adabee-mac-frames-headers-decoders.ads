@@ -70,6 +70,12 @@ is
               (Buffer (Buffer'First .. Header_IE_Last)))
 
        and then
+         (if MAC_Payload_First <= MAC_Payload_Last
+          then
+            MAC_Payload_First in Buffer'Range
+            and then MAC_Payload_Last in Buffer'Range)
+
+       and then
          (if Has_Payload_IEs then MAC_Payload_First <= MAC_Payload_Last);
    --  Decode the header IE part of the MAC header (MHR).
    --
@@ -132,6 +138,12 @@ is
             and then
               Info_Elements.Headers.Lists.Formal_Model.Valid_IE_List
                 (Buffer (Header_IE_First .. Header_IE_Last)))
+
+       and then
+         (if MAC_Payload_First <= MAC_Payload_Last
+          then
+            MAC_Payload_First in Buffer'Range
+            and then MAC_Payload_Last in Buffer'Range)
 
        and then
          (if Has_Payload_IEs then MAC_Payload_First <= MAC_Payload_Last);
