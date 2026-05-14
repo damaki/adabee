@@ -13,12 +13,11 @@ executables = ["tx_nrf52840"]
 
 [[depends-on]]
 adabee_phy = "*"
-light_tasking_nrf52840 = "^15.3.0"
+light_tasking_nrf52840 = "^15.4.0"
 gnatprove = "^15"
 
 [[pins]]
 adabee_phy = { path = "../../../phy" }
-light_tasking_nrf52840 = { path = "/mnt/DATA/projects/ada/community-runtimes/install/light-tasking-nrf52840" }
 
 [configuration.values]
 adabee_phy.Driver = "nRF52840"
