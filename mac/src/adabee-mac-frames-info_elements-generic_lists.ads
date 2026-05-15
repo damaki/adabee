@@ -177,6 +177,22 @@ is
       --  Calculates the length of a valid IE list, in bytes, starting
       --  with the IE at the beginning of Buffer.
 
+      function Last_IE_Header_Field
+        (Buffer : Byte_Array; Pos : Positive) return Header_Field
+      is (if Is_Last_IE (Buffer, Pos)
+          then From_Bytes (Buffer (Pos .. Pos + 1))
+          else Last_IE_Header_Field (Buffer, Next_IE_Position (Buffer, Pos)))
+      with
+        Pre => Pos in Buffer'Range and then Valid_IE_List (Buffer, Pos),
+        Subprogram_Variant => (Increases => Pos);
+      --  Gets the header field of the last IE in an IE list starting at
+      --  position Pos in the Buffer.
+
+      function Last_IE_Header_Field (Buffer : Byte_Array) return Header_Field
+      is (Last_IE_Header_Field (Buffer, Buffer'First))
+      with Pre => Valid_IE_List (Buffer);
+      --  Gets the header field of the last IE in an IE list
+
    end IE_Model;
 
    ---------------------
