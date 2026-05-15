@@ -153,6 +153,30 @@ is
       --  Returns True if the IE list in Buffer is a valid IE list, starting at
       --  the IE at the beginning of the Buffer.
 
+      function IE_List_Length
+        (Buffer : Byte_Array; Pos : Positive) return Natural
+      is (if Is_Last_IE (Buffer, Pos)
+          then IE_Length (Buffer, Pos)
+          else
+            IE_Length (Buffer, Pos)
+            + IE_List_Length (Buffer, Next_IE_Position (Buffer, Pos)))
+      with
+        Pre                =>
+          Pos in Buffer'Range and then Valid_IE_List (Buffer, Pos),
+        Post               =>
+          IE_List_Length'Result in 2 .. (Buffer'Last - Pos) + 1,
+        Subprogram_Variant => (Increases => Pos);
+      --  Calculates the length of a valid IE list, in bytes, starting
+      --  with the IE at position Pos in the Buffer.
+
+      function IE_List_Length (Buffer : Byte_Array) return Natural
+      is (IE_List_Length (Buffer, Buffer'First))
+      with
+        Pre  => Valid_IE_List (Buffer),
+        Post => IE_List_Length'Result in 2 .. Buffer'Length;
+      --  Calculates the length of a valid IE list, in bytes, starting
+      --  with the IE at the beginning of Buffer.
+
    end IE_Model;
 
    ---------------------
