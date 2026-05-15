@@ -22,14 +22,14 @@
 --  An example loop to iterate through an IE list in SPARK would look like:
 --
 --     procedure Example (Buffer : Byte_Array)
---     with Pre => Formal_Model.Valid_IE_List (Buffer)
+--     with Pre => IE_Model.Valid_IE_List (Buffer)
 --     is
 --        Pos : Positive := Buffer'First;
 --     begin
 --        loop
 --           pragma Loop_Variant (Increases => Pos);
 --           pragma Loop_Invariant (Pos in Buffer'Range);
---           pragma Loop_Invariant (Formal_Model.Valid_IE_List (Buffer, Pos));
+--           pragma Loop_Invariant (IE_Model.Valid_IE_List (Buffer, Pos));
 --
 --           --  Do something with the IE here.
 --
@@ -125,7 +125,7 @@ is
    --  This formal model provides a functional definition for a valid IE list
    --  for use in proof.
 
-   package Formal_Model
+   package IE_Model
      with Ghost
    is
 
@@ -153,7 +153,7 @@ is
       --  Returns True if the IE list in Buffer is a valid IE list, starting at
       --  the IE at the beginning of the Buffer.
 
-   end Formal_Model;
+   end IE_Model;
 
    ---------------------
    -- IE List Parsing --
@@ -174,7 +174,7 @@ is
             Length > 0
             and then Length <= Buffer'Length
             and then
-              Formal_Model.Valid_IE_List
+              IE_Model.Valid_IE_List
                 (Buffer (Buffer'First .. Buffer'First + (Length - 1)))
             and then Last_IE in Buffer'Range
             and then Valid_IE (Buffer, Last_IE)

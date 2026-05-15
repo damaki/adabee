@@ -39,7 +39,7 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
    with
      Ghost,
      Pre  => Valid_Positions (Buffer, Positions),
-     Post => Formal_Model.Valid_IE_List (Buffer);
+     Post => IE_Model.Valid_IE_List (Buffer);
    --  Given a set of valid positions of IEs in a buffer, prove that the IE
    --  list is valid.
 
@@ -54,7 +54,7 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
          = (Positions (Positions'Last) - Buffer'First)
            + IE_Length (Buffer, Positions (Positions'Last)),
      Post =>
-       Formal_Model.Valid_IE_List
+       IE_Model.Valid_IE_List
          (Buffer (Buffer'First .. Buffer'First + (Length - 1)));
 
    -------------------
@@ -175,7 +175,7 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
 
       for I in reverse Positions'Range loop
          pragma
-           Loop_Invariant (Formal_Model.Valid_IE_List (Buffer, Positions (I)));
+           Loop_Invariant (IE_Model.Valid_IE_List (Buffer, Positions (I)));
       end loop;
    end Lemma_Valid_IE_List;
 
@@ -206,7 +206,7 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
 
          pragma
            Loop_Invariant
-             (Formal_Model.Valid_IE_List (Buffer_Slice, Positions (I)));
+             (IE_Model.Valid_IE_List (Buffer_Slice, Positions (I)));
       end loop;
    end Lemma_Valid_IE_List_Truncated;
 
