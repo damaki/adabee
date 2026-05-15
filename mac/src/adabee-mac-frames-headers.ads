@@ -504,7 +504,7 @@ is
    --  This package formalizes several rules from IEEE 802.15.4-2024
    --  regarding MAC headers and PAN ID compression.
 
-   package Formal_Rules
+   package PAN_ID_Model
      with Ghost
    is
 
@@ -631,7 +631,7 @@ is
              Source_PAN_ID_Present),
         Post   =>
           Source_PAN_ID_Present
-          = Formal_Rules.Is_Source_PAN_ID_Present
+          = PAN_ID_Model.Is_Source_PAN_ID_Present
               (Frame_Version,
                Destination_Address_Mode,
                Source_Address_Mode,
@@ -639,7 +639,7 @@ is
 
           and then
             Destination_PAN_ID_Present
-            = Formal_Rules.Is_Destination_PAN_ID_Present
+            = PAN_ID_Model.Is_Destination_PAN_ID_Present
                 (Frame_Version,
                  Destination_Address_Mode,
                  Source_Address_Mode,
@@ -700,7 +700,7 @@ is
       --  header, based on the source/destination addresses and the PAN ID
       --  compression field.
 
-   end Formal_Rules;
+   end PAN_ID_Model;
 
    -------------------------
    -- PAN ID Field Checks --
@@ -719,7 +719,7 @@ is
    with
      Global => null,
      Pre    =>
-       Formal_Rules.Is_Valid_Configuration
+       PAN_ID_Model.Is_Valid_Configuration
          (Frame_Version,
           Destination_Address_Mode,
           Source_Address_Mode,
@@ -727,7 +727,7 @@ is
           Source_PAN_ID_Present),
      Post   =>
        Get_PAN_ID_Compression'Result
-       = Formal_Rules.Get_PAN_ID_Compression
+       = PAN_ID_Model.Get_PAN_ID_Compression
            (Frame_Version,
             Destination_Address_Mode,
             Source_Address_Mode,
@@ -749,7 +749,7 @@ is
        and then Source_Address_Mode /= Reserved,
      Post   =>
        Is_Source_PAN_ID_Present'Result
-       = Formal_Rules.Is_Source_PAN_ID_Present
+       = PAN_ID_Model.Is_Source_PAN_ID_Present
            (Frame_Version,
             Destination_Address_Mode,
             Source_Address_Mode,
@@ -771,7 +771,7 @@ is
        and then Source_Address_Mode /= Reserved,
      Post   =>
        Is_Destination_PAN_ID_Present'Result
-       = Formal_Rules.Is_Destination_PAN_ID_Present
+       = PAN_ID_Model.Is_Destination_PAN_ID_Present
            (Frame_Version,
             Destination_Address_Mode,
             Source_Address_Mode,

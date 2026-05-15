@@ -23,7 +23,7 @@ is
        --  The MHR fields must be a valid combination according to the rules
        --  in IEEE 802.15.4-2024 (particularly section 7.2.2.6).
        and then
-         Formal_Rules.Is_Valid_Configuration
+         PAN_ID_Model.Is_Valid_Configuration
            (Frame_Version              => MHR.Frame_Version,
             Destination_Address_Mode   => MHR.Destination_Address.Mode,
             Source_Address_Mode        => MHR.Source_Address.Mode,

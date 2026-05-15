@@ -62,7 +62,7 @@ is
      Pre     =>
        Buffer'Length >= Max_MHR_Length
        and then
-         Formal_Rules.Is_Valid_Configuration
+         PAN_ID_Model.Is_Valid_Configuration
            (Frame_Version              => MHR.Frame_Version,
             Destination_Address_Mode   => MHR.Destination_Address.Mode,
             Source_Address_Mode        => MHR.Source_Address.Mode,
@@ -81,7 +81,7 @@ is
      Pre     =>
        Buffer'Length >= Max_MHR_Length
        and then
-         Formal_Rules.Is_Valid_Configuration
+         PAN_ID_Model.Is_Valid_Configuration
            (Frame_Version              => MHR.Frame_Version,
             Destination_Address_Mode   => MHR.Destination_Address.Mode,
             Source_Address_Mode        => MHR.Source_Address.Mode,
