@@ -411,7 +411,7 @@ is
        then Get_Source_PAN_ID (Frame)
        elsif Get_Frame_Type (Frame) in Beacon | Data | Ack | MAC_Command
          and then
-           Is_Source_PAN_ID_Compressed
+           PAN_ID_Model.Is_Source_PAN_ID_Compressed
              (Frame_Version            => Get_Frame_Version (Frame),
               Destination_Address_Mode => Get_Dest_Address_Mode (Frame),
               Source_Address_Mode      => Get_Src_Address_Mode (Frame),
@@ -840,6 +840,23 @@ is
        and then Frame'Length >= MHR_Length (Frame));
    --  Returns True if all fields in the MAC header (including header IEs)
    --  are valid.
+
+   function Is_Valid_Decoding
+     (MHR : MAC_Header; Frame : Byte_Array) return Boolean
+   is (MHR.Frame_Type = Get_Frame_Type (Frame)
+       and then MHR.Frame_Pending = Get_Frame_Pending (Frame)
+       and then MHR.AR = Get_Ack_Required (Frame)
+       and then MHR.IE_Present = Get_IE_Present (Frame)
+       and then MHR.Frame_Version = Get_Frame_Version (Frame)
+       and then MHR.Sequence_Number = Get_Sequence_Number (Frame)
+       and then MHR.Destination_PAN_ID = Get_Destination_PAN_ID (Frame)
+       and then MHR.Destination_Address = Get_Destination_Address (Frame)
+       and then MHR.Source_PAN_ID = Get_Decompressed_Source_PAN_ID (Frame)
+       and then MHR.Source_Address = Get_Source_Address (Frame)
+       and then MHR.Aux_Security_Header = Get_Aux_Security_Header (Frame))
+   with Pre => Is_MHR_Valid_Excluding_IEs (Frame);
+   --  Returns True if all fields in MHR are equivalent to the model's
+   --  view of the frame buffer.
 
 private
 
