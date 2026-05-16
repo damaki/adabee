@@ -700,6 +700,54 @@ is
       --  header, based on the source/destination addresses and the PAN ID
       --  compression field.
 
+      function Is_Source_PAN_ID_Compressed
+        (Frame_Version            : Frame_Version_Field;
+         Destination_Address_Mode : Address_Mode_Field;
+         Source_Address_Mode      : Address_Mode_Field;
+         PAN_ID_Compression       : PAN_ID_Compression_Field) return Boolean
+      is (if Frame_Version in IEEE_802_15_4_2003 | IEEE_802_15_4_2006
+          then
+            --  IEEE 802.15.4-2024 Section 7.2.2.6:
+            --
+            --  If both destination and source addressing information is
+            --  present, the MAC sublayer shall compare the destination and
+            --  source PAN identifiers. If the PAN IDs are identical, the
+            --  PAN ID Compression field shall be set to one, and the Source
+            --  PAN ID field shall be omitted from the transmitted frame.
+
+            Destination_Address_Mode
+            /= Not_Present
+            and then Source_Address_Mode /= Not_Present
+            and then PAN_ID_Compression = Compressed
+
+          else
+            --  If both the destination and source addressing information is
+            --  present and either is a short address, the MAC sublayer shall
+            --  compare the destination and source PAN IDs and the PAN ID
+            --  Compression field shall be set to one if and only if the PAN
+            --  identifiers are identical.
+
+            Source_Address_Mode
+            /= Not_Present
+            and then Destination_Address_Mode /= Not_Present
+            and then
+              (Source_Address_Mode = Short
+               or else Destination_Address_Mode = Short)
+            and then PAN_ID_Compression = Not_Compressed)
+      with
+        Pre  =>
+          Frame_Version /= Reserved
+          and then Destination_Address_Mode /= Reserved
+          and then Source_Address_Mode /= Reserved,
+        Post =>
+          (if Is_Source_PAN_ID_Compressed'Result
+           then
+             Is_Destination_PAN_ID_Present
+               (Frame_Version,
+                Destination_Address_Mode,
+                Source_Address_Mode,
+                PAN_ID_Compression));
+
    end PAN_ID_Model;
 
    -------------------------
@@ -779,6 +827,30 @@ is
    --  Checks whether the destination PAN ID field is present in a MAC
    --  header, based on the source/destination addresses and the PAN ID
    --  compression field.
+
+   function Is_Source_PAN_ID_Compressed
+     (Frame_Version            : Frame_Version_Field;
+      Destination_Address_Mode : Address_Mode_Field;
+      Source_Address_Mode      : Address_Mode_Field;
+      PAN_ID_Compression       : PAN_ID_Compression_Field) return Boolean
+   with
+     Pre  =>
+       Frame_Version /= Reserved
+       and then Destination_Address_Mode /= Reserved
+       and then Source_Address_Mode /= Reserved,
+     Post =>
+       Is_Source_PAN_ID_Compressed'Result
+       = PAN_ID_Model.Is_Source_PAN_ID_Compressed
+           (Frame_Version,
+            Destination_Address_Mode,
+            Source_Address_Mode,
+            PAN_ID_Compression);
+   --  Returns True if the source PAN ID was omitted from the frame because of
+   --  PAN ID compression, and the source PAN ID is the same as the destination
+   --  PAN ID.
+   --
+   --  This is only applicable to frame types that use PAN ID compression
+   --  (Beacon, Data, Ack, and MAC_Command frames).
 
    -----------------
    -- Conversions --
@@ -1100,6 +1172,75 @@ private
        then Destination_PAN_ID_Present_LUT_0b10
          (Destination_Address_Mode, Source_Address_Mode, PAN_ID_Compression)
        else Destination_Address_Mode /= Not_Present);
+
+   ---------------------------------
+   -- Is_Source_PAN_ID_Compressed --
+   ---------------------------------
+
+   Source_PAN_ID_Compressed_LUT_0b00_0b01 : constant array
+     (Address_Mode_Field,        --  Destination address mode
+      Address_Mode_Field,        --  Source address mode
+      PAN_ID_Compression_Field)  --  PAN ID compression
+     of Boolean :=
+   --!format off
+   --              |               |                  |  Source
+   --  Destination |    Source     |    PAN ID        |  PAN ID
+   --    Address   |    Address    |   Compression    | Compressed?
+     [Not_Present => [others      => [others         => False]],
+      Short       => [Not_Present => [others         => False],
+                      Short       => [Not_Compressed => False,
+                                      Compressed     => True],
+                      Extended    => [Not_Compressed => False,
+                                      Compressed     => True],
+                      Reserved    => [others         => False]],
+      Extended    => [Not_Present => [others         => False],
+                      Short       => [Not_Compressed => False,
+                                      Compressed     => True],
+                      Extended    => [Not_Compressed => False,
+                                      Compressed     => True],
+                      Reserved    => [others         => False]],
+      Reserved    => [others      => [others         => False]]];
+   --!format on
+
+   Source_PAN_ID_Compressed_LUT_0b10 :
+     constant array (Address_Mode_Field,        --  Destination address mode
+                     Address_Mode_Field,        --  Source address mode
+                     PAN_ID_Compression_Field)  --  PAN ID compression
+     of Boolean :=
+   --!format off
+   --              |               |                  |  Source
+   --  Destination |    Source     |    PAN ID        |  PAN ID
+   --    Address   |    Address    |   Compression    | Compressed?
+     [Not_Present => [others      => [others         => False]],
+      Short       => [Not_Present => [others         => False],
+                      Short       => [Not_Compressed => True,
+                                      Compressed     => False],
+                      Extended    => [Not_Compressed => True,
+                                      Compressed     => False],
+                      Reserved    => [others         => False]],
+      Extended    => [Not_Present => [others         => False],
+                      Short       => [Not_Compressed => True,
+                                      Compressed     => False],
+                      Extended    => [Not_Compressed => False,
+                                      Compressed     => False],
+                      Reserved    => [others         => False]],
+      Reserved    => [others      => [others         => False]]];
+   --!format on
+
+   function Is_Source_PAN_ID_Compressed
+     (Frame_Version            : Frame_Version_Field;
+      Destination_Address_Mode : Address_Mode_Field;
+      Source_Address_Mode      : Address_Mode_Field;
+      PAN_ID_Compression       : PAN_ID_Compression_Field) return Boolean
+   is (if Frame_Version = IEEE_802_15_4
+       then
+         Source_PAN_ID_Compressed_LUT_0b10
+           (Destination_Address_Mode, Source_Address_Mode, PAN_ID_Compression)
+       else
+         Source_PAN_ID_Compressed_LUT_0b00_0b01
+           (Destination_Address_Mode,
+            Source_Address_Mode,
+            PAN_ID_Compression));
 
    -----------------
    -- Conversions --
