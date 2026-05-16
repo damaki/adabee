@@ -4,6 +4,7 @@
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
 
+with AdaBee.MAC.Frames.Headers.MHR_Model;
 with AdaBee.MAC.Frames.Info_Elements.Headers;
 
 --  @summary
@@ -30,7 +31,13 @@ is
      Post   =>
        Length <= Buffer'Length
        and then Length <= Max_MHR_Length
-       and then (if Result = Success then Length >= Min_MHR_Length);
+       and then
+         (Result = Success) = MHR_Model.Is_MHR_Valid_Excluding_IEs (Buffer)
+       and then
+         (if Result = Success
+          then
+            Length = MHR_Model.MHR_Length_Excluding_IEs (Buffer)
+            and then MHR_Model.Is_Valid_Decoding (MHR, Buffer));
    --  Decode the first part of the MAC Header, up to (and including) the
    --  auxiliary security header.
    --

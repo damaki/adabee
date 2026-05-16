@@ -4,8 +4,6 @@
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
 
-with AdaBee.MAC.Frames.Headers.MHR_Model;
-
 package body AdaBee.MAC.Frames.Headers.Decoders
   with SPARK_Mode
 is
@@ -286,15 +284,15 @@ is
          MHR_Model.Get_Frame_Type (Buffer)
          in Beacon | Data | Ack | MAC_Command,
      Post   =>
-       (Length <= Buffer'Length
-        and then Length <= Max_MHR_Length
-        and then
-          (if Result = Success
-           then
-             (Length >= Min_MHR_Length
-              and then MHR.Frame_Version /= Reserved
-              and then MHR.Destination_Address.Mode /= Reserved
-              and then MHR.Source_Address.Mode /= Reserved)));
+       Length <= Buffer'Length
+       and then Length <= Max_MHR_Length
+       and then
+         (Result = Success) = MHR_Model.Is_MHR_Valid_Excluding_IEs (Buffer)
+       and then
+         (if Result = Success
+          then
+            (Length = MHR_Model.MHR_Length_Excluding_IEs (Buffer)
+             and then MHR_Model.Is_Valid_Decoding (MHR, Buffer)));
 
    procedure Decode_Multipurpose_MAC_Header
      (Buffer : Byte_Array;
@@ -305,19 +303,17 @@ is
      Global => null,
      Pre    =>
        Buffer'Length > 0
-       and then To_Frame_Type (Buffer (Buffer'First)) = Multipurpose,
+       and then MHR_Model.Get_Frame_Type (Buffer) = Multipurpose,
      Post   =>
        (Length <= Buffer'Length
         and then Length <= Max_MHR_Length
         and then
+          (Result = Success) = MHR_Model.Is_MHR_Valid_Excluding_IEs (Buffer)
+        and then
           (if Result = Success
            then
-             (Length >= Min_MHR_Length
-              and then MHR.Frame_Version /= Reserved
-              and then MHR.Destination_Address.Mode /= Reserved
-              and then MHR.Source_Address.Mode /= Reserved
-              and then MHR.Frame_Type = Multipurpose
-              and then not MHR.Source_PAN_ID.Present)));
+             (Length = MHR_Model.MHR_Length_Excluding_IEs (Buffer)
+              and then MHR_Model.Is_Valid_Decoding (MHR, Buffer))));
 
    ------------------------
    -- Decode_MHR_Partial --
@@ -535,6 +531,8 @@ is
          return;
       end if;
 
+      pragma Assert (MHR_Model.Frame_Control_Valid (Buffer));
+
       MHR.Frame_Type := Frame_Control.Frame_Type;
       MHR.Frame_Pending := Frame_Control.Frame_Pending;
       MHR.AR := Frame_Control.AR;
@@ -682,6 +680,12 @@ is
       then
          MHR.Source_PAN_ID := MHR.Destination_PAN_ID;
       end if;
+
+      pragma
+        Assert
+          (MHR.Source_PAN_ID
+           = MHR_Model.Get_Decompressed_Source_PAN_ID (Buffer));
+
    end Decode_Normal_MAC_Header;
 
    ------------------------------
