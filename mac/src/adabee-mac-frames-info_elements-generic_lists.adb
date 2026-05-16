@@ -57,11 +57,11 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
        IE_Model.Valid_IE_List
          (Buffer (Buffer'First .. Buffer'First + (Length - 1)));
 
-   -------------------
-   -- Parse_IE_List --
-   -------------------
+   ----------------------
+   -- Validate_IE_List --
+   ----------------------
 
-   procedure Parse_IE_List
+   procedure Validate_IE_List
      (Buffer  : Byte_Array;
       Length  : out Natural;
       Result  : out Status_Code;
@@ -160,7 +160,7 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
 
       Lemma_Valid_IE_List_Truncated
         (Buffer, Length, Positions (1 .. IE_Count));
-   end Parse_IE_List;
+   end Validate_IE_List;
 
    -------------------------
    -- Lemma_Valid_IE_List --

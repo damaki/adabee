@@ -373,7 +373,7 @@ is
       Last_Header_IE : AdaBee.MAC.Frames.Info_Elements.Headers.Header_Field;
 
    begin
-      AdaBee.MAC.Frames.Info_Elements.Headers.Lists.Parse_IE_List
+      AdaBee.MAC.Frames.Info_Elements.Headers.Lists.Validate_IE_List
         (Buffer  => Buffer,
          Length  => Header_IE_List_Length,
          Result  => Result,

@@ -9,7 +9,7 @@
 --
 --  @description
 --  To iterate through an IE list, it is first necessary to parse the list
---  by calling Parse_IE_List to check that the IE list is well-formed and to
+--  by calling Validate_IE_List to check that the IE list is well-formed and to
 --  determine its length.
 --
 --  If the IE list is well-formed then it is possible to iterate over each IE
@@ -199,7 +199,7 @@ is
    -- IE List Parsing --
    ---------------------
 
-   procedure Parse_IE_List
+   procedure Validate_IE_List
      (Buffer  : Byte_Array;
       Length  : out Natural;
       Result  : out Status_Code;
