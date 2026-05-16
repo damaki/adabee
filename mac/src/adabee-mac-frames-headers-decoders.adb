@@ -386,6 +386,7 @@ is
          Has_Payload_IEs := False;
 
       else
+
          --  Determine whether payload IEs are present
 
          Header_IE_Last := Buffer'First + (Header_IE_List_Length - 1);
@@ -415,6 +416,12 @@ is
             MAC_Payload_First := 1;
             MAC_Payload_Last := 0;
          end if;
+
+         --  Help prove the postcondition
+
+         Info_Elements.Headers.Lists.IE_Model.Lemma_Valid_IE_List_Slice
+            (Buffer => Buffer,
+             Slice  => Buffer (Buffer'First .. Header_IE_Last));
       end if;
    end Decode_MHR_Header_IEs;
 
