@@ -726,6 +726,15 @@ is
             --  compare the destination and source PAN IDs and the PAN ID
             --  Compression field shall be set to one if and only if the PAN
             --  identifiers are identical.
+            --
+            --  Note that IEEE 802.15.4-2024 states (below Table 7-2) that the
+            --  PAN ID compression should be set to _zero_ in this case, but
+            --  this seems to be an error and it should be set to _one_ when
+            --  they are identical. This is backed up by Table 7-2 and the
+            --  document IEEE P802. 15-15-0561-00-0mag which states:
+            --
+            --  "When both addresses are present and either is a short address,
+            --  PAN ID compression is used as per 2011." (meaning version 0b01)
 
             Source_Address_Mode
             /= Not_Present
@@ -733,7 +742,7 @@ is
             and then
               (Source_Address_Mode = Short
                or else Destination_Address_Mode = Short)
-            and then PAN_ID_Compression = Not_Compressed)
+            and then PAN_ID_Compression = Compressed)
       with
         Pre  =>
           Frame_Version /= Reserved
@@ -1213,14 +1222,14 @@ private
    --    Address   |    Address    |   Compression    | Compressed?
      [Not_Present => [others      => [others         => False]],
       Short       => [Not_Present => [others         => False],
-                      Short       => [Not_Compressed => True,
-                                      Compressed     => False],
-                      Extended    => [Not_Compressed => True,
-                                      Compressed     => False],
+                      Short       => [Not_Compressed => False,
+                                      Compressed     => True],
+                      Extended    => [Not_Compressed => False,
+                                      Compressed     => True],
                       Reserved    => [others         => False]],
       Extended    => [Not_Present => [others         => False],
-                      Short       => [Not_Compressed => True,
-                                      Compressed     => False],
+                      Short       => [Not_Compressed => False,
+                                      Compressed     => True],
                       Extended    => [Not_Compressed => False,
                                       Compressed     => False],
                       Reserved    => [others         => False]],
