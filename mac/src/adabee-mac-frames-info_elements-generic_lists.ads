@@ -61,9 +61,13 @@ is
 
    --  These subprograms are helpers to read various attributes of an IE
 
+   function IE_Header (Buffer : Byte_Array; Pos : Positive) return Header_Field
+   is (From_Bytes (Buffer (Pos .. Pos + 1)))
+   with Pre => Pos in Buffer'Range and then Pos < Buffer'Last;
+
    function Content_Length
      (Buffer : Byte_Array; Pos : Positive) return Length_Type
-   is (Content_Length (From_Bytes (Buffer (Pos .. Pos + 1))))
+   is (Content_Length (IE_Header (Buffer, Pos)))
    with Pre => Pos in Buffer'Range and then Pos < Buffer'Last;
    --  Get the length of the content field of an information element in bytes.
 
