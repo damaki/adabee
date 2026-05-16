@@ -66,7 +66,7 @@ is
              else MAC_Payload_First > MAC_Payload_Last)
 
           and then
-            Info_Elements.Headers.Lists.Formal_Model.Valid_IE_List
+            Info_Elements.Headers.Lists.IE_Model.Valid_IE_List
               (Buffer (Buffer'First .. Header_IE_Last)))
 
        and then
@@ -136,7 +136,7 @@ is
                else MAC_Payload_First > MAC_Payload_Last)
 
             and then
-              Info_Elements.Headers.Lists.Formal_Model.Valid_IE_List
+              Info_Elements.Headers.Lists.IE_Model.Valid_IE_List
                 (Buffer (Header_IE_First .. Header_IE_Last)))
 
        and then
