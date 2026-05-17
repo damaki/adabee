@@ -266,10 +266,10 @@ is
       -- Lemmas --
       ------------
 
-      --  These lemmas are useful for proving properties on a slice of a
-      --  buffer that contains an IE list.
+      --  These lemmas are useful for proving that properties are preserved
+      --  for slices of buffers that fully contain the IE list.
 
-      procedure Lemma_Valid_IE_List_Slice
+      procedure Lemma_Valid_IE_List_Preserved
         (Buffer : Byte_Array; Slice : Byte_Array)
       with
         Pre  =>
@@ -278,11 +278,10 @@ is
           and then Slice'Length in IE_List_Length (Buffer) .. Buffer'Length
           and then Slice = Buffer (Slice'Range),
         Post => Valid_IE_List (Slice);
-      --  Given a buffer that contains a valid IE list, and a slice of that
-      --  buffer that fully contains the IE list, then prove that Valid_IE_List
-      --  also holds for the slice.
+      --  Prove that Valid_IE_List is preserved for a slice of a Buffer that
+      --  contains the entire IE list.
 
-      procedure Lemma_Reachable_Slice
+      procedure Lemma_Reachable_Preserved
         (Buffer : Byte_Array; Slice : Byte_Array; Target : Positive)
       with
         Pre  =>
@@ -291,12 +290,10 @@ is
           and then Slice'Length in IE_List_Length (Buffer) .. Buffer'Length
           and then Slice = Buffer (Slice'Range),
         Post => Reachable (Buffer, Target) = Reachable (Slice, Target);
-      --  Given a buffer that contains a valid IE list, a slice of that buffer
-      --  that fully contains the IE list, and the position of an IE that is
-      --  reachable in that IE list, then prove that Reachable also holds for
-      --  the slice.
+      --  Prove that Reachable is preserved for a slice of a Buffer that
+      --  contains the entire IE list.
 
-      procedure Lemma_Contains_Slice
+      procedure Lemma_Contains_Preserved
         (Buffer : Byte_Array; Slice : Byte_Array; Header : Header_Field)
       with
         Pre  =>
@@ -306,7 +303,7 @@ is
           and then Slice = Buffer (Slice'Range),
         Post => Contains (Buffer, Header) = Contains (Slice, Header);
       --  Prove that Contains is preserved for a slice of a Buffer that
-      --  contains a valid IE list.
+      --  contains the entire IE list.
 
    end IE_Model;
 

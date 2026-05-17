@@ -419,7 +419,7 @@ is
 
          --  Help prove the postcondition
 
-         Info_Elements.Headers.Lists.IE_Model.Lemma_Valid_IE_List_Slice
+         Info_Elements.Headers.Lists.IE_Model.Lemma_Valid_IE_List_Preserved
             (Buffer => Buffer,
              Slice  => Buffer (Buffer'First .. Header_IE_Last));
       end if;

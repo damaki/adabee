@@ -5,7 +5,7 @@ package body IE_Model is
    -- Lemma_Valid_IE_List_Slice --
    -------------------------------
 
-   procedure Lemma_Valid_IE_List_Slice
+   procedure Lemma_Valid_IE_List_Preserved
      (Buffer : Byte_Array; Slice : Byte_Array)
    is
       Positions     :
@@ -29,13 +29,13 @@ package body IE_Model is
 
       pragma Assert (Positions (1) = Slice'First);
 
-   end Lemma_Valid_IE_List_Slice;
+   end Lemma_Valid_IE_List_Preserved;
 
-   ---------------------------
-   -- Lemma_Reachable_Slice --
-   ---------------------------
+   -------------------------------
+   -- Lemma_Reachable_Preserved --
+   -------------------------------
 
-   procedure Lemma_Reachable_Slice
+   procedure Lemma_Reachable_Preserved
      (Buffer : Byte_Array; Slice : Byte_Array; Target : Positive)
    is
       Positions     :
@@ -82,13 +82,13 @@ package body IE_Model is
 
       pragma Assert (Reachable (Slice, Target) = Reachable (Buffer, Target));
 
-   end Lemma_Reachable_Slice;
+   end Lemma_Reachable_Preserved;
 
-   --------------------------
-   -- Lemma_Contains_Slice --
-   --------------------------
+   ------------------------------
+   -- Lemma_Contains_Preserved --
+   ------------------------------
 
-   procedure Lemma_Contains_Slice
+   procedure Lemma_Contains_Preserved
      (Buffer : Byte_Array; Slice : Byte_Array; Header : Header_Field)
    is
       use type Interfaces.Unsigned_8;
@@ -147,6 +147,6 @@ package body IE_Model is
 
       pragma Assert (Contains (Slice, Header) = Contains (Buffer, Header));
 
-   end Lemma_Contains_Slice;
+   end Lemma_Contains_Preserved;
 
 end IE_Model;
