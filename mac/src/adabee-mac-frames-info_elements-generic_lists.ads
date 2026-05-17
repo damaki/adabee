@@ -289,9 +289,8 @@ is
           Valid_IE_List (Buffer)
           and then Slice'First = Buffer'First
           and then Slice'Length in IE_List_Length (Buffer) .. Buffer'Length
-          and then Slice = Buffer (Slice'Range)
-          and then Reachable (Buffer, Target),
-        Post => Reachable (Slice, Target);
+          and then Slice = Buffer (Slice'Range),
+        Post => Reachable (Buffer, Target) = Reachable (Slice, Target);
       --  Given a buffer that contains a valid IE list, a slice of that buffer
       --  that fully contains the IE list, and the position of an IE that is
       --  reachable in that IE list, then prove that Reachable also holds for
