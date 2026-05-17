@@ -333,4 +333,191 @@ is
    --  @param Last_IE The index of the last IE in the IE list. This is valid
    --    only when Result = Success.
 
+   ------------------------
+   -- IE Positions Model --
+   ------------------------
+
+   --  This package defines properties and lemmas for modelling the positions
+   --  of each IE in a buffer.
+
+   package IE_Positions_Model
+     with Ghost
+   is
+
+      -----------
+      -- Types --
+      -----------
+
+      type Positions_Array is array (Positive range <>) of Positive;
+
+      -----------------------------
+      -- Properties on Positions --
+      -----------------------------
+
+      function Valid_Partial_Positions
+        (Buffer : Byte_Array; Positions : Positions_Array) return Boolean
+      is (
+          --  All positions reference a valid index in Buffer and reference
+          --  a valid IE at that index.
+
+          (for all P of Positions =>
+             P in Buffer'Range and then Valid_IE (Buffer, P))
+
+          --  The IE list is not terminated yet
+          and then (for all P of Positions => not Is_Last_IE (Buffer, P))
+
+          --  Each position references the next IE of the one before,
+          --  except the first which is the first IE in Buffer.
+          and then
+            (for all I in Positions'Range =>
+               (if I = Positions'First
+                then Positions (I) = Buffer'First
+                else
+                  Positions (I)
+                  = Next_IE_Position (Buffer, Positions (I - 1)))));
+
+      function Valid_Positions
+        (Buffer : Byte_Array; Positions : Positions_Array) return Boolean
+      is (
+          --  There must be at least one IE in the list
+          Positions'Length > 0
+
+          --  All positions reference a valid index in Buffer and reference
+          --  a valid IE at that index.
+          and then
+            (for all P of Positions =>
+               P in Buffer'Range and then Valid_IE (Buffer, P))
+
+          --  Exactly one IE is the last IE, and it is the IE referenced by the
+          --  last position.
+          and then
+            (for all I in Positions'Range =>
+               Is_Last_IE (Buffer, Positions (I)) = (I = Positions'Last))
+
+          --  Each position references the next IE of the one before,
+          --  except the first position which is the first IE in Buffer.
+          and then
+            (for all I in Positions'Range =>
+               (if I = Positions'First
+                then Positions (I) = Buffer'First
+                else
+                  Positions (I)
+                  = Next_IE_Position (Buffer, Positions (I - 1)))));
+
+      procedure Build_Positions
+        (Buffer    : Byte_Array;
+         Length    : out Natural;
+         IE_Count  : out Natural;
+         Positions : in out Positions_Array)
+      with
+        Global => null,
+        Pre    =>
+          IE_Model.Valid_IE_List (Buffer)
+          and then Positions'Length >= Buffer'Length
+          and then Positions'First = 1,
+        Post   =>
+          Length = IE_Model.IE_List_Length (Buffer)
+          and then IE_Count <= Positions'Length
+          and then Valid_Positions (Buffer, Positions (1 .. IE_Count))
+          and then
+            Length
+            = (Positions (IE_Count) - Buffer'First)
+              + IE_Length (Buffer, Positions (IE_Count));
+      --  Compute the position of each IE in Buffer and store them in the
+      --  Positions array.
+
+      ------------
+      -- Lemmas --
+      ------------
+
+      procedure Lemma_Valid_IE_List
+        (Buffer : Byte_Array; Positions : Positions_Array)
+      with
+        Pre  => Valid_Positions (Buffer, Positions),
+        Post => IE_Model.Valid_IE_List (Buffer);
+      --  Given an array containing the positions of each IE in a Buffer, prove
+      --  that the IE list is valid.
+
+      procedure Lemma_Valid_IE_List_All_Positions
+        (Buffer : Byte_Array; Positions : Positions_Array)
+      with
+        Pre  => Valid_Positions (Buffer, Positions),
+        Post => (for all P of Positions => IE_Model.Valid_IE_List (Buffer, P));
+
+      procedure Lemma_Invalid_IE_List
+        (Buffer : Byte_Array; Positions : Positions_Array)
+      with
+        Pre  =>
+          Buffer'Length > 0
+          and then Valid_Partial_Positions (Buffer, Positions)
+          and then
+            (if Positions'Length = 0
+             then not Valid_IE (Buffer, Buffer'First)
+             else
+               not Valid_IE
+                     (Buffer,
+                      Next_IE_Position (Buffer, Positions (Positions'Last)))),
+        Post => not IE_Model.Valid_IE_List (Buffer);
+      --  Given an array containing the positions of valid IEs in a buffer,
+      --  where the next IE after the last position is an invalid IE, prove
+      --  that the IE list is not valid.
+
+      procedure Lemma_IE_List_Length
+        (Buffer : Byte_Array; Positions : Positions_Array; Length : Natural)
+      with
+        Pre  =>
+          Valid_Positions (Buffer, Positions)
+          and then IE_Model.Valid_IE_List (Buffer)
+          and then
+            Length
+            = (Positions (Positions'Last) - Buffer'First)
+              + IE_Length (Buffer, Positions (Positions'Last)),
+        Post => Length = IE_Model.IE_List_Length (Buffer);
+      --  Given an array containing the positions of all IEs in an IE list,
+      --  and the Length is equal to the position after the last IE, prove that
+      --  the Length is equivalent to the length of the entire IE list.
+
+      procedure Lemma_Position_Reachable
+        (Buffer : Byte_Array; Positions : Positions_Array; Pos : Positive)
+      with
+        Pre  =>
+          Valid_Positions (Buffer, Positions)
+          and then (for some P of Positions => P = Pos),
+        Post => IE_Model.Reachable (Buffer, Pos);
+
+      procedure Lemma_Positions_IE_List_Length
+        (Buffer : Byte_Array; Positions : Positions_Array)
+      with
+        Pre  => Valid_Positions (Buffer, Positions),
+        Post =>
+          (for all P of Positions =>
+             IE_Model.IE_List_Length (Buffer)
+             = (P - Buffer'First) + IE_Model.IE_List_Length (Buffer, P));
+
+      procedure Lemma_Positions_Valid_For_Slice
+        (Buffer : Byte_Array; Slice : Byte_Array; Positions : Positions_Array)
+      with
+        Pre  =>
+          IE_Model.Valid_IE_List (Buffer)
+          and then Valid_Positions (Buffer, Positions)
+          and then Slice'First = Buffer'First
+          and then
+            Slice'Length in IE_Model.IE_List_Length (Buffer) .. Buffer'Length
+          and then Slice = Buffer (Slice'Range),
+        Post => Valid_Positions (Slice, Positions);
+
+      procedure Lemma_Last_IE_Preserved_Slice
+        (Buffer : Byte_Array; Slice : Byte_Array; Positions : Positions_Array)
+      with
+        Pre  =>
+          IE_Model.Valid_IE_List (Buffer)
+          and then Valid_Positions (Buffer, Positions)
+          and then Slice'First = Buffer'First
+          and then
+            Slice'Length in IE_Model.IE_List_Length (Buffer) .. Buffer'Length
+          and then Slice = Buffer (Slice'Range),
+        Post => Is_Last_IE (Buffer, Positions (Positions'Last));
+
+   end IE_Positions_Model;
+
 end AdaBee.MAC.Frames.Info_Elements.Generic_Lists;
