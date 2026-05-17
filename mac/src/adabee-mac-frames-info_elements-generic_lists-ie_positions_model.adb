@@ -8,7 +8,6 @@ package body IE_Positions_Model is
 
    procedure Build_Positions
      (Buffer    : Byte_Array;
-      Length    : out Natural;
       IE_Count  : out Natural;
       Positions : in out Positions_Array)
    is
@@ -59,17 +58,12 @@ package body IE_Positions_Model is
          IE_Count := IE_Count + 1;
          Positions (IE_Count) := Pos;
 
-         if Is_Last_IE (Buffer, Pos) then
-            Length := (Pos - Buffer'First) + IE_Length (Buffer, Pos);
-            exit;
-         end if;
+         exit when Is_Last_IE (Buffer, Pos);
 
          --  Move to the next IE
 
          Pos := Next_IE_Position (Buffer, Pos);
       end loop;
-
-      Lemma_IE_List_Length (Buffer, Positions (1 .. IE_Count), Length);
    end Build_Positions;
 
    -------------------------

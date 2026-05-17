@@ -8,15 +8,12 @@ package body IE_Model is
    procedure Lemma_Valid_IE_List_Preserved
      (Buffer : Byte_Array; Slice : Byte_Array)
    is
-      Positions     :
-        IE_Positions_Model.Positions_Array (1 .. Buffer'Length) :=
-          [others => 1];
-      IE_Count      : Natural;
-      Actual_Length : Natural;
+      Positions : IE_Positions_Model.Positions_Array (1 .. Buffer'Length) :=
+        [others => 1];
+      IE_Count  : Natural;
 
    begin
-      IE_Positions_Model.Build_Positions
-        (Buffer, Actual_Length, IE_Count, Positions);
+      IE_Positions_Model.Build_Positions (Buffer, IE_Count, Positions);
 
       --  Prove that the positions of each each IE is the same in
       --  Buffer and Slice.
@@ -38,15 +35,12 @@ package body IE_Model is
    procedure Lemma_Reachable_Preserved
      (Buffer : Byte_Array; Slice : Byte_Array; Target : Positive)
    is
-      Positions     :
-        IE_Positions_Model.Positions_Array (1 .. Buffer'Length) :=
-          [others => 1];
-      IE_Count      : Natural;
-      Actual_Length : Natural;
+      Positions : IE_Positions_Model.Positions_Array (1 .. Buffer'Length) :=
+        [others => 1];
+      IE_Count  : Natural;
 
    begin
-      IE_Positions_Model.Build_Positions
-        (Buffer, Actual_Length, IE_Count, Positions);
+      IE_Positions_Model.Build_Positions (Buffer, IE_Count, Positions);
 
       --  Prove that the positions of each each IE is the same in
       --  Buffer and Slice.
@@ -93,15 +87,12 @@ package body IE_Model is
    is
       use type Interfaces.Unsigned_8;
 
-      Positions     :
-        IE_Positions_Model.Positions_Array (1 .. Buffer'Length) :=
-          [others => 1];
-      IE_Count      : Natural;
-      Actual_Length : Natural;
+      Positions : IE_Positions_Model.Positions_Array (1 .. Buffer'Length) :=
+        [others => 1];
+      IE_Count  : Natural;
 
    begin
-      IE_Positions_Model.Build_Positions
-        (Buffer, Actual_Length, IE_Count, Positions);
+      IE_Positions_Model.Build_Positions (Buffer, IE_Count, Positions);
 
       --  Prove that the positions of each each IE is the same in
       --  Buffer and Slice.

@@ -416,7 +416,6 @@ is
 
       procedure Build_Positions
         (Buffer    : Byte_Array;
-         Length    : out Natural;
          IE_Count  : out Natural;
          Positions : in out Positions_Array)
       with
@@ -426,13 +425,8 @@ is
           and then Positions'Length >= Buffer'Length
           and then Positions'First = 1,
         Post   =>
-          Length = IE_Model.IE_List_Length (Buffer)
-          and then IE_Count <= Positions'Length
-          and then Valid_Positions (Buffer, Positions (1 .. IE_Count))
-          and then
-            Length
-            = (Positions (IE_Count) - Buffer'First)
-              + IE_Length (Buffer, Positions (IE_Count));
+          IE_Count <= Positions'Length
+          and then Valid_Positions (Buffer, Positions (1 .. IE_Count));
       --  Compute the position of each IE in Buffer and store them in the
       --  Positions array.
 
