@@ -297,6 +297,18 @@ is
       --  reachable in that IE list, then prove that Reachable also holds for
       --  the slice.
 
+      procedure Lemma_Contains_Slice
+        (Buffer : Byte_Array; Slice : Byte_Array; Header : Header_Field)
+      with
+        Pre  =>
+          Valid_IE_List (Buffer)
+          and then Slice'First = Buffer'First
+          and then Slice'Length in IE_List_Length (Buffer) .. Buffer'Length
+          and then Slice = Buffer (Slice'Range),
+        Post => Contains (Buffer, Header) = Contains (Slice, Header);
+      --  Prove that Contains is preserved for a slice of a Buffer that
+      --  contains a valid IE list.
+
    end IE_Model;
 
    ---------------------
