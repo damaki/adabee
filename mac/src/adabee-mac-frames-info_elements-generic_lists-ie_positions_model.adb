@@ -1,3 +1,9 @@
+--
+--  Copyright 2026 (C) Daniel King
+--
+--  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+--
+
 separate (AdaBee.MAC.Frames.Info_Elements.Generic_Lists)
 package body IE_Positions_Model is
 

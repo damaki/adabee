@@ -1,3 +1,9 @@
+--
+--  Copyright 2026 (C) Daniel King
+--
+--  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+--
+
 separate (AdaBee.MAC.Frames.Info_Elements.Generic_Lists)
 package body IE_Model is
 
@@ -152,9 +158,10 @@ package body IE_Model is
       --  for both Buffer and Slice
 
       pragma Assert (Slice'First = Buffer'First);
-      pragma Assert
-        (IE_Length (Slice, Positions (Positions'Last))
-         = IE_Length (Buffer, Positions (Positions'Last)));
+      pragma
+        Assert
+          (IE_Length (Slice, Positions (Positions'Last))
+           = IE_Length (Buffer, Positions (Positions'Last)));
 
       --  Prove the relation of IE_List_Length against the last IE position
       --  for both Buffer and Slice.
