@@ -266,80 +266,16 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
       begin
          Build_Positions (Buffer, Actual_Length, IE_Count, Positions);
 
-         if Is_Termination_IE (IE_Header (Buffer, Positions (IE_Count))) then
+         --  Prove that the positions of each each IE is the same in
+         --  Buffer and Slice.
 
-            --  The IE list ends with a termination IE. Therefore, the IE list
-            --  length is decoupled from the buffer length.
+         Lemma_Positions_Valid_For_Slice
+           (Buffer, Slice, Positions (1 .. IE_Count));
 
-            Lemma_Positions_IE_List_Length (Buffer, Positions (1 .. IE_Count));
+         Lemma_Valid_IE_List_All_Positions (Slice, Positions (1 .. IE_Count));
 
-            for I in reverse 1 .. IE_Count loop
-               pragma
-                 Assert
-                   ((Positions (I) - Buffer'First)
-                    + IE_Model.IE_List_Length (Buffer, Positions (I))
-                    <= Slice'Length);
+         pragma Assert (Positions (1) = Slice'First);
 
-               pragma Assert (Positions (I) < Slice'Last);
-
-               pragma
-                 Assert
-                   (Buffer (Positions (I) .. Positions (I) + 1)
-                    = Slice (Positions (I) .. Positions (I) + 1));
-
-               pragma
-                 Assert
-                   (IE_Header (Buffer, Positions (I))
-                    = IE_Header (Slice, Positions (I)));
-
-               pragma Assert (Valid_IE (Buffer, Positions (I)));
-               pragma Assert (Valid_IE (Slice, Positions (I)));
-
-               pragma Loop_Invariant (Valid_IE_List (Buffer, Positions (I)));
-               pragma Loop_Invariant (Valid_IE_List (Slice, Positions (I)));
-            end loop;
-
-         else
-
-            --  The IE list does not end with a termination IE; it ends by
-            --  reaching the end of the buffer instead. The IE list length is
-            --  therefore equal to the Buffer length.
-            --
-            --  Since the lemma precondition requires the Slice length to be
-            --  larger than the IE list length but within the length of the
-            --  Buffer, the only way this can be true is if Slice is the same
-            --  length as Buffer, in which case Slice and Buffer are
-            --  equivalent.
-
-            pragma Assert (Is_Last_IE (Buffer, Positions (IE_Count)));
-            pragma Assert (Valid_IE (Buffer, Positions (IE_Count)));
-            pragma
-              Assert
-                (IE_List_Length (Buffer, Positions (IE_Count))
-                 = IE_Length (Buffer, Positions (IE_Count)));
-
-            pragma Assert (Slice'Length = Buffer'Length);
-            pragma Assert (Slice = Buffer);
-
-            for I in reverse 1 .. IE_Count loop
-               pragma Assert (Valid_IE (Buffer, Positions (I)));
-
-               pragma
-                 Assert
-                   (Buffer (Positions (I) .. Positions (I) + 1)
-                    = Slice (Positions (I) .. Positions (I) + 1));
-
-               pragma
-                 Assert
-                   (IE_Header (Buffer, Positions (I))
-                    = IE_Header (Slice, Positions (I)));
-
-               pragma Assert (Valid_IE (Slice, Positions (I)));
-
-               pragma Loop_Invariant (Valid_IE_List (Buffer, Positions (I)));
-               pragma Loop_Invariant (Valid_IE_List (Slice, Positions (I)));
-            end loop;
-         end if;
       end Lemma_Valid_IE_List_Slice;
 
       ---------------------------
