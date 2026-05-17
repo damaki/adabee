@@ -365,8 +365,6 @@ is
       Has_Payload_IEs   : out Boolean;
       Result            : out Status_Code)
    is
-      use type AdaBee.MAC.Frames.Info_Elements.Headers.Element_ID_Field;
-
       Header_IE_List_Length   : Natural;
       Last_Header_IE_Position : Natural;
 
@@ -387,41 +385,35 @@ is
 
       else
 
-         --  Determine whether payload IEs are present
-
          Header_IE_Last := Buffer'First + (Header_IE_List_Length - 1);
 
-         Last_Header_IE :=
-           AdaBee.MAC.Frames.Info_Elements.Headers.From_Bytes
-             (Buffer (Last_Header_IE_Position .. Last_Header_IE_Position + 1));
+         --  Determine whether the MAC payload is present
 
-         Has_Payload_IEs :=
-           Last_Header_IE.Element_ID
-           = Info_Elements.Headers.Header_Termination_1_IE;
-
-         --  Guard against the case where the presence of HT1 indicates that
-         --  payload IEs are present, but the frame ends immediately after
-         --  the header IEs.
-
-         if Has_Payload_IEs and then Header_IE_Last = Buffer'Last then
-            Result := Malformed_Frame;
-            MAC_Payload_First := 1;
-            MAC_Payload_Last := 0;
-            Has_Payload_IEs := False;
-
-         elsif Header_IE_Last < Buffer'Last then
+         if Header_IE_Last < Buffer'Last then
             MAC_Payload_First := Header_IE_Last + 1;
             MAC_Payload_Last := Buffer'Last;
+
+            --  Check whether the MAC payload contains payload IEs
+
+            Last_Header_IE :=
+              AdaBee.MAC.Frames.Info_Elements.Headers.From_Bytes
+                (Buffer
+                   (Last_Header_IE_Position .. Last_Header_IE_Position + 1));
+
+            Has_Payload_IEs :=
+              Last_Header_IE.Element_ID
+              = Info_Elements.Headers.Header_Termination_1_IE;
          else
             MAC_Payload_First := 1;
             MAC_Payload_Last := 0;
+            Has_Payload_IEs := False;
          end if;
 
          --  Help prove the postcondition
 
          Info_Elements.Headers.Lists.IE_Model.Lemma_Valid_IE_List_Preserved
-            (Buffer => Buffer,
-             Slice  => Buffer (Buffer'First .. Header_IE_Last));
+           (Buffer => Buffer,
+            Slice  => Buffer (Buffer'First .. Header_IE_Last));
       end if;
    end Decode_MHR_Header_IEs;
 
@@ -463,7 +455,7 @@ is
                Result := Malformed_Frame;
 
             else
-               Header_IE_First := Buffer'First + (MHR_Length - 1);
+               Header_IE_First := Buffer'First + MHR_Length;
 
                Decode_MHR_Header_IEs
                  (Buffer            => Buffer (Header_IE_First .. Buffer'Last),
@@ -472,6 +464,16 @@ is
                   MAC_Payload_Last  => MAC_Payload_Last,
                   Has_Payload_IEs   => Has_Payload_IEs,
                   Result            => Result);
+
+               if Result = Success then
+                  MHR_Model.Header_IE_Model.Lemma_Valid_IE_List_Preserved
+                    (Buffer (Header_IE_First .. Buffer'Last),
+                     Buffer (Header_IE_First .. Header_IE_Last));
+
+                  MHR_Model.Header_IE_Model.Lemma_IE_List_Length_Preserved
+                    (Buffer (Header_IE_First .. Buffer'Last),
+                     Buffer (Header_IE_First .. Header_IE_Last));
+               end if;
             end if;
 
          else
@@ -485,7 +487,7 @@ is
                MAC_Payload_First := 1;
                MAC_Payload_Last := 0;
             else
-               MAC_Payload_First := Buffer'First + (MHR_Length - 1);
+               MAC_Payload_First := Buffer'First + MHR_Length;
                MAC_Payload_Last := Buffer'Last;
             end if;
          end if;

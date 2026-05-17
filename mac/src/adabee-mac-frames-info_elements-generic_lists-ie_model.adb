@@ -126,4 +126,58 @@ package body IE_Model is
 
    end Lemma_Contains_Preserved;
 
+   ------------------------------------
+   -- Lemma_IE_List_Length_Preserved --
+   ------------------------------------
+
+   procedure Lemma_IE_List_Length_Preserved
+     (Buffer : Byte_Array; Slice : Byte_Array)
+   is
+      Positions : constant IE_Positions_Model.Positions_Array :=
+        IE_Positions_Model.IE_Positions (Buffer);
+
+   begin
+
+      --  First, prove that Positions is also valid for Slice
+
+      IE_Positions_Model.Lemma_Positions_Valid_For_Slice
+        (Buffer, Slice, Positions);
+
+      --  Valid_IE_List (Slice) is required by the precondition of
+      --  IE_List_Length (Slice).
+
+      IE_Positions_Model.Lemma_Valid_IE_List (Slice, Positions);
+
+      --  Help guide the provers that the length of the last IE is the same
+      --  for both Buffer and Slice
+
+      pragma Assert (Slice'First = Buffer'First);
+      pragma Assert
+        (IE_Length (Slice, Positions (Positions'Last))
+         = IE_Length (Buffer, Positions (Positions'Last)));
+
+      --  Prove the relation of IE_List_Length against the last IE position
+      --  for both Buffer and Slice.
+      --
+      --  Since the last IE position is the same in both Buffer and Slice, and
+      --  the length of that IE is the same in both of them, then then length
+      --  of both lists are the same.
+
+      IE_Positions_Model.Lemma_IE_List_Length
+        (Buffer    => Slice,
+         Positions => Positions,
+         Length    =>
+           Positions (Positions'Last)
+           - Slice'First
+           + IE_Length (Slice, Positions (Positions'Last)));
+
+      IE_Positions_Model.Lemma_IE_List_Length
+        (Buffer    => Buffer,
+         Positions => Positions,
+         Length    =>
+           Positions (Positions'Last)
+           - Buffer'First
+           + IE_Length (Buffer, Positions (Positions'Last)));
+   end Lemma_IE_List_Length_Preserved;
+
 end IE_Model;

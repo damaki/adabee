@@ -305,6 +305,16 @@ is
       --  Prove that Contains is preserved for a slice of a Buffer that
       --  contains the entire IE list.
 
+      procedure Lemma_IE_List_Length_Preserved
+        (Buffer : Byte_Array; Slice : Byte_Array)
+      with
+        Pre  =>
+          Valid_IE_List (Buffer)
+          and then Slice'First = Buffer'First
+          and then Slice'Length in IE_List_Length (Buffer) .. Buffer'Length
+          and then Slice = Buffer (Slice'Range),
+        Post => IE_List_Length (Slice) = IE_List_Length (Buffer);
+
    end IE_Model;
 
    ---------------------
@@ -329,7 +339,10 @@ is
             and then Last_IE in Buffer'Range
             and then Valid_IE (Buffer, Last_IE)
             and then Is_Last_IE (Buffer, Last_IE)
-            and then IE_Model.Reachable (Buffer, Last_IE));
+            and then IE_Model.Reachable (Buffer, Last_IE)
+            and then
+              IE_Header (Buffer, Last_IE)
+              = IE_Model.Last_IE_Header_Field (Buffer));
    --  Walks through an IE list to calculate its length and to verify that the
    --  IE list is well formed.
    --
@@ -505,6 +518,14 @@ is
         Post => Valid_Positions (Slice, Positions);
       --  Prove that Positions_Valid also holds for Slice, provided that
       --  Slice contains the entire IE list.
+
+      procedure Lemma_Last_IE_Header
+        (Buffer : Byte_Array; Positions : Positions_Array)
+      with
+        Pre  => Valid_Positions (Buffer, Positions),
+        Post =>
+          IE_Header (Buffer, Positions (Positions'Last))
+          = IE_Model.Last_IE_Header_Field (Buffer);
 
    end IE_Positions_Model;
 

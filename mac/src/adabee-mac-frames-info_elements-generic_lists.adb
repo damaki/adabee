@@ -125,6 +125,9 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
 
       IE_Positions_Model.Lemma_Position_Reachable
         (Buffer, Positions (1 .. IE_Count), Last_IE);
+
+      IE_Positions_Model.Lemma_Last_IE_Header
+        (Buffer, Positions (1 .. IE_Count));
    end Validate_IE_List;
 
 end AdaBee.MAC.Frames.Info_Elements.Generic_Lists;

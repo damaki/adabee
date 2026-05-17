@@ -26,6 +26,9 @@ package AdaBee.MAC.Frames.Headers.MHR_Model
 is
    use type AdaBee.MAC.Frames.Info_Elements.Headers.Element_ID_Field;
 
+   package Header_IE_Model renames
+     AdaBee.MAC.Frames.Info_Elements.Headers.Lists.IE_Model;
+
    -------------------------------
    -- Frame Control Field Views --
    -------------------------------
@@ -777,7 +780,8 @@ is
    -----------------
 
    function Is_Payload_IE_Present (Frame : Byte_Array) return Boolean
-   is (Is_Header_IEs_Present (Frame)
+   is (Is_MAC_Payload_Present (Frame)
+       and then Is_Header_IEs_Present (Frame)
        and then
          Info_Elements.Headers.Lists.IE_Model.Last_IE_Header_Field
            (Frame (Frame'First + Get_Header_IEs_Offset (Frame) .. Frame'Last))

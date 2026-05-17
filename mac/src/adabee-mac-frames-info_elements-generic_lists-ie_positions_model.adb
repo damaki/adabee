@@ -215,4 +215,23 @@ package body IE_Positions_Model is
       end loop;
    end Lemma_Positions_Valid_For_Slice;
 
+   --------------------------
+   -- Lemma_Last_IE_Header --
+   --------------------------
+
+   procedure Lemma_Last_IE_Header
+     (Buffer : Byte_Array; Positions : Positions_Array) is
+   begin
+      Lemma_Valid_IE_List_All_Positions (Buffer, Positions);
+
+      for I in reverse Positions'Range loop
+         pragma
+           Loop_Invariant
+             (IE_Header (Buffer, Positions (Positions'Last))
+              = IE_Model.Last_IE_Header_Field (Buffer, Positions (I)));
+      end loop;
+
+      pragma Assert (Positions (Positions'First) = Buffer'First);
+   end Lemma_Last_IE_Header;
+
 end IE_Positions_Model;
