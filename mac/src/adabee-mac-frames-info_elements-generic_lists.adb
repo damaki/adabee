@@ -49,7 +49,7 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
             Is_Last_IE (Buffer, Positions (I)) = (I = Positions'Last))
 
        --  Each position references the next IE of the one before,
-       --  except the first which is the first IE in Buffer.
+       --  except the first position which is the first IE in Buffer.
        and then
          (for all I in Positions'Range =>
             (if I = Positions'First
@@ -66,6 +66,13 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
      Post => IE_Model.Valid_IE_List (Buffer);
    --  Given an array containing the positions of each IE in a Buffer, prove
    --  that the IE list is valid.
+
+   procedure Lemma_Valid_IE_List_All_Positions
+     (Buffer : Byte_Array; Positions : Positions_Array)
+   with
+     Ghost,
+     Pre  => Valid_Positions (Buffer, Positions),
+     Post => (for all P of Positions => IE_Model.Valid_IE_List (Buffer, P));
 
    procedure Lemma_Invalid_IE_List
      (Buffer : Byte_Array; Positions : Positions_Array)
@@ -120,6 +127,32 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
        (for all P of Positions =>
           IE_Model.IE_List_Length (Buffer)
           = (P - Buffer'First) + IE_Model.IE_List_Length (Buffer, P));
+
+   procedure Lemma_Positions_Valid_For_Slice
+     (Buffer : Byte_Array; Slice : Byte_Array; Positions : Positions_Array)
+   with
+     Ghost,
+     Pre  =>
+       IE_Model.Valid_IE_List (Buffer)
+       and then Valid_Positions (Buffer, Positions)
+       and then Slice'First = Buffer'First
+       and then
+         Slice'Length in IE_Model.IE_List_Length (Buffer) .. Buffer'Length
+       and then Slice = Buffer (Slice'Range),
+     Post => Valid_Positions (Slice, Positions);
+
+   procedure Lemma_Last_IE_Preserved_Slice
+     (Buffer : Byte_Array; Slice : Byte_Array; Positions : Positions_Array)
+   with
+     Ghost,
+     Pre  =>
+       IE_Model.Valid_IE_List (Buffer)
+       and then Valid_Positions (Buffer, Positions)
+       and then Slice'First = Buffer'First
+       and then
+         Slice'Length in IE_Model.IE_List_Length (Buffer) .. Buffer'Length
+       and then Slice = Buffer (Slice'Range),
+     Post => Is_Last_IE (Buffer, Positions (Positions'Last));
 
    --------------
    -- IE_Model --
@@ -251,6 +284,11 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
 
                pragma
                  Assert
+                   (Buffer (Positions (I) .. Positions (I) + 1)
+                    = Slice (Positions (I) .. Positions (I) + 1));
+
+               pragma
+                 Assert
                    (IE_Header (Buffer, Positions (I))
                     = IE_Header (Slice, Positions (I)));
 
@@ -309,7 +347,7 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
       ---------------------------
 
       procedure Lemma_Reachable_Slice
-        (Buffer : Byte_Array; Slice : Byte_Array; Pos : Positive)
+        (Buffer : Byte_Array; Slice : Byte_Array; Target : Positive)
       is
          Positions     : Positions_Array (1 .. Buffer'Length) := [others => 1];
          IE_Count      : Natural;
@@ -318,27 +356,39 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
       begin
          Build_Positions (Buffer, Actual_Length, IE_Count, Positions);
 
+         --  Prove that the positions of each each IE is the same in
+         --  Buffer and Slice.
+
+         Lemma_Positions_Valid_For_Slice
+           (Buffer, Slice, Positions (1 .. IE_Count));
+
+         --  Prove that each position in Positions is a valid IE list
+
+         Lemma_Valid_IE_List_All_Positions (Buffer, Positions (1 .. IE_Count));
+         Lemma_Valid_IE_List_All_Positions (Slice, Positions (1 .. IE_Count));
+
+         --  Prove that the reachability of Target in Buffer and Slice depends
+         --  on whether Target is equal to some position in Positions.
+
          for I in reverse 1 .. IE_Count loop
-            pragma Loop_Invariant (Valid_IE (Buffer, Positions (I)));
-
             pragma
-              Loop_Invariant (IE_Model.Valid_IE_List (Buffer, Positions (I)));
-
-            pragma Loop_Invariant (Valid_IE (Slice, Positions (I)));
-
-            pragma
-              Loop_Invariant (IE_Model.Valid_IE_List (Slice, Positions (I)));
+              Loop_Invariant
+                (Reachable (Buffer, Target, Positions (I))
+                 = (for some J in I .. IE_Count => Positions (J) = Target));
 
             pragma
               Loop_Invariant
-                (Is_Last_IE (Buffer, Positions (I))
-                 = Is_Last_IE (Slice, Positions (I)));
-
-            pragma
-              Loop_Invariant
-                (Reachable (Buffer, Pos, Positions (I))
-                 = Reachable (Slice, Pos, Positions (I)));
+                (Reachable (Slice, Target, Positions (I))
+                 = (for some J in I .. IE_Count => Positions (J) = Target));
          end loop;
+
+         --  Given that Positions is the same for Buffer and Slice, since
+         --  Target is reachable in Buffer, then it must also be reachable
+         --  in Slice.
+
+         pragma
+           Assert (Reachable (Slice, Target) = Reachable (Buffer, Target));
+
       end Lemma_Reachable_Slice;
 
    end IE_Model;
@@ -466,6 +516,21 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
       end loop;
    end Lemma_Valid_IE_List;
 
+   ---------------------------------------
+   -- Lemma_Valid_IE_List_All_Positions --
+   ---------------------------------------
+
+   procedure Lemma_Valid_IE_List_All_Positions
+     (Buffer : Byte_Array; Positions : Positions_Array) is
+   begin
+      for I in reverse Positions'Range loop
+         pragma
+           Loop_Invariant
+             (for all J in I .. Positions'Last =>
+                IE_Model.Valid_IE_List (Buffer, Positions (J)));
+      end loop;
+   end Lemma_Valid_IE_List_All_Positions;
+
    ---------------------------
    -- Lemma_Invalid_IE_List --
    ---------------------------
@@ -557,5 +622,48 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
                     + IE_Model.IE_List_Length (Buffer, Positions (J)));
       end loop;
    end Lemma_Positions_IE_List_Length;
+
+   -------------------------------------
+   -- Lemma_Positions_Valid_For_Slice --
+   -------------------------------------
+
+   procedure Lemma_Positions_Valid_For_Slice
+     (Buffer : Byte_Array; Slice : Byte_Array; Positions : Positions_Array) is
+   begin
+      Lemma_Positions_IE_List_Length (Buffer, Positions);
+      Lemma_Valid_IE_List_All_Positions (Buffer, Positions);
+      Lemma_Last_IE_Preserved_Slice (Buffer, Slice, Positions);
+
+      for I in reverse Positions'Range loop
+         pragma
+           Loop_Invariant
+             (for all J in I .. Positions'Last =>
+                Positions (J) in Slice'Range
+                and then Valid_IE (Slice, Positions (J))
+                and then
+                  Is_Last_IE (Slice, Positions (J)) = (J = Positions'Last));
+      end loop;
+
+      for I in Positions'Range loop
+         pragma
+           Loop_Invariant
+             (for all J in I .. Positions'Last =>
+                (if J = Positions'First
+                 then Positions (J) = Slice'First
+                 else
+                   Positions (J)
+                   = Next_IE_Position (Slice, Positions (J - 1))));
+      end loop;
+   end Lemma_Positions_Valid_For_Slice;
+
+   -----------------------------------
+   -- Lemma_Last_IE_Preserved_Slice --
+   -----------------------------------
+
+   procedure Lemma_Last_IE_Preserved_Slice
+     (Buffer : Byte_Array; Slice : Byte_Array; Positions : Positions_Array) is
+   begin
+      null;
+   end Lemma_Last_IE_Preserved_Slice;
 
 end AdaBee.MAC.Frames.Info_Elements.Generic_Lists;
