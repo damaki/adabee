@@ -345,8 +345,10 @@ is
    -- IE Positions Model --
    ------------------------
 
-   --  This package defines properties and lemmas for modelling the positions
-   --  of each IE in a buffer.
+   --  This package models the positions of each IE within a buffer.
+   --
+   --  It is useful for certain inductive proofs, particularly when proving
+   --  inductively starting from the end of the IE list.
 
    package IE_Positions_Model
      with Ghost
@@ -451,6 +453,8 @@ is
       with
         Pre  => Valid_Positions (Buffer, Positions),
         Post => (for all P of Positions => IE_Model.Valid_IE_List (Buffer, P));
+      --  Prove that each IE position is a valid IE list when starting at that
+      --  position.
 
       procedure Lemma_Invalid_IE_List
         (Buffer : Byte_Array; Positions : Positions_Array)
@@ -466,9 +470,10 @@ is
                      (Buffer,
                       Next_IE_Position (Buffer, Positions (Positions'Last)))),
         Post => not IE_Model.Valid_IE_List (Buffer);
-      --  Given an array containing the positions of valid IEs in a buffer,
-      --  where the next IE after the last position is an invalid IE, prove
-      --  that the IE list is not valid.
+      --  Prove that an IE list is not valid when an invalid IE is encountered.
+      --
+      --  In this case, Positions contains the list of all valid IEs, and
+      --  the invalid IE is the one after the last IE in Positions.
 
       procedure Lemma_IE_List_Length
         (Buffer : Byte_Array; Positions : Positions_Array; Length : Natural)
@@ -481,9 +486,7 @@ is
             = (Positions (Positions'Last) - Buffer'First)
               + IE_Length (Buffer, Positions (Positions'Last)),
         Post => Length = IE_Model.IE_List_Length (Buffer);
-      --  Given an array containing the positions of all IEs in an IE list,
-      --  and the Length is equal to the position after the last IE, prove that
-      --  the Length is equivalent to the length of the entire IE list.
+      --  Relate the IE list length to the position of the last IE.
 
       procedure Lemma_Position_Reachable
         (Buffer : Byte_Array; Positions : Positions_Array; Pos : Positive)
@@ -492,6 +495,8 @@ is
           Valid_Positions (Buffer, Positions)
           and then (for some P of Positions => P = Pos),
         Post => IE_Model.Reachable (Buffer, Pos);
+      --  Prove that a position Pos is reachable in an IE list if it is equal
+      --  to one of the positions in the Positions array.
 
       procedure Lemma_Positions_IE_List_Length
         (Buffer : Byte_Array; Positions : Positions_Array)
@@ -501,6 +506,7 @@ is
           (for all P of Positions =>
              IE_Model.IE_List_Length (Buffer)
              = (P - Buffer'First) + IE_Model.IE_List_Length (Buffer, P));
+      --  Relate the IE list length to the positions of all IEs in the Buffer.
 
       procedure Lemma_Positions_Valid_For_Slice
         (Buffer : Byte_Array; Slice : Byte_Array; Positions : Positions_Array)
@@ -513,18 +519,8 @@ is
             Slice'Length in IE_Model.IE_List_Length (Buffer) .. Buffer'Length
           and then Slice = Buffer (Slice'Range),
         Post => Valid_Positions (Slice, Positions);
-
-      procedure Lemma_Last_IE_Preserved_Slice
-        (Buffer : Byte_Array; Slice : Byte_Array; Positions : Positions_Array)
-      with
-        Pre  =>
-          IE_Model.Valid_IE_List (Buffer)
-          and then Valid_Positions (Buffer, Positions)
-          and then Slice'First = Buffer'First
-          and then
-            Slice'Length in IE_Model.IE_List_Length (Buffer) .. Buffer'Length
-          and then Slice = Buffer (Slice'Range),
-        Post => Is_Last_IE (Buffer, Positions (Positions'Last));
+      --  Prove that Positions_Valid also holds for Slice, provided that
+      --  Slice contains the entire IE list.
 
    end IE_Positions_Model;
 

@@ -201,7 +201,6 @@ package body IE_Positions_Model is
    begin
       Lemma_Positions_IE_List_Length (Buffer, Positions);
       Lemma_Valid_IE_List_All_Positions (Buffer, Positions);
-      Lemma_Last_IE_Preserved_Slice (Buffer, Slice, Positions);
 
       for I in reverse Positions'Range loop
          pragma
@@ -224,15 +223,5 @@ package body IE_Positions_Model is
                    = Next_IE_Position (Slice, Positions (J - 1))));
       end loop;
    end Lemma_Positions_Valid_For_Slice;
-
-   -----------------------------------
-   -- Lemma_Last_IE_Preserved_Slice --
-   -----------------------------------
-
-   procedure Lemma_Last_IE_Preserved_Slice
-     (Buffer : Byte_Array; Slice : Byte_Array; Positions : Positions_Array) is
-   begin
-      null;
-   end Lemma_Last_IE_Preserved_Slice;
 
 end IE_Positions_Model;
