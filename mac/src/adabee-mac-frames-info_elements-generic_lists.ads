@@ -414,21 +414,11 @@ is
                   Positions (I)
                   = Next_IE_Position (Buffer, Positions (I - 1)))));
 
-      procedure Build_Positions
-        (Buffer    : Byte_Array;
-         IE_Count  : out Natural;
-         Positions : in out Positions_Array)
+      function IE_Positions (Buffer : Byte_Array) return Positions_Array
       with
-        Global => null,
-        Pre    =>
-          IE_Model.Valid_IE_List (Buffer)
-          and then Positions'Length >= Buffer'Length
-          and then Positions'First = 1,
-        Post   =>
-          IE_Count <= Positions'Length
-          and then Valid_Positions (Buffer, Positions (1 .. IE_Count));
-      --  Compute the position of each IE in Buffer and store them in the
-      --  Positions array.
+        Pre  => IE_Model.Valid_IE_List (Buffer),
+        Post => Valid_Positions (Buffer, IE_Positions'Result);
+      --  Return the positions of all IEs in an IE list.
 
       ------------
       -- Lemmas --

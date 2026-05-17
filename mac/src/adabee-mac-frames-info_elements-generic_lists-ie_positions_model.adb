@@ -1,20 +1,15 @@
-
 separate (AdaBee.MAC.Frames.Info_Elements.Generic_Lists)
 package body IE_Positions_Model is
 
-   ---------------------
-   -- Build_Positions --
-   ---------------------
+   ------------------
+   -- IE_Positions --
+   ------------------
 
-   procedure Build_Positions
-     (Buffer    : Byte_Array;
-      IE_Count  : out Natural;
-      Positions : in out Positions_Array)
-   is
-      Pos : Positive := Buffer'First;
+   function IE_Positions (Buffer : Byte_Array) return Positions_Array is
+      Positions : Positions_Array (1 .. Buffer'Length) := [others => 1];
+      IE_Count  : Natural := 0;
+      Pos       : Positive := Buffer'First;
    begin
-      IE_Count := 0;
-
       loop
          pragma Loop_Variant (Increases => Pos);
          pragma Loop_Variant (Increases => IE_Count);
@@ -64,7 +59,9 @@ package body IE_Positions_Model is
 
          Pos := Next_IE_Position (Buffer, Pos);
       end loop;
-   end Build_Positions;
+
+      return Positions (1 .. IE_Count);
+   end IE_Positions;
 
    -------------------------
    -- Lemma_Valid_IE_List --

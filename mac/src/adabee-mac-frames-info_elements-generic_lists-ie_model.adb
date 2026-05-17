@@ -8,23 +8,19 @@ package body IE_Model is
    procedure Lemma_Valid_IE_List_Preserved
      (Buffer : Byte_Array; Slice : Byte_Array)
    is
-      Positions : IE_Positions_Model.Positions_Array (1 .. Buffer'Length) :=
-        [others => 1];
-      IE_Count  : Natural;
+      Positions : constant IE_Positions_Model.Positions_Array :=
+        IE_Positions_Model.IE_Positions (Buffer);
 
    begin
-      IE_Positions_Model.Build_Positions (Buffer, IE_Count, Positions);
-
       --  Prove that the positions of each each IE is the same in
       --  Buffer and Slice.
 
       IE_Positions_Model.Lemma_Positions_Valid_For_Slice
-        (Buffer, Slice, Positions (1 .. IE_Count));
+        (Buffer, Slice, Positions);
 
-      IE_Positions_Model.Lemma_Valid_IE_List_All_Positions
-        (Slice, Positions (1 .. IE_Count));
+      IE_Positions_Model.Lemma_Valid_IE_List_All_Positions (Slice, Positions);
 
-      pragma Assert (Positions (1) = Slice'First);
+      pragma Assert (Positions (Positions'First) = Slice'First);
 
    end Lemma_Valid_IE_List_Preserved;
 
@@ -35,39 +31,34 @@ package body IE_Model is
    procedure Lemma_Reachable_Preserved
      (Buffer : Byte_Array; Slice : Byte_Array; Target : Positive)
    is
-      Positions : IE_Positions_Model.Positions_Array (1 .. Buffer'Length) :=
-        [others => 1];
-      IE_Count  : Natural;
+      Positions : constant IE_Positions_Model.Positions_Array :=
+        IE_Positions_Model.IE_Positions (Buffer);
 
    begin
-      IE_Positions_Model.Build_Positions (Buffer, IE_Count, Positions);
-
       --  Prove that the positions of each each IE is the same in
       --  Buffer and Slice.
 
       IE_Positions_Model.Lemma_Positions_Valid_For_Slice
-        (Buffer, Slice, Positions (1 .. IE_Count));
+        (Buffer, Slice, Positions);
 
       --  Prove that each position in Positions is a valid IE list
 
-      IE_Positions_Model.Lemma_Valid_IE_List_All_Positions
-        (Buffer, Positions (1 .. IE_Count));
-      IE_Positions_Model.Lemma_Valid_IE_List_All_Positions
-        (Slice, Positions (1 .. IE_Count));
+      IE_Positions_Model.Lemma_Valid_IE_List_All_Positions (Buffer, Positions);
+      IE_Positions_Model.Lemma_Valid_IE_List_All_Positions (Slice, Positions);
 
       --  Prove that the reachability of Target in Buffer and Slice depends
       --  on whether Target is equal to some position in Positions.
 
-      for I in reverse 1 .. IE_Count loop
+      for I in reverse Positions'Range loop
          pragma
            Loop_Invariant
              (Reachable (Buffer, Target, Positions (I))
-              = (for some J in I .. IE_Count => Positions (J) = Target));
+              = (for some J in I .. Positions'Last => Positions (J) = Target));
 
          pragma
            Loop_Invariant
              (Reachable (Slice, Target, Positions (I))
-              = (for some J in I .. IE_Count => Positions (J) = Target));
+              = (for some J in I .. Positions'Last => Positions (J) = Target));
       end loop;
 
       --  Given that Positions is the same for Buffer and Slice, since
@@ -87,25 +78,20 @@ package body IE_Model is
    is
       use type Interfaces.Unsigned_8;
 
-      Positions : IE_Positions_Model.Positions_Array (1 .. Buffer'Length) :=
-        [others => 1];
-      IE_Count  : Natural;
+      Positions : constant IE_Positions_Model.Positions_Array :=
+        IE_Positions_Model.IE_Positions (Buffer);
 
    begin
-      IE_Positions_Model.Build_Positions (Buffer, IE_Count, Positions);
-
       --  Prove that the positions of each each IE is the same in
       --  Buffer and Slice.
 
       IE_Positions_Model.Lemma_Positions_Valid_For_Slice
-        (Buffer, Slice, Positions (1 .. IE_Count));
+        (Buffer, Slice, Positions);
 
       --  Prove that each position in Positions is a valid IE list
 
-      IE_Positions_Model.Lemma_Valid_IE_List_All_Positions
-        (Buffer, Positions (1 .. IE_Count));
-      IE_Positions_Model.Lemma_Valid_IE_List_All_Positions
-        (Slice, Positions (1 .. IE_Count));
+      IE_Positions_Model.Lemma_Valid_IE_List_All_Positions (Buffer, Positions);
+      IE_Positions_Model.Lemma_Valid_IE_List_All_Positions (Slice, Positions);
 
       --  This helps prove the equality for IE_Header in the subsequent loop
 
@@ -113,7 +99,7 @@ package body IE_Model is
 
       pragma
         Assert
-          (for all P of Positions (1 .. IE_Count) =>
+          (for all P of Positions =>
              P in Buffer'First .. Buffer'Last - 1
              and then P in Slice'First .. Slice'Last - 1
              and then Buffer (P .. P + 1) = Slice (P .. P + 1));
@@ -121,7 +107,7 @@ package body IE_Model is
       --  Prove that the Contains in Buffer and Slice depends
       --  on whether Target is equal to some position in Positions.
 
-      for I in reverse 1 .. IE_Count loop
+      for I in reverse Positions'Range loop
          pragma
            Loop_Invariant
              (IE_Header (Buffer, Positions (I))
