@@ -341,6 +341,7 @@ is
                AR                  => Not_Required,
                IE_Present          => Not_Present,
                Frame_Version       => Frame_Version_Field'First,
+               Long_Frame_Control  => Long_Frame_Control_Field'First,
                Sequence_Number     => (Suppression => Suppressed),
                Destination_PAN_ID  => (Present => False),
                Destination_Address => (Mode => Not_Present),
@@ -525,6 +526,7 @@ is
          AR                  => Not_Required,
          IE_Present          => Not_Present,
          Frame_Version       => Frame_Version_Field'First,
+         Long_Frame_Control  => Long,
          Sequence_Number     => (Suppression => Suppressed),
          Destination_PAN_ID  => (Present => False),
          Destination_Address => (Mode => Not_Present),
@@ -717,6 +719,7 @@ is
          AR                  => Not_Required,
          IE_Present          => Not_Present,
          Frame_Version       => Frame_Version_Field'First,
+         Long_Frame_Control  => Long_Frame_Control_Field'First,
          Sequence_Number     => (Suppression => Suppressed),
          Destination_PAN_ID  => (Present => False),
          Destination_Address => (Mode => Not_Present),
@@ -739,6 +742,7 @@ is
       MHR.AR := Frame_Control.Ack_Required;
       MHR.IE_Present := Frame_Control.IE_Present;
       MHR.Frame_Version := Frame_Control.Frame_Version;
+      MHR.Long_Frame_Control := Frame_Control.Long_Frame_Control;
 
       --  Calculate the length of the MHR addressing fields (including the
       --  sequence number), then do a length check on the buffer to verify

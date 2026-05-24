@@ -6,39 +6,28 @@
 
 --  @summary
 --  Encoders for IEEE 802.15.4 MAC headers
+
+with AdaBee.MAC.Frames.Headers.MHR_Model;
+
 package AdaBee.MAC.Frames.Headers.Encoders
   with Pure, SPARK_Mode, Always_Terminates
 is
 
    procedure Encode_MAC_Header
-     (MHR : MAC_Header; Buffer : in out Byte_Array; Length : out Natural)
+     (MHR : Valid_MAC_Header; Buffer : out Byte_Array; Length : out Natural)
    with
-     Global  => null,
-     Depends => (Buffer => (Buffer, MHR), Length => MHR),
-     Pre     =>
-       --  The buffer must be large enough to hold the biggest possible
-       --  MAC Header.
-       Buffer'Length >= Max_MHR_Length
-
-       --  The MHR fields must be a valid combination according to the rules
-       --  in IEEE 802.15.4-2024 (particularly section 7.2.2.6).
-       and then
-         PAN_ID_Model.Is_Valid_Configuration
-           (Frame_Version              => MHR.Frame_Version,
-            Destination_Address_Mode   => MHR.Destination_Address.Mode,
-            Source_Address_Mode        => MHR.Source_Address.Mode,
-            Destination_PAN_ID_Present => MHR.Destination_PAN_ID.Present,
-            Source_PAN_ID_Present      => MHR.Source_PAN_ID.Present)
-
-       --  The frame type must be one that is supported by this implementation
-       and then MHR.Frame_Type not in Unsupported_Frame_Types
-
-       --  Multipurpose frames do not have a source PAN ID field
-       and then
-         (if MHR.Frame_Type = Multipurpose then not MHR.Source_PAN_ID.Present),
-     Post    =>
+     Relaxed_Initialization => Buffer,
+     Global                 => null,
+     Depends                => ((Buffer, Length) => (Buffer, MHR)),
+     Pre                    => Buffer'Length >= Max_MHR_Length,
+     Post                   =>
        (Length <= Buffer'Length
-        and then (Length in Min_MHR_Length .. Max_MHR_Length));
+        and then
+          Buffer (Buffer'First .. Buffer'First + (Length - 1))'Initialized
+        and then Length = MHR_Model.MHR_Length_Excluding_IEs (MHR)
+        and then
+          MHR_Model.MHR_Equal
+            (MHR, Buffer (Buffer'First .. Buffer'First + (Length - 1))));
    --  Encode a MAC header into a byte array.
    --
    --  Note that this procedure will take care of handling PAN ID compression
@@ -49,6 +38,7 @@ is
    --
    --  @param MHR The MAC header data to encode into the frame Buffer.
    --  @param Buffer The buffer to write the encoded MAC header data.
-   --  @param Length The number of bytes that were written to Buffer.
+   --  @param Length The length (in bytes) of the MAC header that was written
+   --    to Buffer.
 
 end AdaBee.MAC.Frames.Headers.Encoders;

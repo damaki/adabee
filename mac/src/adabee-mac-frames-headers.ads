@@ -120,6 +120,13 @@ is
      Static_Predicate =>
        Valid_Address_Mode_Field in Not_Present | Short | Extended;
 
+   function Address_Length (Mode : Valid_Address_Mode_Field) return Natural
+   is (case Mode is
+         when Not_Present => 0,
+         when Short       => 2,
+         when Extended    => 8)
+   with Post => Address_Length'Result <= 8;
+
    --------------------------------------
    -- Destination/Source Address Field --
    --------------------------------------
@@ -247,6 +254,13 @@ is
        Src_Address_Mode   at 0 range 14 .. 15;
      end record;
 
+   subtype Valid_Frame_Control_Field is Frame_Control_Field
+   with
+     Predicate =>
+       Valid_Frame_Control_Field.Dest_Address_Mode /= Reserved
+       and then Valid_Frame_Control_Field.Src_Address_Mode /= Reserved
+       and then Valid_Frame_Control_Field.Frame_Version /= Reserved;
+
    ------------------------------
    -- Long Frame_Control Field --
    ------------------------------
@@ -340,6 +354,28 @@ is
           Ack_Required       => Not_Required,
           IE_Present         => Not_Present));
 
+   subtype Valid_MP_Long_Frame_Control_Field is MP_Long_Frame_Control_Field
+   with
+     Predicate =>
+       Valid_MP_Long_Frame_Control_Field.Dest_Address_Mode /= Reserved
+       and then Valid_MP_Long_Frame_Control_Field.Src_Address_Mode /= Reserved
+       and then
+         Valid_MP_Long_Frame_Control_Field.Frame_Version = IEEE_802_15_4_2003
+       and then
+         (if Valid_MP_Long_Frame_Control_Field.Long_Frame_Control = Short
+          then
+            Valid_MP_Long_Frame_Control_Field.SN_Suppression = Suppressed
+            and then
+              Valid_MP_Long_Frame_Control_Field.PAN_ID_Present = Not_Present
+            and then
+              Valid_MP_Long_Frame_Control_Field.Security_Enabled = Disabled
+            and then
+              Valid_MP_Long_Frame_Control_Field.Frame_Pending = Not_Pending
+            and then
+              Valid_MP_Long_Frame_Control_Field.Ack_Required = Not_Required
+            and then
+              Valid_MP_Long_Frame_Control_Field.IE_Present = Not_Present);
+
    --------------------------
    -- Security Level Field --
    --------------------------
@@ -353,6 +389,14 @@ is
    --  Ref. 9.4.2.3 of IEEE 802.15.4-2024
 
    type Key_ID_Mode_Field is range 0 .. 3 with Size => 2;
+
+   function Key_ID_Length (Mode : Key_ID_Mode_Field) return Natural
+   is (case Mode is
+         when 0 => 0,
+         when 1 => 1,
+         when 2 => 5,
+         when 3 => 9)
+   with Post => Key_ID_Length'Result <= 9;
 
    -------------------------------------
    -- Frame Counter Suppression Field --
@@ -472,29 +516,6 @@ is
             Frame_Counter  : Variant_Frame_Counter;
             Key_ID         : Variant_Key_ID;
       end case;
-   end record;
-
-   ----------------
-   -- MAC Header --
-   ----------------
-   --  Ref. 7.2 of IEEE 802.15.4-2024
-
-   type MAC_Header is record
-      --  Frame Control Fields.
-      --  Note that some fields are in the discriminant part of other fields.
-      Frame_Type    : Supported_Frame_Types;
-      Frame_Pending : Frame_Pending_Field;
-      AR            : Ack_Required_Field;
-      IE_Present    : IE_Present_Field;
-      Frame_Version : Valid_Frame_Version_Field;
-
-      --  Other fields
-      Sequence_Number     : Variant_Sequence_Number;
-      Destination_PAN_ID  : Variant_PAN_ID;
-      Destination_Address : Variant_Address;
-      Source_PAN_ID       : Variant_PAN_ID;
-      Source_Address      : Variant_Address;
-      Aux_Security_Header : Variant_Aux_Security_Header;
    end record;
 
    ------------------
@@ -860,6 +881,111 @@ is
    --
    --  This is only applicable to frame types that use PAN ID compression
    --  (Beacon, Data, Ack, and MAC_Command frames).
+
+   function Compressed_Source_PAN_ID
+     (Destination_PAN_ID : Variant_PAN_ID; Source_PAN_ID : Variant_PAN_ID)
+      return Variant_PAN_ID
+   is (if Same_PAN_ID (Destination_PAN_ID, Source_PAN_ID)
+       then Variant_PAN_ID'(Present => False)
+       else Source_PAN_ID);
+
+   ----------------
+   -- MAC Header --
+   ----------------
+   --  Ref. 7.2 of IEEE 802.15.4-2024
+
+   type MAC_Header is record
+      --  Frame Control Fields.
+      --  Note that some fields are in the discriminant part of other fields.
+      Frame_Type    : Supported_Frame_Types;
+      Frame_Pending : Frame_Pending_Field;
+      AR            : Ack_Required_Field;
+      IE_Present    : IE_Present_Field;
+      Frame_Version : Valid_Frame_Version_Field;
+
+      --  Controls whether a 1-byte (short) or 2-byte (long) frame control
+      --  field is used. Only Multipurpose frames may use the short frame
+      --  control format, and then only if the fields in the upper byte would
+      --  all be zero.
+      Long_Frame_Control : Long_Frame_Control_Field;
+
+      --  Other fields
+      Sequence_Number     : Variant_Sequence_Number;
+      Destination_PAN_ID  : Variant_PAN_ID;
+      Destination_Address : Variant_Address;
+      Source_PAN_ID       : Variant_PAN_ID;
+      Source_Address      : Variant_Address;
+      Aux_Security_Header : Variant_Aux_Security_Header;
+   end record;
+
+   function Long_Frame_Control_Valid (MHR : MAC_Header) return Boolean
+   is (if MHR.Long_Frame_Control = Short
+       then
+         MHR.Frame_Type = Multipurpose
+         and then MHR.Frame_Pending = Not_Pending
+         and then MHR.AR = Not_Required
+         and then MHR.IE_Present = Not_Present
+         and then MHR.Frame_Version = IEEE_802_15_4_2003
+         and then MHR.Sequence_Number.Suppression = Suppressed
+         and then not MHR.Destination_PAN_ID.Present
+         and then MHR.Aux_Security_Header.Security_Enabled = Disabled);
+   --  Returns True if the Long_Frame_Control field is correctly configured
+   --  for the header contents.
+   --
+   --  Short (1-byte) frame control format can only be used for multipurpose
+   --  frames where the fields that would be stored in the upper byte of a long
+   --  frame control are all zero.
+
+   function Is_Valid (MHR : MAC_Header) return Boolean
+   is ((case MHR.Frame_Type is
+          when Beacon | Data | Ack | MAC_Command =>
+            --  The addressing fields must be a valid combination according to
+            --  the PAN ID compression rules described in IEEE 802.15.4-2024
+            --  Section 7.2.2.6.
+            PAN_ID_Model
+              .Is_Valid_Configuration
+                 (Frame_Version              => MHR.Frame_Version,
+                  Destination_Address_Mode   => MHR.Destination_Address.Mode,
+                  Source_Address_Mode        => MHR.Source_Address.Mode,
+                  Destination_PAN_ID_Present => MHR.Destination_PAN_ID.Present,
+                  Source_PAN_ID_Present      =>
+                  --  Source PAN ID is omitted if it is the same as the
+                  --  destination PAN ID, due to PAN ID compression.
+                    Compressed_Source_PAN_ID
+                         (Destination_PAN_ID => MHR.Destination_PAN_ID,
+                          Source_PAN_ID      => MHR.Source_PAN_ID)
+                      .Present),
+
+          when Multipurpose                      =>
+            --  Multipurpose frames do not have a source PAN ID field
+            not MHR.Source_PAN_ID.Present
+
+            --  Frame version must be zero for multipurpose frames.
+            --  Ref. IEEE 802.15.4-2024 Section 7.3.5.10
+            and then MHR.Frame_Version = Frame_Version_Field'First)
+
+       --  Short (1-byte) frame control format can only be used for
+       --  multipurpose frames where the fields that would be stored in the
+       --  upper byte of a long frame control are all zero.
+       --
+       --  Ref. IEEE 802.15.4-2024 Section 7.3.5.3
+       and then
+         (if MHR.Long_Frame_Control = Short
+          then
+            MHR.Frame_Type = Multipurpose
+            and then MHR.Frame_Pending = Not_Pending
+            and then MHR.AR = Not_Required
+            and then MHR.IE_Present = Not_Present
+            and then MHR.Frame_Version = IEEE_802_15_4_2003
+            and then MHR.Sequence_Number.Suppression = Suppressed
+            and then not MHR.Destination_PAN_ID.Present
+            and then MHR.Aux_Security_Header.Security_Enabled = Disabled))
+   with Ghost;
+   --  Returns True if and only if a MAC_Header record contains a valid
+   --  configuration.
+
+   subtype Valid_MAC_Header is MAC_Header
+   with Ghost_Predicate => Is_Valid (Valid_MAC_Header);
 
    -----------------
    -- Conversions --
@@ -1255,57 +1381,70 @@ private
    -- Conversions --
    -----------------
 
-   function To_Bytes (PAN_ID : PAN_ID_Field) return Byte_Array_2
+   function To_Bytes (Value : Bits_16) return Byte_Array_2
    is (Byte_Array_2'
-         (Bits_8 (Bits_16 (PAN_ID) and 16#FF#),
-          Bits_8 (Shift_Right (Bits_16 (PAN_ID), 8) and 16#FF#)));
+         (Bits_8 (Value and 16#FF#),
+          Bits_8 (Shift_Right (Value, 8) and 16#FF#)));
+
+   function From_Bytes (Bytes : Byte_Array_2) return Bits_16
+   is (Bits_16 (Bytes (1)) or Shift_Left (Bits_16 (Bytes (2)), 8));
+
+   function To_Bytes (Value : Bits_32) return Byte_Array_4
+   is (Byte_Array_4'
+         (Bits_8 (Value and 16#FF#),
+          Bits_8 (Shift_Right (Value, 8) and 16#FF#),
+          Bits_8 (Shift_Right (Value, 16) and 16#FF#),
+          Bits_8 (Shift_Right (Value, 24) and 16#FF#)));
+
+   function From_Bytes (Bytes : Byte_Array_4) return Bits_32
+   is (Bits_32 (Bytes (1))
+       or Shift_Left (Bits_32 (Bytes (2)), 8)
+       or Shift_Left (Bits_32 (Bytes (3)), 16)
+       or Shift_Left (Bits_32 (Bytes (4)), 24));
+
+   function To_Bytes (Value : Bits_64) return Byte_Array_8
+   is (Byte_Array_8'
+         (Bits_8 (Value and 16#FF#),
+          Bits_8 (Shift_Right (Value, 8) and 16#FF#),
+          Bits_8 (Shift_Right (Value, 16) and 16#FF#),
+          Bits_8 (Shift_Right (Value, 24) and 16#FF#),
+          Bits_8 (Shift_Right (Value, 32) and 16#FF#),
+          Bits_8 (Shift_Right (Value, 40) and 16#FF#),
+          Bits_8 (Shift_Right (Value, 48) and 16#FF#),
+          Bits_8 (Shift_Right (Value, 56) and 16#FF#)));
+
+   function From_Bytes (Bytes : Byte_Array_8) return Bits_64
+   is (Bits_64 (Bytes (1))
+       or Shift_Left (Bits_64 (Bytes (2)), 8)
+       or Shift_Left (Bits_64 (Bytes (3)), 16)
+       or Shift_Left (Bits_64 (Bytes (4)), 24)
+       or Shift_Left (Bits_64 (Bytes (5)), 32)
+       or Shift_Left (Bits_64 (Bytes (6)), 40)
+       or Shift_Left (Bits_64 (Bytes (7)), 48)
+       or Shift_Left (Bits_64 (Bytes (8)), 56));
+
+   function To_Bytes (PAN_ID : PAN_ID_Field) return Byte_Array_2
+   is (To_Bytes (Bits_16 (PAN_ID)));
 
    function From_Bytes (Bytes : Byte_Array_2) return PAN_ID_Field
-   is (PAN_ID_Field (Bytes (1))
-       or PAN_ID_Field (Shift_Left (Bits_16 (Bytes (2)), 8)));
+   is (PAN_ID_Field (Bits_16'(From_Bytes (Bytes))));
 
    function To_Bytes (Address : Short_Address_Field) return Byte_Array_2
-   is (Byte_Array_2'
-         (Bits_8 (Bits_16 (Address) and 16#FF#),
-          Bits_8 (Shift_Right (Bits_16 (Address), 8) and 16#FF#)));
+   is (To_Bytes (Bits_16 (Address)));
 
    function From_Bytes (Bytes : Byte_Array_2) return Short_Address_Field
-   is (Short_Address_Field (Bytes (1))
-       or Short_Address_Field (Shift_Left (Bits_16 (Bytes (2)), 8)));
+   is (Short_Address_Field (Bits_16'(From_Bytes (Bytes))));
 
    function To_Bytes (FC : Frame_Counter_Field) return Byte_Array_4
-   is (Byte_Array_4'
-         (Bits_8 (Bits_32 (FC) and 16#FF#),
-          Bits_8 (Shift_Right (Bits_32 (FC), 8) and 16#FF#),
-          Bits_8 (Shift_Right (Bits_32 (FC), 16) and 16#FF#),
-          Bits_8 (Shift_Right (Bits_32 (FC), 24) and 16#FF#)));
+   is (To_Bytes (Bits_32 (FC)));
 
    function From_Bytes (Bytes : Byte_Array_4) return Frame_Counter_Field
-   is (Frame_Counter_Field
-         (Bits_32 (Bytes (1))
-          or Bits_32 (Shift_Left (Bits_32 (Bytes (2)), 8))
-          or Bits_32 (Shift_Left (Bits_32 (Bytes (3)), 16))
-          or Bits_32 (Shift_Left (Bits_32 (Bytes (4)), 24))));
+   is (Frame_Counter_Field (Bits_32'(From_Bytes (Bytes))));
 
    function To_Bytes (Address : Extended_Address_Field) return Byte_Array_8
-   is (Byte_Array_8'
-         (Bits_8 (Bits_64 (Address) and 16#FF#),
-          Bits_8 (Shift_Right (Bits_64 (Address), 8) and 16#FF#),
-          Bits_8 (Shift_Right (Bits_64 (Address), 16) and 16#FF#),
-          Bits_8 (Shift_Right (Bits_64 (Address), 24) and 16#FF#),
-          Bits_8 (Shift_Right (Bits_64 (Address), 32) and 16#FF#),
-          Bits_8 (Shift_Right (Bits_64 (Address), 40) and 16#FF#),
-          Bits_8 (Shift_Right (Bits_64 (Address), 48) and 16#FF#),
-          Bits_8 (Shift_Right (Bits_64 (Address), 56) and 16#FF#)));
+   is (To_Bytes (Bits_64 (Address)));
 
    function From_Bytes (Bytes : Byte_Array_8) return Extended_Address_Field
-   is (Extended_Address_Field (Bytes (1))
-       or Extended_Address_Field (Shift_Left (Bits_64 (Bytes (2)), 8))
-       or Extended_Address_Field (Shift_Left (Bits_64 (Bytes (3)), 16))
-       or Extended_Address_Field (Shift_Left (Bits_64 (Bytes (4)), 24))
-       or Extended_Address_Field (Shift_Left (Bits_64 (Bytes (5)), 32))
-       or Extended_Address_Field (Shift_Left (Bits_64 (Bytes (6)), 40))
-       or Extended_Address_Field (Shift_Left (Bits_64 (Bytes (7)), 48))
-       or Extended_Address_Field (Shift_Left (Bits_64 (Bytes (8)), 56)));
+   is (Extended_Address_Field (Bits_64'(From_Bytes (Bytes))));
 
 end AdaBee.MAC.Frames.Headers;
