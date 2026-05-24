@@ -1,8 +1,10 @@
 --
---  Copyright 2024 (C) Daniel King
+--  Copyright 2026 (C) Daniel King
 --
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
+
+with AdaBee.MAC.Frames.Headers.Decoder_Model;
 
 package body AdaBee.MAC.Frames.Headers.Encoders
   with SPARK_Mode
@@ -60,17 +62,17 @@ is
      Ghost,
      Relaxed_Initialization => (A, B),
      Pre                    =>
-       A_Length >= MHR_Model.Get_Frame_Control_Length (MHR)
+       A_Length >= Encoder_Model.Get_Frame_Control_Length (MHR)
        and then A_Length <= B_Length
        and then A_Length <= A'Length
        and then B_Length <= B'Length
        and then Prefix_Initialized (A, A_Length)
        and then Prefix_Initialized (B, B_Length)
        and then Slice (A, A_Length) = Slice (B, A_Length)
-       and then MHR_Model.Frame_Control_Equal (MHR, Slice (A, A_Length)),
+       and then Encoder_Model.Frame_Control_Equal (MHR, Slice (A, A_Length)),
      Post                   =>
-       MHR_Model.Frame_Control_Equal (MHR, Slice (B, B_Length))
-       and then MHR_Model.Frame_Control_Valid (Slice (B, B_Length));
+       Encoder_Model.Frame_Control_Equal (MHR, Slice (B, B_Length))
+       and then Decoder_Model.Frame_Control_Valid (Slice (B, B_Length));
 
    procedure Lemma_Sequence_Number_Preserved
      (A        : Byte_Array;
@@ -82,16 +84,16 @@ is
      Ghost,
      Relaxed_Initialization => (A, B),
      Pre                    =>
-       A_Length >= MHR_Model.Get_Destination_PAN_ID_Offset (MHR)
+       A_Length >= Encoder_Model.Get_Destination_PAN_ID_Offset (MHR)
        and then A_Length <= B_Length
        and then A_Length <= A'Length
        and then B_Length <= B'Length
        and then Prefix_Initialized (A, A_Length)
        and then Prefix_Initialized (B, B_Length)
        and then Slice (A, A_Length) = Slice (B, A_Length)
-       and then MHR_Model.Sequence_Number_Equal (MHR, Slice (A, A_Length)),
+       and then Encoder_Model.Sequence_Number_Equal (MHR, Slice (A, A_Length)),
      Post                   =>
-       MHR_Model.Sequence_Number_Equal (MHR, Slice (B, B_Length));
+       Encoder_Model.Sequence_Number_Equal (MHR, Slice (B, B_Length));
 
    procedure Lemma_Addressing_Fields_Preserved
      (A        : Byte_Array;
@@ -103,22 +105,24 @@ is
      Ghost,
      Relaxed_Initialization => (A, B),
      Pre                    =>
-       A_Length >= MHR_Model.Get_Aux_Security_Header_Offset (MHR)
+       A_Length >= Encoder_Model.Get_Aux_Security_Header_Offset (MHR)
        and then A_Length <= B_Length
        and then A_Length <= A'Length
        and then B_Length <= B'Length
        and then Prefix_Initialized (A, A_Length)
        and then Prefix_Initialized (B, B_Length)
        and then Slice (A, A_Length) = Slice (B, A_Length)
-       and then MHR_Model.Destination_PAN_ID_Equal (MHR, Slice (A, A_Length))
-       and then MHR_Model.Destination_Address_Equal (MHR, Slice (A, A_Length))
-       and then MHR_Model.Source_PAN_ID_Equal (MHR, Slice (A, A_Length))
-       and then MHR_Model.Source_Address_Equal (MHR, Slice (A, A_Length)),
+       and then
+         Encoder_Model.Destination_PAN_ID_Equal (MHR, Slice (A, A_Length))
+       and then
+         Encoder_Model.Destination_Address_Equal (MHR, Slice (A, A_Length))
+       and then Encoder_Model.Source_PAN_ID_Equal (MHR, Slice (A, A_Length))
+       and then Encoder_Model.Source_Address_Equal (MHR, Slice (A, A_Length)),
      Post                   =>
-       MHR_Model.Destination_PAN_ID_Equal (MHR, Slice (B, B_Length))
-       and MHR_Model.Destination_Address_Equal (MHR, Slice (B, B_Length))
-       and MHR_Model.Source_PAN_ID_Equal (MHR, Slice (B, B_Length))
-       and MHR_Model.Source_Address_Equal (MHR, Slice (B, B_Length));
+       Encoder_Model.Destination_PAN_ID_Equal (MHR, Slice (B, B_Length))
+       and Encoder_Model.Destination_Address_Equal (MHR, Slice (B, B_Length))
+       and Encoder_Model.Source_PAN_ID_Equal (MHR, Slice (B, B_Length))
+       and Encoder_Model.Source_Address_Equal (MHR, Slice (B, B_Length));
 
    procedure Lemma_Frame_Counter_Preserved
      (A        : Byte_Array;
@@ -130,16 +134,16 @@ is
      Ghost,
      Relaxed_Initialization => (A, B),
      Pre                    =>
-       A_Length >= MHR_Model.Get_Key_ID_Offset (MHR)
+       A_Length >= Encoder_Model.Get_Key_ID_Offset (MHR)
        and then A_Length <= B_Length
        and then A_Length <= A'Length
        and then B_Length <= B'Length
        and then Prefix_Initialized (A, A_Length)
        and then Prefix_Initialized (B, B_Length)
        and then Slice (A, A_Length) = Slice (B, A_Length)
-       and then MHR_Model.Frame_Counter_Equal (MHR, Slice (A, A_Length)),
+       and then Encoder_Model.Frame_Counter_Equal (MHR, Slice (A, A_Length)),
      Post                   =>
-       MHR_Model.Frame_Counter_Equal (MHR, Slice (B, B_Length));
+       Encoder_Model.Frame_Counter_Equal (MHR, Slice (B, B_Length));
 
    --------------------
    -- Field Encoders --
@@ -157,9 +161,10 @@ is
        Buffer'Length >= 2
        and then MHR.Frame_Type in Beacon | Data | Ack | MAC_Command,
      Post                   =>
-       Length = MHR_Model.Get_Frame_Control_Length (MHR)
+       Length = Encoder_Model.Get_Frame_Control_Length (MHR)
        and then Prefix_Initialized (Buffer, Length)
-       and then MHR_Model.Frame_Control_Equal (MHR, Slice (Buffer, Length));
+       and then
+         Encoder_Model.Frame_Control_Equal (MHR, Slice (Buffer, Length));
 
    procedure Encode_Multipurpose_Frame_Control
      (MHR : Valid_MAC_Header; Buffer : out Byte_Array; Length : out Natural)
@@ -170,9 +175,10 @@ is
      Pre                    =>
        Buffer'Length >= 2 and then MHR.Frame_Type = Multipurpose,
      Post                   =>
-       Length = MHR_Model.Get_Frame_Control_Length (MHR)
+       Length = Encoder_Model.Get_Frame_Control_Length (MHR)
        and then Prefix_Initialized (Buffer, Length)
-       and then MHR_Model.Frame_Control_Equal (MHR, Slice (Buffer, Length));
+       and then
+         Encoder_Model.Frame_Control_Equal (MHR, Slice (Buffer, Length));
 
    procedure Encode_Frame_Control
      (MHR : Valid_MAC_Header; Buffer : out Byte_Array; Length : out Natural)
@@ -182,9 +188,10 @@ is
      Global                 => null,
      Pre                    => Buffer'Length >= 2,
      Post                   =>
-       Length = MHR_Model.Get_Frame_Control_Length (MHR)
+       Length = Encoder_Model.Get_Frame_Control_Length (MHR)
        and then Prefix_Initialized (Buffer, Length)
-       and then MHR_Model.Frame_Control_Equal (MHR, Slice (Buffer, Length));
+       and then
+         Encoder_Model.Frame_Control_Equal (MHR, Slice (Buffer, Length));
 
    procedure Encode_Sequence_Number
      (SN     : Variant_Sequence_Number;
@@ -206,7 +213,7 @@ is
        and then Slice (Buffer'Old, Offset'Old) = Slice (Buffer, Offset'Old)
 
        and then
-         MHR_Model.Sequence_Number_Equal_At
+         Encoder_Model.Sequence_Number_Equal_At
            (Slice (Buffer, Offset), Offset'Old, SN),
 
      Contract_Cases         =>
@@ -236,7 +243,7 @@ is
        and then Slice (Buffer'Old, Offset'Old) = Slice (Buffer, Offset'Old)
 
        and then
-         MHR_Model.PAN_ID_Equal_At
+         Encoder_Model.PAN_ID_Equal_At
            (Slice (Buffer, Offset), Offset'Old, PAN_ID),
 
      Contract_Cases         =>
@@ -269,7 +276,7 @@ is
        and then Offset = Offset'Old + Address_Length (Address.Mode)
 
        and then
-         MHR_Model.Address_Equal_At
+         Encoder_Model.Address_Equal_At
            (Slice (Buffer, Offset), Offset'Old, Address);
 
    procedure Encode_Addressing_Fields
@@ -282,18 +289,19 @@ is
      Global                 => null,
      Pre                    =>
        Buffer'Length >= Max_MHR_Length
-       and then Offset = MHR_Model.Get_Destination_PAN_ID_Offset (MHR)
+       and then Offset = Encoder_Model.Get_Destination_PAN_ID_Offset (MHR)
        and then Prefix_Initialized (Buffer, Offset),
      Post                   =>
-       Offset = MHR_Model.Get_Aux_Security_Header_Offset (MHR)
+       Offset = Encoder_Model.Get_Aux_Security_Header_Offset (MHR)
        and then Prefix_Initialized (Buffer, Offset)
        and then Slice (Buffer'Old, Offset'Old) = Slice (Buffer, Offset'Old)
        and then
-         MHR_Model.Destination_PAN_ID_Equal (MHR, Slice (Buffer, Offset))
+         Encoder_Model.Destination_PAN_ID_Equal (MHR, Slice (Buffer, Offset))
        and then
-         MHR_Model.Destination_Address_Equal (MHR, Slice (Buffer, Offset))
-       and then MHR_Model.Source_PAN_ID_Equal (MHR, Slice (Buffer, Offset))
-       and then MHR_Model.Source_Address_Equal (MHR, Slice (Buffer, Offset));
+         Encoder_Model.Destination_Address_Equal (MHR, Slice (Buffer, Offset))
+       and then Encoder_Model.Source_PAN_ID_Equal (MHR, Slice (Buffer, Offset))
+       and then
+         Encoder_Model.Source_Address_Equal (MHR, Slice (Buffer, Offset));
 
    procedure Encode_Security_Control
      (SC     : Security_Control_Field;
@@ -342,7 +350,7 @@ is
 
        --  The frame counter was written to Buffer
        and then
-         MHR_Model.Frame_Counter_Equal_At
+         Encoder_Model.Frame_Counter_Equal_At
            (Slice (Buffer, Offset), Offset'Old, Frame_Counter),
 
      Contract_Cases         =>
@@ -375,7 +383,7 @@ is
          Offset = Offset'Old + Key_ID_Length (Key_ID.Mode)
 
        and then
-         MHR_Model.Key_ID_Equal_At
+         Encoder_Model.Key_ID_Equal_At
            (Slice (Buffer, Offset), Offset'Old, Key_ID);
 
    procedure Encode_Aux_Security_Header
@@ -387,7 +395,7 @@ is
      Relaxed_Initialization => Buffer,
      Global                 => null,
      Pre                    =>
-       Offset = MHR_Model.Get_Aux_Security_Header_Offset (MHR)
+       Offset = Encoder_Model.Get_Aux_Security_Header_Offset (MHR)
        and then Buffer'Length >= Max_MHR_Length
        and then Offset <= Buffer'Length
        and then Prefix_Initialized (Buffer, Offset),
@@ -401,15 +409,16 @@ is
        and then
          Offset
          = Offset'Old
-           + MHR_Model.Get_Security_Control_Length (MHR)
-           + MHR_Model.Get_Frame_Counter_Length (MHR)
-           + MHR_Model.Get_Key_ID_Length (MHR)
+           + Encoder_Model.Get_Security_Control_Length (MHR)
+           + Encoder_Model.Get_Frame_Counter_Length (MHR)
+           + Encoder_Model.Get_Key_ID_Length (MHR)
 
        and then Slice (Buffer, Offset'Old) = Slice (Buffer'Old, Offset'Old)
 
-       and then MHR_Model.Security_Control_Equal (MHR, Slice (Buffer, Offset))
-       and then MHR_Model.Frame_Counter_Equal (MHR, Slice (Buffer, Offset))
-       and then MHR_Model.Key_ID_Equal (MHR, Slice (Buffer, Offset));
+       and then
+         Encoder_Model.Security_Control_Equal (MHR, Slice (Buffer, Offset))
+       and then Encoder_Model.Frame_Counter_Equal (MHR, Slice (Buffer, Offset))
+       and then Encoder_Model.Key_ID_Equal (MHR, Slice (Buffer, Offset));
 
    -----------------------
    -- Encode_MAC_Header --
@@ -429,7 +438,7 @@ is
           (GNATprove,
            Hide_Info,
            "Expression_Function_Body",
-           MHR_Model.Frame_Control_Equal);
+           Encoder_Model.Frame_Control_Equal);
 
       --  Keep a snapshot of the buffer state after each field is written
       --  to help prove that the contents of previously written fields are
@@ -515,7 +524,7 @@ is
       Lemma_Addressing_Fields_Preserved
         (Buffer_Addr, Length_Addr, Buffer, Length, MHR);
 
-      pragma Assert (Length = MHR_Model.MHR_Length_Excluding_IEs (MHR));
+      pragma Assert (Length = Encoder_Model.MHR_Length_Excluding_IEs (MHR));
 
    end Encode_MAC_Header;
 
@@ -596,7 +605,7 @@ is
         and then
           MHR.Aux_Security_Header.Frame_Counter.Suppression = Not_Suppressed
       then
-         N := MHR_Model.Get_Frame_Counter_Offset (MHR);
+         N := Encoder_Model.Get_Frame_Counter_Offset (MHR);
 
          pragma
            Assert
@@ -605,11 +614,12 @@ is
 
          pragma
            Assert
-             (MHR_Model.Frame_Counter_Equal_At
+             (Encoder_Model.Frame_Counter_Equal_At
                 (BS, N, MHR.Aux_Security_Header.Frame_Counter));
 
          pragma
-           Assert (MHR_Model.Frame_Counter_Equal (MHR, Slice (B, B_Length)));
+           Assert
+             (Encoder_Model.Frame_Counter_Equal (MHR, Slice (B, B_Length)));
       end if;
    end Lemma_Frame_Counter_Preserved;
 
@@ -910,7 +920,7 @@ is
             Offset => Offset);
 
          pragma Assert (Buffer_Old = Slice (Buffer, Buffer_Old'Length));
-         pragma Assert (Offset = MHR_Model.Get_Frame_Counter_Offset (MHR));
+         pragma Assert (Offset = Encoder_Model.Get_Frame_Counter_Offset (MHR));
 
          --  Write the Frame Counter
 
@@ -918,7 +928,7 @@ is
            (MHR.Aux_Security_Header.Frame_Counter, Buffer, Offset);
 
          pragma Assert (Buffer_Old = Slice (Buffer, Buffer_Old'Length));
-         pragma Assert (Offset = MHR_Model.Get_Key_ID_Offset (MHR));
+         pragma Assert (Offset = Encoder_Model.Get_Key_ID_Offset (MHR));
 
          Offset_FC := Offset;
          Assign_Slice
@@ -938,9 +948,9 @@ is
 
          pragma
            Assert
-             (MHR_Model.Frame_Counter_Equal_At
+             (Encoder_Model.Frame_Counter_Equal_At
                 (Slice (Buffer, Offset),
-                 MHR_Model.Get_Frame_Counter_Offset (MHR),
+                 Encoder_Model.Get_Frame_Counter_Offset (MHR),
                  MHR.Aux_Security_Header.Frame_Counter));
       end if;
    end Encode_Aux_Security_Header;

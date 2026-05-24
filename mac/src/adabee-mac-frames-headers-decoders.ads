@@ -3,7 +3,8 @@
 --
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
-with AdaBee.MAC.Frames.Headers.MHR_Model;
+with AdaBee.MAC.Frames.Headers.Decoder_Model;
+with AdaBee.MAC.Frames.Headers.Encoder_Model;
 with AdaBee.MAC.Frames.Info_Elements.Headers;
 
 --  @summary
@@ -33,12 +34,12 @@ is
        Length <= Buffer'Length
        and then Length <= Max_MHR_Length
        and then
-         (Result = Success) = MHR_Model.Is_MHR_Valid_Excluding_IEs (Buffer)
+         (Result = Success) = Decoder_Model.Is_MHR_Valid_Excluding_IEs (Buffer)
        and then
          (if Result = Success
           then
-            Length = MHR_Model.MHR_Length_Excluding_IEs (Buffer)
-            and then MHR_Model.Is_Valid_Decoding (MHR, Buffer));
+            Length = Decoder_Model.MHR_Length_Excluding_IEs (Buffer)
+            and then Encoder_Model.MHR_Equal_Excluding_IEs (MHR, Buffer));
    --  Decode the first part of the MAC Header, up to (and including) the
    --  auxiliary security header.
    --
@@ -141,12 +142,12 @@ is
      Global => null,
      Pre    => Buffer'Length > 0,
      Post   =>
-       (Result = Success) = MHR_Model.Is_MHR_Valid (Buffer)
+       (Result = Success) = Decoder_Model.Is_MHR_Valid (Buffer)
 
        and then
          (if Result = Success
           then
-            MHR_Model.Is_Valid_Decoding (MHR, Buffer)
+            Encoder_Model.MHR_Equal_Excluding_IEs (MHR, Buffer)
 
             --  If header IEs are present, then the range
             --  Header_IE_First .. Header_IE_Last in Buffer contains the
@@ -168,21 +169,21 @@ is
             --  MAC payload
             and then
               (MAC_Payload_First <= MAC_Payload_Last)
-              = MHR_Model.Is_MAC_Payload_Present (Buffer)
+              = Decoder_Model.Is_MAC_Payload_Present (Buffer)
             and then
-              (if MHR_Model.Is_MAC_Payload_Present (Buffer)
+              (if Decoder_Model.Is_MAC_Payload_Present (Buffer)
                then
                  MAC_Payload_First
-                 = Buffer'First + MHR_Model.Get_MAC_Payload_Offset (Buffer)
+                 = Buffer'First + Decoder_Model.Get_MAC_Payload_Offset (Buffer)
                  and then
                    MAC_Payload_Last
                    = Buffer'First
-                     + MHR_Model.Get_MAC_Payload_Offset (Buffer)
-                     + (MHR_Model.Get_MAC_Payload_Length (Buffer) - 1))
+                     + Decoder_Model.Get_MAC_Payload_Offset (Buffer)
+                     + (Decoder_Model.Get_MAC_Payload_Length (Buffer) - 1))
 
             --  Has_Payload_IEs is correctly set according to the formal model
             and then
-              Has_Payload_IEs = MHR_Model.Is_Payload_IE_Present (Buffer));
+              Has_Payload_IEs = Decoder_Model.Is_Payload_IE_Present (Buffer));
 
    --  Decode the MAC header (MHR) part of a frame.
    --

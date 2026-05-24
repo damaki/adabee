@@ -1,5 +1,5 @@
 --
---  Copyright 2024 (C) Daniel King
+--  Copyright 2026 (C) Daniel King
 --
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
@@ -32,12 +32,13 @@ is
      Pre     =>
        Buffer'Length > 0
        and then
-         MHR_Model.Get_Frame_Type (Buffer)
+         Decoder_Model.Get_Frame_Type (Buffer)
          not in Multipurpose | Unsupported_Frame_Types,
      Post    =>
-       (Result = Success) = MHR_Model.Frame_Control_Valid (Buffer)
+       (Result = Success) = Decoder_Model.Frame_Control_Valid (Buffer)
        and then
-         (if Result = Success then Frame_Control = MHR_Model.Get_FC (Buffer));
+         (if Result = Success
+          then Frame_Control = Decoder_Model.Get_FC (Buffer));
 
    procedure Decode_MP_Control_Field
      (Buffer        : Byte_Array;
@@ -52,25 +53,25 @@ is
        Buffer'Length > 0
        and then To_Frame_Type (Buffer (Buffer'First)) = Multipurpose,
      Post    =>
-       (Result = Success) = MHR_Model.Frame_Control_Valid (Buffer)
+       (Result = Success) = Decoder_Model.Frame_Control_Valid (Buffer)
        and then Length <= 2
        and then Length <= Buffer'Length
        and then
          (if Result = Success
           then
-            Length = MHR_Model.Get_Frame_Control_Length (Buffer)
+            Length = Decoder_Model.Get_Frame_Control_Length (Buffer)
             and then
-              (if MHR_Model.Get_MP_S_FC (Buffer).Long_Frame_Control = Long
-               then Frame_Control = MHR_Model.Get_MP_L_FC (Buffer)
+              (if Decoder_Model.Get_MP_S_FC (Buffer).Long_Frame_Control = Long
+               then Frame_Control = Decoder_Model.Get_MP_L_FC (Buffer)
                else
                  Frame_Control.Frame_Type = Multipurpose
                  and then Frame_Control.Long_Frame_Control = Short
                  and then
                    Frame_Control.Dest_Address_Mode
-                   = MHR_Model.Get_Dest_Address_Mode (Buffer)
+                   = Decoder_Model.Get_Dest_Address_Mode (Buffer)
                  and then
                    Frame_Control.Src_Address_Mode
-                   = MHR_Model.Get_Src_Address_Mode (Buffer)
+                   = Decoder_Model.Get_Src_Address_Mode (Buffer)
                  and then Frame_Control.PAN_ID_Present = Not_Present
                  and then Frame_Control.Security_Enabled = Disabled
                  and then Frame_Control.SN_Suppression = Suppressed
@@ -89,13 +90,13 @@ is
      Depends => (Sequence_Number => (Buffer, Offset), Offset => Offset),
      Pre     =>
        not Sequence_Number'Constrained
-       and then MHR_Model.Frame_Control_Valid (Buffer)
-       and then MHR_Model.Is_Sequence_Number_Present (Buffer)
-       and then Offset = MHR_Model.Get_Sequence_Number_Offset (Buffer)
+       and then Decoder_Model.Frame_Control_Valid (Buffer)
+       and then Decoder_Model.Is_Sequence_Number_Present (Buffer)
+       and then Offset = Decoder_Model.Get_Sequence_Number_Offset (Buffer)
        and then Offset < Buffer'Length,
      Post    =>
        Offset = Offset'Old + 1
-       and then Sequence_Number = MHR_Model.Get_Sequence_Number (Buffer);
+       and then Sequence_Number = Decoder_Model.Get_Sequence_Number (Buffer);
 
    procedure Decode_PAN_ID_Field
      (Buffer : Byte_Array;
@@ -109,7 +110,8 @@ is
      Post    =>
        Offset = Offset'Old + 2
        and then PAN_ID.Present
-       and then PAN_ID.PAN_ID = MHR_Model.Get_PAN_ID_At (Buffer, Offset'Old);
+       and then
+         PAN_ID.PAN_ID = Decoder_Model.Get_PAN_ID_At (Buffer, Offset'Old);
 
    procedure Decode_Extended_Address_Field
      (Buffer  : Byte_Array;
@@ -124,7 +126,7 @@ is
        Offset = Offset'Old + 8
        and then Address.Mode = Extended
        and then
-         Address = MHR_Model.Get_Address_At (Buffer, Offset'Old, Extended);
+         Address = Decoder_Model.Get_Address_At (Buffer, Offset'Old, Extended);
 
    procedure Decode_Short_Address_Field
      (Buffer  : Byte_Array;
@@ -138,7 +140,8 @@ is
      Post    =>
        Offset = Offset'Old + 2
        and then Address.Mode = Short
-       and then Address = MHR_Model.Get_Address_At (Buffer, Offset'Old, Short);
+       and then
+         Address = Decoder_Model.Get_Address_At (Buffer, Offset'Old, Short);
 
    procedure Decode_Aux_Security_Header
      (Buffer : Byte_Array;
@@ -156,23 +159,24 @@ is
      Pre     =>
        not ASH'Constrained
        and then Offset <= Buffer'Length
-       and then MHR_Model.Frame_Control_Valid (Buffer)
-       and then MHR_Model.Is_Aux_Security_Header_Present (Buffer)
-       and then Offset = MHR_Model.Get_Aux_Security_Header_Offset (Buffer),
+       and then Decoder_Model.Frame_Control_Valid (Buffer)
+       and then Decoder_Model.Is_Aux_Security_Header_Present (Buffer)
+       and then Offset = Decoder_Model.Get_Aux_Security_Header_Offset (Buffer),
      Post    =>
        (Result = Success)
-       = (MHR_Model.Security_Control_Valid (Buffer)
+       = (Decoder_Model.Security_Control_Valid (Buffer)
           and then
             Offset'Old
             <= Buffer'Length
-               - MHR_Model.Get_Aux_Security_Header_Length (Buffer))
+               - Decoder_Model.Get_Aux_Security_Header_Length (Buffer))
        and then Offset - Offset'Old <= Max_Aux_Security_Header_Length
        and then
          (if Result = Success
           then
             (Offset
-             = Offset'Old + MHR_Model.Get_Aux_Security_Header_Length (Buffer)
-             and then ASH = MHR_Model.Get_Aux_Security_Header (Buffer))
+             = Offset'Old
+               + Decoder_Model.Get_Aux_Security_Header_Length (Buffer)
+             and then ASH = Decoder_Model.Get_Aux_Security_Header (Buffer))
           else Offset in Offset'Old .. Buffer'Length);
 
    procedure Decode_Security_Control_Field
@@ -188,22 +192,22 @@ is
         Result => (Buffer, Offset),
         Offset => (Buffer, Offset)),
      Pre     =>
-       MHR_Model.Frame_Control_Valid (Buffer)
-       and then MHR_Model.Is_Security_Control_Present (Buffer)
-       and then Offset = MHR_Model.Get_Security_Control_Offset (Buffer),
+       Decoder_Model.Frame_Control_Valid (Buffer)
+       and then Decoder_Model.Is_Security_Control_Present (Buffer)
+       and then Offset = Decoder_Model.Get_Security_Control_Offset (Buffer),
      Post    =>
        (Result = Success)
-       = (MHR_Model.Security_Control_Valid (Buffer)
+       = (Decoder_Model.Security_Control_Valid (Buffer)
           and then
             Buffer'Length
-            >= MHR_Model.Get_Security_Control_Offset (Buffer)
-               + MHR_Model.Get_Security_Control_Length (Buffer))
+            >= Decoder_Model.Get_Security_Control_Offset (Buffer)
+               + Decoder_Model.Get_Security_Control_Length (Buffer))
        and then
          (if Result = Success
           then
             Offset
-            = Offset'Old + MHR_Model.Get_Security_Control_Length (Buffer)
-            and then SC = MHR_Model.Get_Security_Control (Buffer)
+            = Offset'Old + Decoder_Model.Get_Security_Control_Length (Buffer)
+            and then SC = Decoder_Model.Get_Security_Control (Buffer)
           else Offset = Offset'Old);
 
    procedure Decode_Frame_Counter_Field
@@ -220,21 +224,22 @@ is
         Offset => (Buffer, Offset)),
      Pre     =>
        not FC'Constrained
-       and then MHR_Model.Security_Control_Valid (Buffer)
-       and then MHR_Model.Is_Frame_Counter_Present (Buffer)
-       and then Offset = MHR_Model.Get_Frame_Counter_Offset (Buffer),
+       and then Decoder_Model.Security_Control_Valid (Buffer)
+       and then Decoder_Model.Is_Frame_Counter_Present (Buffer)
+       and then Offset = Decoder_Model.Get_Frame_Counter_Offset (Buffer),
      Post    =>
        (Result = Success)
        = (Buffer'Length
-          >= MHR_Model.Get_Frame_Counter_Offset (Buffer)
-             + MHR_Model.Get_Frame_Counter_Length (Buffer))
+          >= Decoder_Model.Get_Frame_Counter_Offset (Buffer)
+             + Decoder_Model.Get_Frame_Counter_Length (Buffer))
        and then
          (if Result = Success
           then
-            (Offset = Offset'Old + MHR_Model.Get_Frame_Counter_Length (Buffer)
+            (Offset
+             = Offset'Old + Decoder_Model.Get_Frame_Counter_Length (Buffer)
              and then Offset <= Buffer'Length
              and then FC.Suppression = Not_Suppressed
-             and then FC = MHR_Model.Get_Frame_Counter (Buffer))
+             and then FC = Decoder_Model.Get_Frame_Counter (Buffer))
           else Offset = Offset'Old and then FC.Suppression = Suppressed);
 
    procedure Decode_Key_ID_Field
@@ -252,23 +257,24 @@ is
         Offset => (Buffer, Mode, Offset)),
      Pre     =>
        not Key_ID'Constrained
-       and then MHR_Model.Security_Control_Valid (Buffer)
-       and then MHR_Model.Is_Aux_Security_Header_Present (Buffer)
-       and then MHR_Model.Get_Key_ID_Mode (Buffer) = Mode
+       and then Decoder_Model.Security_Control_Valid (Buffer)
+       and then Decoder_Model.Is_Aux_Security_Header_Present (Buffer)
+       and then Decoder_Model.Get_Key_ID_Mode (Buffer) = Mode
        and then
-         (if Mode /= 0 then Offset = MHR_Model.Get_Key_ID_Offset (Buffer)),
+         (if Mode /= 0 then Offset = Decoder_Model.Get_Key_ID_Offset (Buffer)),
      Post    =>
        (Result = Success)
        = (Mode = 0
           or else
             Buffer'Length
-            >= MHR_Model.Get_Key_ID_Offset (Buffer)
-               + MHR_Model.Get_Key_ID_Length (Buffer))
+            >= Decoder_Model.Get_Key_ID_Offset (Buffer)
+               + Decoder_Model.Get_Key_ID_Length (Buffer))
        and then
          (if Result = Success
           then
-            Key_ID = MHR_Model.Get_Key_ID (Buffer)
-            and then Offset = Offset'Old + MHR_Model.Get_Key_ID_Length (Buffer)
+            Key_ID = Decoder_Model.Get_Key_ID (Buffer)
+            and then
+              Offset = Offset'Old + Decoder_Model.Get_Key_ID_Length (Buffer)
           else Offset = Offset'Old);
 
    procedure Decode_Normal_MAC_Header
@@ -281,18 +287,18 @@ is
      Pre    =>
        Buffer'Length > 0
        and then
-         MHR_Model.Get_Frame_Type (Buffer)
+         Decoder_Model.Get_Frame_Type (Buffer)
          in Beacon | Data | Ack | MAC_Command,
      Post   =>
        Length <= Buffer'Length
        and then Length <= Max_MHR_Length
        and then
-         (Result = Success) = MHR_Model.Is_MHR_Valid_Excluding_IEs (Buffer)
+         (Result = Success) = Decoder_Model.Is_MHR_Valid_Excluding_IEs (Buffer)
        and then
          (if Result = Success
           then
-            (Length = MHR_Model.MHR_Length_Excluding_IEs (Buffer)
-             and then MHR_Model.Is_Valid_Decoding (MHR, Buffer)));
+            (Length = Decoder_Model.MHR_Length_Excluding_IEs (Buffer)
+             and then Encoder_Model.MHR_Equal_Excluding_IEs (MHR, Buffer)));
 
    procedure Decode_Multipurpose_MAC_Header
      (Buffer : Byte_Array;
@@ -303,17 +309,18 @@ is
      Global => null,
      Pre    =>
        Buffer'Length > 0
-       and then MHR_Model.Get_Frame_Type (Buffer) = Multipurpose,
+       and then Decoder_Model.Get_Frame_Type (Buffer) = Multipurpose,
      Post   =>
        (Length <= Buffer'Length
         and then Length <= Max_MHR_Length
         and then
-          (Result = Success) = MHR_Model.Is_MHR_Valid_Excluding_IEs (Buffer)
+          (Result = Success)
+          = Decoder_Model.Is_MHR_Valid_Excluding_IEs (Buffer)
         and then
           (if Result = Success
            then
-             (Length = MHR_Model.MHR_Length_Excluding_IEs (Buffer)
-              and then MHR_Model.Is_Valid_Decoding (MHR, Buffer))));
+             (Length = Decoder_Model.MHR_Length_Excluding_IEs (Buffer)
+              and then Encoder_Model.MHR_Equal_Excluding_IEs (MHR, Buffer))));
 
    ------------------------
    -- Decode_MHR_Partial --
@@ -467,11 +474,11 @@ is
                   Result            => Result);
 
                if Result = Success then
-                  MHR_Model.Header_IE_Model.Lemma_Valid_IE_List_Preserved
+                  Decoder_Model.Header_IE_Model.Lemma_Valid_IE_List_Preserved
                     (Buffer (Header_IE_First .. Buffer'Last),
                      Buffer (Header_IE_First .. Header_IE_Last));
 
-                  MHR_Model.Header_IE_Model.Lemma_IE_List_Length_Preserved
+                  Decoder_Model.Header_IE_Model.Lemma_IE_List_Length_Preserved
                     (Buffer (Header_IE_First .. Buffer'Last),
                      Buffer (Header_IE_First .. Header_IE_Last));
                end if;
@@ -542,7 +549,7 @@ is
          return;
       end if;
 
-      pragma Assert (MHR_Model.Frame_Control_Valid (Buffer));
+      pragma Assert (Decoder_Model.Frame_Control_Valid (Buffer));
 
       MHR.Frame_Type := Frame_Control.Frame_Type;
       MHR.Frame_Pending := Frame_Control.Frame_Pending;
@@ -695,7 +702,7 @@ is
       pragma
         Assert
           (MHR.Source_PAN_ID
-           = MHR_Model.Get_Decompressed_Source_PAN_ID (Buffer));
+           = Decoder_Model.Get_Decompressed_Source_PAN_ID (Buffer));
 
    end Decode_Normal_MAC_Header;
 
@@ -1177,8 +1184,8 @@ is
                  = (Mode = 0
                     or else
                       Buffer'Length
-                      >= MHR_Model.Get_Key_ID_Offset (Buffer)
-                         + MHR_Model.Get_Key_ID_Length (Buffer)));
+                      >= Decoder_Model.Get_Key_ID_Offset (Buffer)
+                         + Decoder_Model.Get_Key_ID_Length (Buffer)));
 
          when 1 =>
             if Offset >= Buffer'Length then
@@ -1201,8 +1208,8 @@ is
                  = (Mode = 0
                     or else
                       Buffer'Length
-                      >= MHR_Model.Get_Key_ID_Offset (Buffer)
-                         + MHR_Model.Get_Key_ID_Length (Buffer)));
+                      >= Decoder_Model.Get_Key_ID_Offset (Buffer)
+                         + Decoder_Model.Get_Key_ID_Length (Buffer)));
 
          when 2 =>
             if Offset >= Buffer'Length - 4 then

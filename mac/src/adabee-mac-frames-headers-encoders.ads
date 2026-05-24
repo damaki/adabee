@@ -7,7 +7,7 @@
 --  @summary
 --  Encoders for IEEE 802.15.4 MAC headers
 
-with AdaBee.MAC.Frames.Headers.MHR_Model;
+with AdaBee.MAC.Frames.Headers.Encoder_Model;
 
 package AdaBee.MAC.Frames.Headers.Encoders
   with Pure, SPARK_Mode, Always_Terminates
@@ -24,9 +24,9 @@ is
        (Length <= Buffer'Length
         and then
           Buffer (Buffer'First .. Buffer'First + (Length - 1))'Initialized
-        and then Length = MHR_Model.MHR_Length_Excluding_IEs (MHR)
+        and then Length = Encoder_Model.MHR_Length_Excluding_IEs (MHR)
         and then
-          MHR_Model.MHR_Equal
+          Encoder_Model.MHR_Equal_Excluding_IEs
             (MHR, Buffer (Buffer'First .. Buffer'First + (Length - 1))));
    --  Encode a MAC header into a byte array.
    --
