@@ -167,11 +167,16 @@ is
      (Frame : Byte_Array; Offset : Natural; Mode : Key_ID_Mode_Field)
       return Variant_Key_ID
    is (case Mode is
+         --  Mode 0 indicates the Key ID is not present
          when 0 => Variant_Key_ID'(Mode => 0),
+
+         --  Mode 1 has only the 1-byte Key Index field
          when 1 =>
            Variant_Key_ID'
              (Mode      => 1,
               Key_Index => Key_Index_Field (Frame (Frame'First + Offset))),
+
+         --  Mode 1 has the 1-byte Key Index and 4-byte Key Source fields
          when 2 =>
            Variant_Key_ID'
              (Mode         => 2,
@@ -180,6 +185,8 @@ is
                 Key_Source_Field
                   (Frame
                      (Frame'First + Offset + 1 .. Frame'First + Offset + 4))),
+
+         --  Mode 1 has the 1-byte Key Index and 8-byte Key Source fields
          when 3 =>
            Variant_Key_ID'
              (Mode         => 3,
@@ -195,6 +202,9 @@ is
    -----------------------------
    -- Frame Control Accessors --
    -----------------------------
+
+   --  Ref IEEE 802.15.4-2024 Section 7.2.2 (general frame types)
+   --  Ref IEEE 802.15.4-2024 Section 7.3.5 (multipurpose frame types)
 
    function Frame_Control_Valid (Frame : Byte_Array) return Boolean
    is (Frame'Length > 0
@@ -229,6 +239,9 @@ is
            Get_MP_S_FC (Frame).Dest_Address_Mode)
    with Pre => Frame_Control_Valid (Frame);
    --  Read the destination addressing mode from the frame control field
+   --
+   --  The Destination Address Mode is always present in both the general
+   --  and multipurpose MAC Frame Control fields.
 
    function Get_Src_Address_Mode
      (Frame : Byte_Array) return Valid_Address_Mode_Field
@@ -240,6 +253,9 @@ is
            Get_MP_S_FC (Frame).Src_Address_Mode)
    with Pre => Frame_Control_Valid (Frame);
    --  Read the source addressing mode from the frame control field
+   --
+   --  The Source Address Mode is always present in both the general
+   --  and multipurpose MAC Frame Control fields.
 
    function Get_Frame_Control_Length (Frame : Byte_Array) return Natural
    is (case Supported_Frame_Types (Get_Frame_Type (Frame)) is
@@ -260,10 +276,16 @@ is
    is (if Get_Frame_Type (Frame) /= Multipurpose
        then Get_FC (Frame).Frame_Version
        elsif Get_MP_S_FC (Frame).Long_Frame_Control = Short
-       then IEEE_802_15_4_2003
+       then Frame_Version_Field'First
        else Get_MP_L_FC (Frame).Frame_Version)
    with Pre => Frame_Control_Valid (Frame);
    --  Read the frame version from the frame control field
+   --
+   --  The Frame Version field is present except for multipurpose frame types
+   --  using the short frame control format, in which case it is assumed to
+   --  be zero.
+   --
+   --  Ref. IEEE 802.15.4-2024 Section 7.2.2.10
 
    function Get_IE_Present (Frame : Byte_Array) return IE_Present_Field
    is (if Get_Frame_Type (Frame) /= Multipurpose
@@ -273,6 +295,13 @@ is
        else Get_MP_L_FC (Frame).IE_Present)
    with Pre => Frame_Control_Valid (Frame);
    --  Read the IE present bit from the frame control field
+   --
+   --  The Frame Version field is present except for multipurpose frame types
+   --  using the short frame control format, in which case it is assumed to
+   --  be zero.
+   --
+   --  Ref. IEEE 802.15.4-2024 Section 7.2.2.8 (general frame types)
+   --  Ref. IEEE 802.15.4-2024 Section 7.3.5.12 (multipurpose frame type)
 
    function Get_Ack_Required (Frame : Byte_Array) return Ack_Required_Field
    is (if Get_Frame_Type (Frame) /= Multipurpose
@@ -282,6 +311,13 @@ is
        else Get_MP_L_FC (Frame).Ack_Required)
    with Pre => Frame_Control_Valid (Frame);
    --  Read the frame ack required (AR) bit from the frame control field
+   --
+   --  The Ack Required field is present except for multipurpose frame types
+   --  using the short frame control format, in which case it is assumed to
+   --  be zero.
+   --
+   --  Ref. IEEE 802.15.4-2024 Section 7.2.2.5 (general frame types)
+   --  Ref. IEEE 802.15.4-2024 Section 7.3.5.11 (multipurpose frame type)
 
    function Get_Frame_Pending (Frame : Byte_Array) return Frame_Pending_Field
    is (if Get_Frame_Type (Frame) /= Multipurpose
@@ -291,6 +327,13 @@ is
        else Get_MP_L_FC (Frame).Frame_Pending)
    with Pre => Frame_Control_Valid (Frame);
    --  Read the frame pending bit from the frame control field
+   --
+   --  The Frame Pending field is present except for multipurpose frame types
+   --  using the short frame control format, in which case it is assumed to
+   --  be zero.
+   --
+   --  Ref. IEEE 802.15.4-2024 Section 7.2.2.4 (general frame types)
+   --  Ref. IEEE 802.15.4-2024 Section 7.3.5.9 (multipurpose frame type)
 
    function Get_Security_Enabled
      (Frame : Byte_Array) return Security_Enabled_Field
@@ -301,6 +344,13 @@ is
        else Get_MP_L_FC (Frame).Security_Enabled)
    with Pre => Frame_Control_Valid (Frame);
    --  Read the frame pending bit from the frame control field
+   --
+   --  The Security Enabled field is present except for multipurpose frame
+   --  types using the short frame control format, in which case it is assumed
+   --  to be zero.
+   --
+   --  Ref. IEEE 802.15.4-2024 Section 7.2.2.3 (general frame types)
+   --  Ref. IEEE 802.15.4-2024 Section 7.3.5.7 (multipurpose frame type)
 
    function Get_Seq_Number_Suppression
      (Frame : Byte_Array) return Seq_Number_Suppression_Field
@@ -311,10 +361,27 @@ is
        else Get_MP_L_FC (Frame).SN_Suppression)
    with Pre => Frame_Control_Valid (Frame);
    --  Read the sequence number suppression bit from the frame control field
+   --
+   --  The Sequence Number Suppression field is present except for multipurpose
+   --  frame types using the short frame control format, in which case it is
+   --  assumed to be zero.
+   --
+   --  Ref. IEEE 802.15.4-2024 Section 7.2.2.7 (general frame types)
+   --  Ref. IEEE 802.15.4-2024 Section 7.3.5.8 (multipurpose frame type)
 
    ---------------------------
    -- Sequence Number Field --
    ---------------------------
+
+   --  Ref. IEEE 802.15.4-2024 Section 7.2.3
+   --
+   --  The Sequence Number field is an 8-bit value which is optional in the
+   --  MAC header.
+   --
+   --  Its presence in the frame is determined by the Frame Control field.
+   --
+   --  When it is present, it is located immediately after the Frame Control
+   --  field.
 
    function Is_Sequence_Number_Present (Frame : Byte_Array) return Boolean
    is (case Supported_Frame_Types (Get_Frame_Type (Frame)) is
@@ -329,7 +396,7 @@ is
      Post =>
        (if Is_Sequence_Number_Present'Result
         then Get_Frame_Control_Length (Frame) = 2);
-   --  Returns True iff the frame contains the sequence number field
+   --  Returns True if and only if the frame contains the sequence number field
 
    function Get_Sequence_Number_Offset (Frame : Byte_Array) return Natural
    is (Get_Frame_Control_Length (Frame))
@@ -373,6 +440,16 @@ is
    ------------------------------
    -- Destination PAN ID Field --
    ------------------------------
+
+   --  Ref. IEEE 802.15.4-2024 Section 7.2.4
+   --
+   --  The Sequence Number field is a 16-bit value which is optional in the
+   --  MAC header.
+   --
+   --  Its presence in the frame is determined by the Frame Control field.
+   --
+   --  When it is present, it is located immediately after the Sequence Number
+   --  field.
 
    function Is_Destination_PAN_ID_Present (Frame : Byte_Array) return Boolean
    is (case Supported_Frame_Types (Get_Frame_Type (Frame)) is
@@ -428,6 +505,16 @@ is
    -- Destination Address Field --
    -------------------------------
 
+   --  Ref. IEEE 802.15.4-2024 Section 7.2.5
+   --
+   --  The Destination Address field is either a short (16-bit) or extended
+   --  (64-bit) value which is optional in the MAC header.
+   --
+   --  Its presence in the frame is determined by the Frame Control field.
+   --
+   --  When it is present, it is located immediately after the Destination PAN
+   --  ID field.
+
    function Get_Destination_Address_Offset (Frame : Byte_Array) return Natural
    is (Get_Destination_PAN_ID_Offset (Frame)
        + Get_Destination_PAN_ID_Length (Frame))
@@ -460,6 +547,18 @@ is
    -------------------------
    -- Source PAN ID Field --
    -------------------------
+
+   --  Ref. IEEE 802.15.4-2024 Section 7.2.6
+   --
+   --  The Source PAN ID field is a 16-bit value which is optional in the
+   --  MAC header.
+   --
+   --  Its presence in the frame is determined by the Frame Control field and
+   --  the rules described in IEEE 802.15.4-2024 Section 7.2.2.6. These rules
+   --  are formally specified in package AdaBee.MAC.Frames.Headers.PAN_ID_Model
+   --
+   --  When it is present, it is located immediately after the Destination
+   --  Address field.
 
    function Is_Source_PAN_ID_Present (Frame : Byte_Array) return Boolean
    is (case Supported_Frame_Types (Get_Frame_Type (Frame)) is
@@ -537,6 +636,16 @@ is
    -- Source Address Field --
    --------------------------
 
+   --  Ref. IEEE 802.15.4-2024 Section 7.2.7
+   --
+   --  The Source Address field is either a short (16-bit) or extended
+   --  (64-bit) value which is optional in the MAC header.
+   --
+   --  Its presence in the frame is determined by the Frame Control field.
+   --
+   --  When it is present, it is located immediately after the Source PAN
+   --  ID field.
+
    function Get_Source_Address_Offset (Frame : Byte_Array) return Natural
    is (Get_Source_PAN_ID_Offset (Frame) + Get_Source_PAN_ID_Length (Frame))
    with
@@ -568,6 +677,17 @@ is
    -------------------------------------
    -- Auxiliary Security Header Field --
    -------------------------------------
+
+   --  Ref. IEEE 802.15.4-2024 Sections 7.2.8 and 9.4
+   --
+   --  The Auxiliary Security Header field is either a variable-length
+   --  composite field and is optional in the MAC header.
+   --
+   --  Its presence in the frame is determined by the Frame Control field.
+   --
+   --  When it is present, it is located immediately after the Source Address
+   --  field, and consists of the Security Control, Frame Counter (optional),
+   --  and Key ID (optional) fields.
 
    function Is_Aux_Security_Header_Present (Frame : Byte_Array) return Boolean
    is (case Supported_Frame_Types (Get_Frame_Type (Frame)) is
@@ -607,6 +727,16 @@ is
    -- Security Control Field --
    ----------------------------
 
+   --  Ref. IEEE 802.15.4-2024 Section 9.4.2
+   --
+   --  The Security Control field is a 1-byte field inside the Auxiliary
+   --  Security Header.
+   --
+   --  Its presence in the frame is determined by the Frame Control field.
+   --
+   --  When it is present, it is located immediately after the Source Address
+   --  field.
+
    function Is_Security_Control_Present (Frame : Byte_Array) return Boolean
    renames Is_Aux_Security_Header_Present;
 
@@ -645,6 +775,16 @@ is
    -------------------------
    -- Frame Counter Field --
    -------------------------
+
+   --  Ref. IEEE 802.15.4-2024 Section 9.4.3
+   --
+   --  The Security Control field is an optional 4-byte field inside the
+   --  Auxiliary Security Header.
+   --
+   --  Its presence in the frame is determined by the Security Control field.
+   --
+   --  When it is present, it is located immediately after the Security Control
+   --  field.
 
    function Is_Frame_Counter_Present (Frame : Byte_Array) return Boolean
    is (Is_Security_Control_Present (Frame)
@@ -689,6 +829,16 @@ is
    -- Key Identifier Field --
    --------------------------
 
+   --  Ref. IEEE 802.15.4-2024 Section 9.4.4
+   --
+   --  The Security Control field is an optional 1, 5, or 9-byte field inside
+   --  the Auxiliary Security Header.
+   --
+   --  Its presence in the frame is determined by the Security Control field.
+   --
+   --  When it is present, it is located immediately after the Frame Counter
+   --  field.
+
    function Is_Key_ID_Present (Frame : Byte_Array) return Boolean
    is (Is_Security_Control_Present (Frame)
        and then Get_Key_ID_Mode (Frame) /= 0)
@@ -731,6 +881,15 @@ is
    -- Header IEs --
    ----------------
 
+   --  These functions model the presence, position, and length of the header
+   --  information elements (IEs) in the MAC header.
+   --
+   --  When present, the header IEs are located immediately after the
+   --  Auxiliary Security Header.
+   --
+   --  These are based on the formal specification for header IE lists in
+   --  package AdaBee.MAC.Frames.Info_Elements.Headers.Lists.
+
    function Is_Header_IEs_Present (Frame : Byte_Array) return Boolean
    is (Get_IE_Present (Frame) = Present)
    with Pre => Frame_Control_Valid (Frame);
@@ -768,6 +927,12 @@ is
    -----------------
    -- MAC Payload --
    -----------------
+
+   --  These functions model the presence, position, and length of the
+   --  MAC payload field.
+   --
+   --  The MAC payload occupies the part of the frame after the MAC header
+   --  (specifically after the header IEs) up to the start of the FCS field.
 
    function Is_MAC_Payload_Present (Frame : Byte_Array) return Boolean
    is (Get_Frame_Control_Length (Frame)
@@ -808,6 +973,18 @@ is
    -- Payload IEs --
    -----------------
 
+   --  This formal specification only models the presence of payload IEs.
+   --
+   --  Payload IEs are present when both of the following conditions are true:
+   --   1. the Frame Control field indicates that header IEs are present; and
+   --   2. the header IE list is terminated by a "HT1" IE.
+   --
+   --  Ref. IEEE 802.15.4-2024 Section 7.4.1.
+   --
+   --  The content of the payload IEs are not modelled here, but a formal
+   --  model of the payload IE list is given in package
+   --  AdaBee.MAC.Frames.Info_Elements.Payloads.Lists.
+
    function Is_Payload_IE_Present (Frame : Byte_Array) return Boolean
    is (Is_MAC_Payload_Present (Frame)
        and then Is_Header_IEs_Present (Frame)
@@ -823,6 +1000,12 @@ is
    -----------------------
    -- MAC Header Length --
    -----------------------
+
+   --  These functions model the overall length of the MAC header.
+   --
+   --  Two lengths are modelled: the length of the MAC header excluding header
+   --  IEs, and the length of the MAC header with all fields (including header
+   --  IEs).
 
    function MHR_Length_Excluding_IEs (Frame : Byte_Array) return Natural
    is (Get_Frame_Control_Length (Frame)
@@ -858,6 +1041,13 @@ is
    -------------------------
    -- MAC Header Validity --
    -------------------------
+
+   --  These functions specify when the content of a MAC header is considered
+   --  to be "valid".
+   --
+   --  A MAC header is valid when it contains no reserved values, and when the
+   --  length of the frame buffer is long enough to include all fields that
+   --  are indicated in the Frame Control and Security Control fields.
 
    function Is_MHR_Valid_Excluding_IEs (Frame : Byte_Array) return Boolean
    is (Frame_Control_Valid (Frame)
