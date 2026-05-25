@@ -591,19 +591,6 @@ is
      Pre  => Security_Control_Valid (Frame),
      Post => Get_Aux_Security_Header_Length'Result in 0 .. 14;
 
-   function Get_Aux_Security_Header_Length
-     (ASH : Variant_Aux_Security_Header) return Natural
-   is (if ASH.Security_Enabled = Disabled
-       then 0
-       else
-         1
-         + (if ASH.Frame_Counter.Suppression = Suppressed then 0 else 4)
-         + (case ASH.Key_ID.Mode is
-              when 0 => 0,
-              when 1 => 1,
-              when 2 => 5,
-              when 3 => 9));
-
    function Get_Aux_Security_Header
      (Frame : Byte_Array) return Variant_Aux_Security_Header
    with
