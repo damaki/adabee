@@ -400,6 +400,17 @@ is
         then
           Frame'Length >= Get_Key_ID_Offset (MHR) + Get_Key_ID_Length (MHR));
 
+   function Aux_Security_Header_Equal
+     (MHR : Valid_MAC_Header; Frame : Byte_Array) return Boolean
+   is (Security_Control_Equal (MHR, Frame)
+       and then Frame_Counter_Equal (MHR, Frame)
+       and then Key_ID_Equal (MHR, Frame))
+   with
+     Pre =>
+       (if MHR.Aux_Security_Header.Security_Enabled = Enabled
+        then
+          Frame'Length >= Get_Key_ID_Offset (MHR) + Get_Key_ID_Length (MHR));
+
    function MHR_Equal_Excluding_IEs
      (MHR : Valid_MAC_Header; Frame : Byte_Array) return Boolean
    is (Frame_Control_Equal (MHR, Frame)
