@@ -4,6 +4,8 @@
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
 
+with AdaBee.MAC.Frames.Headers.Model_Equivalence;
+
 package body AdaBee.MAC.Frames.Headers.Decoders
   with SPARK_Mode
 is
@@ -176,6 +178,7 @@ is
             (Offset
              = Offset'Old
                + Decoder_Model.Get_Aux_Security_Header_Length (Buffer)
+             and then ASH.Security_Enabled = Enabled
              and then ASH = Decoder_Model.Get_Aux_Security_Header (Buffer))
           else Offset in Offset'Old .. Buffer'Length);
 
@@ -260,8 +263,8 @@ is
        and then Decoder_Model.Security_Control_Valid (Buffer)
        and then Decoder_Model.Is_Aux_Security_Header_Present (Buffer)
        and then Decoder_Model.Get_Key_ID_Mode (Buffer) = Mode
-       and then
-         (if Mode /= 0 then Offset = Decoder_Model.Get_Key_ID_Offset (Buffer)),
+       and then Offset = Decoder_Model.Get_Key_ID_Offset (Buffer)
+       and then Offset <= Buffer'Length,
      Post    =>
        (Result = Success)
        = (Mode = 0
@@ -272,9 +275,8 @@ is
        and then
          (if Result = Success
           then
-            Key_ID = Decoder_Model.Get_Key_ID (Buffer)
-            and then
-              Offset = Offset'Old + Decoder_Model.Get_Key_ID_Length (Buffer)
+            Offset = Offset'Old + Decoder_Model.Get_Key_ID_Length (Buffer)
+            and then Key_ID = Decoder_Model.Get_Key_ID (Buffer)
           else Offset = Offset'Old);
 
    procedure Decode_Normal_MAC_Header
@@ -298,6 +300,7 @@ is
          (if Result = Success
           then
             (Length = Decoder_Model.MHR_Length_Excluding_IEs (Buffer)
+             and then Is_Valid (MHR)
              and then Encoder_Model.MHR_Equal_Excluding_IEs (MHR, Buffer)));
 
    procedure Decode_Multipurpose_MAC_Header
@@ -320,6 +323,7 @@ is
           (if Result = Success
            then
              (Length = Decoder_Model.MHR_Length_Excluding_IEs (Buffer)
+              and then Is_Valid (MHR)
               and then Encoder_Model.MHR_Equal_Excluding_IEs (MHR, Buffer))));
 
    ------------------------
@@ -560,6 +564,15 @@ is
       Length := 2;
 
       pragma Assert (Length <= Buffer'Length);
+      pragma
+        Assert
+          (MHR.Frame_Type = Decoder_Model.Get_Frame_Type (Buffer)
+           and then MHR.AR = Decoder_Model.Get_Ack_Required (Buffer)
+           and then MHR.IE_Present = Decoder_Model.Get_IE_Present (Buffer)
+           and then
+             MHR.Frame_Pending = Decoder_Model.Get_Frame_Pending (Buffer)
+           and then
+             MHR.Frame_Version = Decoder_Model.Get_Frame_Version (Buffer));
 
       --  Calculate the length of the MHR addressing fields (including the
       --  sequence number), then do a length check on the buffer to verify
@@ -602,6 +615,10 @@ is
 
       pragma Assert (Length in 2 .. 3);
       pragma Assert (Length <= Buffer'Length);
+      pragma
+        Assert
+          (MHR.Sequence_Number.Suppression
+           = Decoder_Model.Get_Seq_Number_Suppression (Buffer));
 
       --  Decode the Destination PAN ID field (if present)
       if Dest_PAN_ID_Present then
@@ -637,7 +654,8 @@ is
 
       pragma
         Assert
-          (MHR.Destination_Address.Mode = Frame_Control.Dest_Address_Mode);
+          (MHR.Destination_Address.Mode
+           = Decoder_Model.Get_Dest_Address_Mode (Buffer));
 
       pragma Assert (Length in 2 .. 13);
       pragma Assert (Length <= Buffer'Length);
@@ -646,10 +664,33 @@ is
       if Src_PAN_ID_Present then
          Decode_PAN_ID_Field
            (Buffer => Buffer, Offset => Length, PAN_ID => MHR.Source_PAN_ID);
+
+         --  Reject frames that contain both PAN IDs with identical values.
+         --  This is not permitted by Section 7.2.2.6 of IEEE 802.15.4-2024
+         --  since PAN ID compression should have been used in this case.
+
+         if MHR.Destination_PAN_ID.Present
+           and then MHR.Source_PAN_ID.PAN_ID = MHR.Destination_PAN_ID.PAN_ID
+         then
+            Result := Malformed_Frame;
+            return;
+         end if;
+
+      elsif Is_Source_PAN_ID_Compressed
+              (Frame_Version            => Frame_Control.Frame_Version,
+               Destination_Address_Mode => Frame_Control.Dest_Address_Mode,
+               Source_Address_Mode      => Frame_Control.Src_Address_Mode,
+               PAN_ID_Compression       => Frame_Control.PAN_ID_Compression)
+      then
+         MHR.Source_PAN_ID := MHR.Destination_PAN_ID;
       end if;
 
       pragma Assert (Length in 2 .. 15);
       pragma Assert (Length <= Buffer'Length);
+      pragma
+        Assert
+          (MHR.Source_PAN_ID
+           = Decoder_Model.Get_Decompressed_Source_PAN_ID (Buffer));
 
       --  Decode the Source Address field (if present)
       case Frame_Control.Src_Address_Mode is
@@ -672,9 +713,12 @@ is
             null;
       end case;
 
-      pragma Assert (MHR.Source_Address.Mode = Frame_Control.Src_Address_Mode);
       pragma Assert (Length in 2 .. 23);
       pragma Assert (Length <= Buffer'Length);
+      pragma
+        Assert
+          (MHR.Source_Address.Mode
+           = Decoder_Model.Get_Src_Address_Mode (Buffer));
 
       if Frame_Control.Security_Enabled = Enabled then
          Decode_Aux_Security_Header
@@ -688,21 +732,23 @@ is
          end if;
       end if;
 
-      --  Reconstruct the Source PAN ID based on PAN ID compression
-
-      if Is_Source_PAN_ID_Compressed
-           (Frame_Control.Frame_Version,
-            Frame_Control.Dest_Address_Mode,
-            Frame_Control.Src_Address_Mode,
-            Frame_Control.PAN_ID_Compression)
-      then
-         MHR.Source_PAN_ID := MHR.Destination_PAN_ID;
-      end if;
-
       pragma
         Assert
-          (MHR.Source_PAN_ID
-           = Decoder_Model.Get_Decompressed_Source_PAN_ID (Buffer));
+          (MHR.Aux_Security_Header.Security_Enabled
+           = Decoder_Model.Get_Security_Enabled (Buffer));
+
+      PAN_ID_Model.Lemma_PAN_ID_Compression_Identity
+        (Frame_Version              => MHR.Frame_Version,
+         Destination_Address_Mode   => MHR.Destination_Address.Mode,
+         Source_Address_Mode        => MHR.Source_Address.Mode,
+         PAN_ID_Compression         => Frame_Control.PAN_ID_Compression,
+         Destination_PAN_ID_Present => MHR.Destination_PAN_ID.Present,
+         Source_PAN_ID_Present      => Src_PAN_ID_Present);
+
+      Model_Equivalence.Lemma_Get_Aux_Security_Header_Equivalence
+        (MHR, Buffer);
+
+      Model_Equivalence.Lemma_MHR_Length_Excluding_IEs_Equal (MHR, Buffer);
 
    end Decode_Normal_MAC_Header;
 
@@ -844,6 +890,11 @@ is
             Offset => Length,
             Result => Result);
       end if;
+
+      if Result = Success then
+         Model_Equivalence.Lemma_Get_Aux_Security_Header_Equivalence
+           (MHR, Buffer);
+      end if;
    end Decode_Multipurpose_MAC_Header;
 
    ---------------------------------
@@ -883,6 +934,20 @@ is
            or else Frame_Control.Src_Address_Mode = Reserved
          then
             Result := Unsupported_Field;
+
+         --  IEEE 802.15.4-2024 Section 7.2.2.6 states for frame versions
+         --  0b00 and 0b01:
+         --  "If only either the destination or the source addressing
+         --  information is present, the PAN ID Compression field shall be set
+         --  to zero"
+         elsif Frame_Control.Frame_Version /= IEEE_802_15_4
+           and
+             (Frame_Control.Dest_Address_Mode = Not_Present
+              or Frame_Control.Src_Address_Mode = Not_Present)
+           and Frame_Control.PAN_ID_Compression /= Not_Compressed
+         then
+            Result := Malformed_Frame;
+
          else
             Result := Success;
          end if;

@@ -903,24 +903,32 @@ is
       Offset_FC : Natural
       with Ghost;
 
+      SC_Pos : Positive
+      with Ghost;
+
+      SC : Security_Control_Field;
+
    begin
       if MHR.Aux_Security_Header.Security_Enabled = Enabled then
 
          --  Write the Security Control field
 
-         Encode_Security_Control
-           (Security_Control_Field'
-              (Security_Level => MHR.Aux_Security_Header.Security_Level,
-               Key_ID_Mode    => MHR.Aux_Security_Header.Key_ID.Mode,
-               FC_Suppression =>
-                 MHR.Aux_Security_Header.Frame_Counter.Suppression,
-               Nonce_Source   => MHR.Aux_Security_Header.ASN_In_Nonce,
-               Reserved       => 0),
-            Buffer => Buffer,
-            Offset => Offset);
+         SC :=
+           Security_Control_Field'
+             (Security_Level => MHR.Aux_Security_Header.Security_Level,
+              Key_ID_Mode    => MHR.Aux_Security_Header.Key_ID.Mode,
+              FC_Suppression =>
+                MHR.Aux_Security_Header.Frame_Counter.Suppression,
+              Nonce_Source   => MHR.Aux_Security_Header.ASN_In_Nonce,
+              Reserved       => 0);
+
+         SC_Pos := Buffer'First + Offset;
+
+         Encode_Security_Control (SC, Buffer, Offset);
 
          pragma Assert (Buffer_Old = Slice (Buffer, Buffer_Old'Length));
          pragma Assert (Offset = Encoder_Model.Get_Frame_Counter_Offset (MHR));
+         pragma Assert (SC = From_Bytes (Buffer (SC_Pos)));
 
          --  Write the Frame Counter
 
@@ -929,6 +937,7 @@ is
 
          pragma Assert (Buffer_Old = Slice (Buffer, Buffer_Old'Length));
          pragma Assert (Offset = Encoder_Model.Get_Key_ID_Offset (MHR));
+         pragma Assert (SC = From_Bytes (Buffer (SC_Pos)));
 
          Offset_FC := Offset;
          Assign_Slice
@@ -936,6 +945,8 @@ is
 
          Lemma_Frame_Counter_Preserved
            (Buffer, Offset, Buffer_FC, Offset_FC, MHR);
+
+         pragma Assert (SC = From_Bytes (Buffer (SC_Pos)));
 
          --  Write the Key ID
 
@@ -945,6 +956,8 @@ is
 
          Lemma_Frame_Counter_Preserved
            (Buffer_FC, Offset_FC, Buffer, Offset, MHR);
+
+         pragma Assert (SC = From_Bytes (Buffer (SC_Pos)));
 
          pragma
            Assert

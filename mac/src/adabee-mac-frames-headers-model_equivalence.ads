@@ -133,7 +133,9 @@ is
    with
      Pre  =>
        Encoder_Model.Frame_Control_Equal (MHR, Frame)
-       and then Frame'Length > Encoder_Model.Get_Security_Control_Offset (MHR)
+       and then
+         (if MHR.Aux_Security_Header.Security_Enabled = Enabled
+          then Frame'Length > Encoder_Model.Get_Security_Control_Offset (MHR))
        and then Encoder_Model.Security_Control_Equal (MHR, Frame),
      Post =>
        Encoder_Model.Get_Security_Control_Offset (MHR)
@@ -153,6 +155,19 @@ is
        and then
          Encoder_Model.Get_Key_ID_Length (MHR)
          = Decoder_Model.Get_Key_ID_Length (Frame);
+
+   procedure Lemma_MHR_Length_Excluding_IEs_Equal
+     (MHR : Valid_MAC_Header; Frame : Byte_Array)
+   with
+     Pre  =>
+       Encoder_Model.Frame_Control_Equal (MHR, Frame)
+       and then
+         (if MHR.Aux_Security_Header.Security_Enabled = Enabled
+          then Frame'Length > Encoder_Model.Get_Security_Control_Offset (MHR))
+       and then Encoder_Model.Security_Control_Equal (MHR, Frame),
+     Post =>
+       Encoder_Model.MHR_Length_Excluding_IEs (MHR)
+       = Decoder_Model.MHR_Length_Excluding_IEs (Frame);
 
    procedure Lemma_Get_Sequence_Number_Equivalence
      (MHR : Valid_MAC_Header; Frame : Byte_Array)
@@ -255,13 +270,20 @@ is
    --  that Encoder_Model.Source_Address_Equal is equivalent to comparing the
    --  MHR's Source_Address against the value returned by
    --  Decoder_Model.Get_Source_Address.
+   --
+   --  Note that this only handles the case when the Source PAN ID is present
+   --  in the frame; it does not handle the case when PAN ID compression is
+   --  used. When PAN ID compression is used the Source PAN ID might be present
+   --  in MHR (and equal to the destination PAN ID) and omitted in Frame.
 
    procedure Lemma_Get_Aux_Security_Header_Equivalence
      (MHR : Valid_MAC_Header; Frame : Byte_Array)
    with
      Pre  =>
        Encoder_Model.Frame_Control_Equal (MHR, Frame)
-       and then Frame'Length > Encoder_Model.Get_Security_Control_Offset (MHR)
+       and then
+         (if MHR.Aux_Security_Header.Security_Enabled = Enabled
+          then Frame'Length > Encoder_Model.Get_Security_Control_Offset (MHR))
        and then Encoder_Model.Security_Control_Equal (MHR, Frame)
        and then
          Frame'Length

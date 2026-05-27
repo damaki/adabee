@@ -285,6 +285,15 @@ is
    --  Returns True if the Frame Control field in a frame buffer is equivalent
    --  to the information in a MAC_Header record.
 
+   function Sequence_Number_Equal
+     (MHR : Valid_MAC_Header; Frame : Byte_Array) return Boolean
+   is (Sequence_Number_Equal_At
+         (Frame, Get_Sequence_Number_Offset (MHR), MHR.Sequence_Number))
+   with
+     Pre =>
+       Frame'Length
+       >= Get_Sequence_Number_Offset (MHR) + Get_Sequence_Number_Length (MHR);
+
    function Destination_PAN_ID_Equal
      (MHR : Valid_MAC_Header; Frame : Byte_Array) return Boolean
    is (if MHR.Destination_PAN_ID.Present
@@ -298,15 +307,6 @@ is
        Frame'Length
        >= Get_Destination_PAN_ID_Offset (MHR)
           + Get_Destination_PAN_ID_Length (MHR);
-
-   function Sequence_Number_Equal
-     (MHR : Valid_MAC_Header; Frame : Byte_Array) return Boolean
-   is (Sequence_Number_Equal_At
-         (Frame, Get_Sequence_Number_Offset (MHR), MHR.Sequence_Number))
-   with
-     Pre =>
-       Frame'Length
-       >= Get_Sequence_Number_Offset (MHR) + Get_Sequence_Number_Length (MHR);
 
    function Destination_Address_Equal
      (MHR : Valid_MAC_Header; Frame : Byte_Array) return Boolean

@@ -552,18 +552,19 @@ is
                  (if Source_PAN_ID_Present
                   then Source_Address_Mode /= Not_Present)
 
-               --  Ref. IEEE 802.15.4-2024 Section 7.2.2.9:
-               --  If this field is equal to zero and the Frame Type field
-               --  specifies a Data frame or MAC command and the Frame Version
-               --  field is set to 0b00 or 0b01, the Source Addressing Mode
-               --  field shall be nonzero, implying that the frame is directed
-               --  to the PAN coordinator with the PAN ID as specified in the
-               --  Source PAN ID field.
+               --  If only either the destination or the source addressing
+               --  information is present, the PAN ID Compression field shall
+               --  be set to zero, and the PAN ID field of the single address
+               --  shall be included in the transmitted frame.
+               --  Ref. IEEE 802.15.4-2024 Section 7.2.2.6
                and then
                  (if Destination_Address_Mode = Not_Present
-                  then
-                    Source_Address_Mode /= Not_Present
-                    and then Source_PAN_ID_Present)
+                    and then Source_Address_Mode /= Not_Present
+                  then Source_PAN_ID_Present)
+               and then
+                 (if Destination_Address_Mode /= Not_Present
+                    and then Source_Address_Mode = Not_Present
+                  then Destination_PAN_ID_Present)
              else
                --  Ref. Table 7-2 of IEEE 802.15.4-2024
 
@@ -580,11 +581,16 @@ is
                   then not Source_PAN_ID_Present)
 
                --  The destination PAN ID is always present when both addresses
-               --  are present.
+               --  are present, unless they are both extended addresses (and
+               --  PAN ID compression is one).
                and then
                  (if Destination_Address_Mode /= Not_Present
                     and then Source_Address_Mode /= Not_Present
-                  then Destination_PAN_ID_Present)
+                  then
+                    Destination_PAN_ID_Present
+                    or else
+                      (Destination_Address_Mode = Extended
+                       and then Source_Address_Mode = Extended))
 
                --  The destination address must be present if the destination
                --  PAN ID is present, except when both the source address &
@@ -674,12 +680,17 @@ is
          Destination_Address_Mode : Address_Mode_Field;
          Source_Address_Mode      : Address_Mode_Field;
          PAN_ID_Compression       : PAN_ID_Compression_Field) return Boolean
-      is (PAN_ID_Compression = Not_Compressed
-          and then Source_Address_Mode /= Not_Present
-          and then
-            (if Frame_Version = IEEE_802_15_4
-             then
-               Destination_Address_Mode /= Extended
+      is (if Frame_Version in IEEE_802_15_4_2003 | IEEE_802_15_4_2006
+          then
+            Source_Address_Mode /= Not_Present
+            and then
+              (Destination_Address_Mode = Not_Present
+               or else PAN_ID_Compression = Not_Compressed)
+          else
+            PAN_ID_Compression = Not_Compressed
+            and then Source_Address_Mode /= Not_Present
+            and then
+              (Destination_Address_Mode /= Extended
                or else Source_Address_Mode /= Extended))
       with
         Global => null,
@@ -777,6 +788,70 @@ is
                 Destination_Address_Mode,
                 Source_Address_Mode,
                 PAN_ID_Compression));
+
+      procedure Lemma_PAN_ID_Present_Valid_Configuration
+        (Frame_Version            : Valid_Frame_Version_Field;
+         Destination_Address_Mode : Valid_Address_Mode_Field;
+         Source_Address_Mode      : Valid_Address_Mode_Field;
+         PAN_ID_Compression       : PAN_ID_Compression_Field)
+      with
+        Post =>
+          Is_Valid_Configuration
+            (Frame_Version              => Frame_Version,
+             Destination_Address_Mode   => Destination_Address_Mode,
+             Source_Address_Mode        => Source_Address_Mode,
+             Destination_PAN_ID_Present =>
+               Is_Destination_PAN_ID_Present
+                 (Frame_Version            => Frame_Version,
+                  Destination_Address_Mode => Destination_Address_Mode,
+                  Source_Address_Mode      => Source_Address_Mode,
+                  PAN_ID_Compression       => PAN_ID_Compression),
+             Source_PAN_ID_Present      =>
+               Is_Source_PAN_ID_Present
+                 (Frame_Version            => Frame_Version,
+                  Destination_Address_Mode => Destination_Address_Mode,
+                  Source_Address_Mode      => Source_Address_Mode,
+                  PAN_ID_Compression       => PAN_ID_Compression));
+      --  Proves that decoding the Source and Destination PAN ID presence based
+      --  on the frame version, Source/Destination address modes, and PAN ID
+      --  compression fields always results in a valid configuration.
+
+      procedure Lemma_PAN_ID_Compression_Identity
+        (Frame_Version              : Valid_Frame_Version_Field;
+         Destination_Address_Mode   : Valid_Address_Mode_Field;
+         Source_Address_Mode        : Valid_Address_Mode_Field;
+         PAN_ID_Compression         : PAN_ID_Compression_Field;
+         Destination_PAN_ID_Present : Boolean;
+         Source_PAN_ID_Present      : Boolean)
+      with
+        Pre  =>
+          (if Frame_Version in IEEE_802_15_4_2003 | IEEE_802_15_4_2006
+             and
+               (Destination_Address_Mode = Not_Present
+                or Source_Address_Mode = Not_Present)
+           then PAN_ID_Compression = Not_Compressed)
+          and then
+            Destination_PAN_ID_Present
+            = Is_Destination_PAN_ID_Present
+                (Frame_Version            => Frame_Version,
+                 Destination_Address_Mode => Destination_Address_Mode,
+                 Source_Address_Mode      => Source_Address_Mode,
+                 PAN_ID_Compression       => PAN_ID_Compression)
+          and then
+            Source_PAN_ID_Present
+            = Is_Source_PAN_ID_Present
+                (Frame_Version            => Frame_Version,
+                 Destination_Address_Mode => Destination_Address_Mode,
+                 Source_Address_Mode      => Source_Address_Mode,
+                 PAN_ID_Compression       => PAN_ID_Compression),
+        Post =>
+          PAN_ID_Compression
+          = Get_PAN_ID_Compression
+              (Frame_Version              => Frame_Version,
+               Destination_Address_Mode   => Destination_Address_Mode,
+               Source_Address_Mode        => Source_Address_Mode,
+               Destination_PAN_ID_Present => Destination_PAN_ID_Present,
+               Source_PAN_ID_Present      => Source_PAN_ID_Present);
 
    end PAN_ID_Model;
 
@@ -1256,8 +1331,10 @@ private
          Source_PAN_ID_Present_LUT_0b10
            (Destination_Address_Mode, Source_Address_Mode, PAN_ID_Compression)
        else
-         PAN_ID_Compression = Not_Compressed
-         and then Source_Address_Mode /= Not_Present);
+         Source_Address_Mode /= Not_Present
+         and then
+           (Destination_Address_Mode = Not_Present
+            or else PAN_ID_Compression = Not_Compressed));
 
    -----------------------------------
    -- Is_Destination_PAN_ID_Present --

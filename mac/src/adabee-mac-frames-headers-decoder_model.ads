@@ -218,15 +218,57 @@ is
               and then
                 (if Get_MP_S_FC (Frame).Long_Frame_Control = Long
                  then
+                   --  Long Frame Control field is 16 bits
                    Frame'Length >= 2
+
+                   --  IEEE 802.15.4-2024 Section 7.3.5.10 states:
+                   --  "The Frame Version field is an unsigned integer that
+                   --  specifies the version number of the frame. This field
+                   --  shall be set to zero."
                    and then
-                     Get_MP_L_FC (Frame).Frame_Version = IEEE_802_15_4_2003),
+                     Get_MP_L_FC (Frame).Frame_Version
+                     = Frame_Version_Field'First),
 
             when Beacon | Data | Ack | MAC_Command =>
-              Frame'Length >= 2
+              --  Frame Control field for general frame types is always 16 bits
+              --  Ref. IEEE 802.15.4-2024 Section 7.2.2.1
+              Frame'Length
+              >= 2
+
+              --  IEEE 802.15.4-2024 Section 6.6.2 "Reception and rejection"
+              --  states:
+              --    b) The Frame Version field shall not contain a reserved
+              --       value.
+              --
+              --  Section 7.2.2.9 states: ""
+              and then Get_FC (Frame).Frame_Version /= Reserved
+
+              --  IEEE 802.15.4-2024 Section 7.2.2.9 states:
+              --  "The Destination Addressing Mode field shall be set to one of
+              --  the non-reserved values listed in Table 7-3"
               and then Get_FC (Frame).Dest_Address_Mode /= Reserved
+
+              --  IEEE 802.15.4-2024 Section 7.2.2.11 states:
+              --  "The Source Addressing Mode field shall be set to one of the
+              --  values listed in Table 7-3.".
+              --
+              --  We interpret this as implicitly meaning that non-reserved
+              --  values are also prohibited, like for the Destination
+              --  Addressing Mode field.
               and then Get_FC (Frame).Src_Address_Mode /= Reserved
-              and then Get_FC (Frame).Frame_Version /= Reserved));
+
+              --  IEEE 802.15.4-2024 Section 7.2.2.6 states for frame versions
+              --  0b00 and 0b01:
+              --  "If only either the destination or the source addressing
+              --  information is present, the PAN ID Compression field shall be
+              --  set to zero"
+              and then
+                (if Get_FC (Frame).Frame_Version
+                    in IEEE_802_15_4_2003 | IEEE_802_15_4_2006
+                   and then
+                     (Get_FC (Frame).Dest_Address_Mode = Not_Present
+                      or else Get_FC (Frame).Src_Address_Mode = Not_Present)
+                 then Get_FC (Frame).PAN_ID_Compression = Not_Compressed)));
    --  Check if the frame contains a valid frame control field
 
    function Get_Dest_Address_Mode
@@ -602,6 +644,27 @@ is
             >= Get_Source_PAN_ID_Offset (Frame)
                + Get_Source_PAN_ID_Length (Frame));
    --  Read the destination PAN ID field from the frame
+
+   function Source_PAN_ID_Valid (Frame : Byte_Array) return Boolean
+   is (not Is_Source_PAN_ID_Present (Frame)
+       or else not Is_Destination_PAN_ID_Present (Frame)
+       or else Get_Source_PAN_ID (Frame) /= Get_Destination_PAN_ID (Frame))
+   with
+     Pre =>
+       Frame_Control_Valid (Frame)
+       and then
+         (if Is_Source_PAN_ID_Present (Frame)
+          then
+            Frame'Length
+            >= Get_Source_PAN_ID_Offset (Frame)
+               + Get_Source_PAN_ID_Length (Frame));
+   --  Checks whether the Source PAN ID field contains a valid value.
+   --
+   --  According to the rules in Section 7.2.2.6 of IEEE 802.15.4-2024, if the
+   --  Source and Destination PAN IDs are identical, then PAN ID compression
+   --  must be used and the Source PAN ID is omitted from the frame.
+   --  Therefore, it is not permitted for both PAN IDs to be present in the
+   --  frame with identical values, as doing so would violate Section 7.2.2.6.
 
    function Get_Decompressed_Source_PAN_ID
      (Frame : Byte_Array) return Variant_PAN_ID
@@ -1052,7 +1115,8 @@ is
    function Is_MHR_Valid_Excluding_IEs (Frame : Byte_Array) return Boolean
    is (Frame_Control_Valid (Frame)
        and then Security_Control_Valid (Frame)
-       and then Frame'Length >= MHR_Length_Excluding_IEs (Frame));
+       and then Frame'Length >= MHR_Length_Excluding_IEs (Frame)
+       and then Source_PAN_ID_Valid (Frame));
    --  Returns True if all fields in the MAC header (excluding header IEs)
    --  are valid.
 
@@ -1060,7 +1124,8 @@ is
    is (Frame_Control_Valid (Frame)
        and then Security_Control_Valid (Frame)
        and then Is_Header_IEs_Valid (Frame)
-       and then Frame'Length >= MHR_Length (Frame));
+       and then Frame'Length >= MHR_Length (Frame)
+       and then Source_PAN_ID_Valid (Frame));
    --  Returns True if all fields in the MAC header (including header IEs)
    --  are valid.
 

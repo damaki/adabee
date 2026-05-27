@@ -39,6 +39,7 @@ is
          (if Result = Success
           then
             Length = Decoder_Model.MHR_Length_Excluding_IEs (Buffer)
+            and then Is_Valid (MHR)
             and then Encoder_Model.MHR_Equal_Excluding_IEs (MHR, Buffer));
    --  Decode the first part of the MAC Header, up to (and including) the
    --  auxiliary security header.
@@ -147,7 +148,8 @@ is
        and then
          (if Result = Success
           then
-            Encoder_Model.MHR_Equal_Excluding_IEs (MHR, Buffer)
+            Is_Valid (MHR)
+            and then Encoder_Model.MHR_Equal_Excluding_IEs (MHR, Buffer)
 
             --  If header IEs are present, then the range
             --  Header_IE_First .. Header_IE_Last in Buffer contains the
