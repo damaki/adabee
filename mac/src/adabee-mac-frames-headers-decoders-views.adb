@@ -91,6 +91,15 @@ is
                  or G_FC.Frame_Version = Reserved
                then
                   Result := Unsupported_Field;
+
+               --  IE lists requires frame version 0b10.
+               --  Ref. IEEE 802.15.4-2024 Section 7.2.2.8
+               elsif G_FC.Frame_Version
+                     in IEEE_802_15_4_2003 | IEEE_802_15_4_2006
+                 and then G_FC.IE_Present /= Not_Present
+               then
+                  Result := Unsupported_Field;
+
                else
                   Result := Success;
                end if;
@@ -157,6 +166,14 @@ is
       if FC.Dest_Address_Mode = Reserved
         or FC.Src_Address_Mode = Reserved
         or FC.Frame_Version = Reserved
+      then
+         Result := Unsupported_Field;
+         return;
+
+      --  IE lists requires frame version 0b10.
+      --  Ref. IEEE 802.15.4-2024 Section 7.2.2.8
+      elsif FC.Frame_Version in IEEE_802_15_4_2003 | IEEE_802_15_4_2006
+        and then FC.IE_Present /= Not_Present
       then
          Result := Unsupported_Field;
          return;

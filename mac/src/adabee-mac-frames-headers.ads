@@ -1089,7 +1089,13 @@ is
                  MHR.Source_PAN_ID.Present
                  and then MHR.Source_PAN_ID = MHR.Destination_PAN_ID
 
-               else not MHR.Source_PAN_ID.Present),
+               else not MHR.Source_PAN_ID.Present)
+
+            --  IE lists require frame version 0b10.
+            --  Ref. IEEE 802.15.4-2024 Section 7.2.2.8
+            and then
+              (if MHR.Frame_Version in IEEE_802_15_4_2003 | IEEE_802_15_4_2006
+               then MHR.IE_Present = Not_Present),
 
           when Multipurpose        =>
             --  Multipurpose frames do not have a source PAN ID field

@@ -255,7 +255,15 @@ is
               --  We interpret this as implicitly meaning that non-reserved
               --  values are also prohibited, like for the Destination
               --  Addressing Mode field.
-              and then Get_FC (Frame).Src_Address_Mode /= Reserved));
+              and then Get_FC (Frame).Src_Address_Mode /= Reserved
+
+              --  IEEE 802.15.4-2024 Section 7.2.2.8 states:
+              --  "If the Frame Version field is 0b00 or 0b01, the IE Present
+              --  field shall be zero."
+              and then
+                (if Get_FC (Frame).Frame_Version
+                    in IEEE_802_15_4_2003 | IEEE_802_15_4_2006
+                 then Get_FC (Frame).IE_Present = Not_Present)));
    --  Check if the frame contains a valid frame control field
 
    function Get_Dest_Address_Mode

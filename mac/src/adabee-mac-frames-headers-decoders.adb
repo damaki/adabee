@@ -959,6 +959,15 @@ is
            or else Frame_Control.Src_Address_Mode = Reserved
          then
             Result := Unsupported_Field;
+
+         --  IE lists requires frame version 0b10.
+         --  Ref. IEEE 802.15.4-2024 Section 7.2.2.8
+         elsif Frame_Control.Frame_Version
+               in IEEE_802_15_4_2003 | IEEE_802_15_4_2006
+           and then Frame_Control.IE_Present /= Not_Present
+         then
+            Result := Unsupported_Field;
+
          else
             Result := Success;
          end if;
