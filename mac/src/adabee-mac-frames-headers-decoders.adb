@@ -1224,7 +1224,7 @@ is
    begin
       if Offset >= Buffer'Length then
          SC :=
-           (Security_Level => 0,
+           (Security_Level => None,
             Key_ID_Mode    => 0,
             FC_Suppression => Not_Suppressed,
             Nonce_Source   => From_Frame_Counter,
@@ -1234,8 +1234,12 @@ is
       else
          SC := From_Bytes (Buffer (Buffer'First + Offset));
 
-         Offset := Offset + 1;
-         Result := Success;
+         if SC.Security_Level = Reserved then
+            Result := Unsupported_Field;
+         else
+            Offset := Offset + 1;
+            Result := Success;
+         end if;
       end if;
    end Decode_Security_Control_Field;
 

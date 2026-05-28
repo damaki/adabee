@@ -388,7 +388,29 @@ is
    --------------------------
    --  Ref. 9.4.2.2 of IEEE 802.15.4-2024
 
-   type Security_Level_Field is range 0 .. 7 with Size => 3;
+   type Security_Level_Field is
+     (None,
+      MIC_32,
+      MIC_64,
+      MIC_128,
+      Reserved,
+      ENC_MIC_32,
+      ENC_MIC_64,
+      ENC_MIC_128)
+   with Size => 3;
+
+   for Security_Level_Field use
+     (None        => 2#000#,
+      MIC_32      => 2#001#,
+      MIC_64      => 2#010#,
+      MIC_128     => 2#011#,
+      Reserved    => 2#100#,
+      ENC_MIC_32  => 2#101#,
+      ENC_MIC_64  => 2#110#,
+      ENC_MIC_128 => 2#111#);
+
+   subtype Valid_Security_Level_Field is Security_Level_Field
+   with Static_Predicate => Valid_Security_Level_Field /= Reserved;
 
    -------------------------------
    -- Key Identifier Mode Field --
@@ -518,7 +540,7 @@ is
             null;
 
          when Enabled =>
-            Security_Level : Security_Level_Field;
+            Security_Level : Valid_Security_Level_Field;
             ASN_In_Nonce   : Nonce_Source_Field;
             Frame_Counter  : Variant_Frame_Counter;
             Key_ID         : Variant_Key_ID;

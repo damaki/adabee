@@ -781,12 +781,6 @@ is
      Pre  => Frame_Control_Valid (Frame),
      Post => Get_Security_Control_Length'Result in 0 .. 1;
 
-   function Security_Control_Valid (Frame : Byte_Array) return Boolean
-   is (Frame_Control_Valid (Frame)
-       and then
-         (if Is_Security_Control_Present (Frame)
-          then Frame'Length > Get_Security_Control_Offset (Frame)));
-
    function Get_Security_Control
      (Frame : Byte_Array) return Security_Control_Field
    is (Security_Control_Field'
@@ -794,8 +788,20 @@ is
             (Frame (Frame'First + Get_Security_Control_Offset (Frame)))))
    with
      Pre =>
-       Security_Control_Valid (Frame)
-       and then Is_Security_Control_Present (Frame);
+       Frame_Control_Valid (Frame)
+       and then Is_Security_Control_Present (Frame)
+       and then Frame'Length > Get_Security_Control_Offset (Frame);
+
+   function Security_Control_Valid (Frame : Byte_Array) return Boolean
+   is (Frame_Control_Valid (Frame)
+       and then
+         (if Is_Security_Control_Present (Frame)
+          then
+            --  Frame must be big enough to contain the Security Control field
+            Frame'Length > Get_Security_Control_Offset (Frame)
+
+            --  Reject frames with an unknown security level
+            and then Get_Security_Control (Frame).Security_Level /= Reserved));
 
    function Get_Key_ID_Mode (Frame : Byte_Array) return Key_ID_Mode_Field
    is (Get_Security_Control (Frame).Key_ID_Mode)

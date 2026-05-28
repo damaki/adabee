@@ -321,6 +321,10 @@ is
          then
             Result := Malformed_Frame;
             return;
+
+         elsif SC.Security_Level = Reserved then
+            Result := Unsupported_Field;
+            return;
          end if;
 
          pragma Assert (Decoder_Model.Security_Control_Valid (Frame));
@@ -524,6 +528,10 @@ is
              + Key_ID_Length (SC.Key_ID_Mode)
          then
             Result := Malformed_Frame;
+            return;
+
+         elsif SC.Security_Level = Reserved then
+            Result := Unsupported_Field;
             return;
          end if;
 
