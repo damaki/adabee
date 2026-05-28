@@ -31,7 +31,7 @@ is
      Pre  => Encoder_Model.Frame_Control_Equal (MHR, Frame),
      Post =>
        (case MHR.Frame_Type is
-          when Multipurpose                      =>
+          when Multipurpose        =>
 
             --  The destination PAN ID is present in MHR if and only if the
             --  "PAN ID present" field in the frame control field is set to
@@ -46,7 +46,7 @@ is
             --  Multipurpose frames never have a source PAN ID field.
             and then not MHR.Source_PAN_ID.Present,
 
-          when Beacon | Data | Ack | MAC_Command =>
+          when General_Frame_Types =>
             --  The destination PAN ID is present in MHR if and only if it is
             --  present in Frame according to the frame version
             MHR
@@ -70,19 +70,23 @@ is
             --
             --  Ref. IEEE 802.15.4-2024 Section 7.2.2.6.
             and then
-              Compressed_Source_PAN_ID
-                (Destination_PAN_ID => MHR.Destination_PAN_ID,
-                 Source_PAN_ID      => MHR.Source_PAN_ID)
-                .Present
-              = PAN_ID_Model.Is_Source_PAN_ID_Present
-                  (Frame_Version            =>
-                     Decoder_Model.Get_FC (Frame).Frame_Version,
-                   Destination_Address_Mode =>
-                     Decoder_Model.Get_FC (Frame).Dest_Address_Mode,
-                   Source_Address_Mode      =>
-                     Decoder_Model.Get_FC (Frame).Src_Address_Mode,
-                   PAN_ID_Compression       =>
-                     Decoder_Model.Get_FC (Frame).PAN_ID_Compression));
+              (if Decoder_Model.Is_Source_PAN_ID_Present (Frame)
+               then MHR.Source_PAN_ID.Present
+
+               elsif PAN_ID_Model.Is_Source_PAN_ID_Compressed
+                       (Frame_Version            =>
+                          Decoder_Model.Get_FC (Frame).Frame_Version,
+                        Destination_Address_Mode =>
+                          Decoder_Model.Get_FC (Frame).Dest_Address_Mode,
+                        Source_Address_Mode      =>
+                          Decoder_Model.Get_FC (Frame).Src_Address_Mode,
+                        PAN_ID_Compression       =>
+                          Decoder_Model.Get_FC (Frame).PAN_ID_Compression)
+               then
+                 MHR.Source_PAN_ID.Present
+                 and then MHR.Destination_PAN_ID.Present
+
+               else not MHR.Source_PAN_ID.Present));
    --  Assuming a Frame buffer's Frame Control field is equal to the contents
    --  of a MAC_Header record, prove that the presence of the source and
    --  destination PAN ID fields is the same between the two models.
@@ -232,23 +236,9 @@ is
          >= Encoder_Model.Get_Source_PAN_ID_Offset (MHR)
             + Encoder_Model.Get_Source_PAN_ID_Length (MHR),
      Post =>
-       (declare
-          CSPID : constant Variant_PAN_ID :=
-            Compressed_Source_PAN_ID
-              (Destination_PAN_ID => MHR.Destination_PAN_ID,
-               Source_PAN_ID      => MHR.Source_PAN_ID);
-        begin
-          CSPID.Present = Decoder_Model.Is_Source_PAN_ID_Present (Frame)
-
-          and then
-            --  If the Frame contains a Source PAN ID field, then calling
-            --  Encoder_Model.Source_PAN_ID_Equal is equivalent to checking
-            --  the compressed source PAN ID from MHR against the value
-            --  returned by Decoder_Model.Get_Source_PAN_ID.
-            (if Decoder_Model.Is_Source_PAN_ID_Present (Frame)
-             then
-               Encoder_Model.Source_PAN_ID_Equal (MHR, Frame)
-               = (CSPID = Decoder_Model.Get_Source_PAN_ID (Frame))));
+       Encoder_Model.Source_PAN_ID_Equal (MHR, Frame)
+       = (MHR.Source_PAN_ID
+          = Decoder_Model.Get_Decompressed_Source_PAN_ID (Frame));
    --  Assuming a Frame buffer's Frame Control field is equal to the contents
    --  of a MAC_Header record and that Source_PAN_ID_Equal is True, prove
    --  that Get_Decompressed_Source_PAN_ID returns a value equivalent to

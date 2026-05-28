@@ -77,8 +77,13 @@ is
    with Post => Get_Source_PAN_ID_Offset'Result in 1 .. 13;
 
    function Get_Source_PAN_ID_Length (MHR : Valid_MAC_Header) return Natural
-   is (if not Same_PAN_ID (MHR.Destination_PAN_ID, MHR.Source_PAN_ID)
-         and then MHR.Source_PAN_ID.Present
+   is (if MHR.Source_PAN_ID.Present
+         and then
+           not PAN_ID_Model.Is_Source_PAN_ID_Compressed
+                 (Frame_Version            => MHR.Frame_Version,
+                  Destination_Address_Mode => MHR.Destination_Address.Mode,
+                  Source_Address_Mode      => MHR.Source_Address.Mode,
+                  PAN_ID_Compression       => MHR.PAN_ID_Compression)
        then 2
        else 0)
    with Post => Get_Source_PAN_ID_Length'Result in 0 | 2;
@@ -253,12 +258,15 @@ is
          MHR.Sequence_Number.Suppression
          = Decoder_Model.Get_Seq_Number_Suppression (Frame)
 
-       --  Compare "PAN ID present" field for Multipurpose frame type
+       --  Compare fields that are only present in multipurpose frames
        and then
          (if MHR.Frame_Type = Multipurpose
           then
+            --  Compare Long Frame Control field
             MHR.Long_Frame_Control
             = Decoder_Model.Get_MP_S_FC (Frame).Long_Frame_Control
+
+            --  Compare PAN ID Present field
             and then
               (if MHR.Long_Frame_Control = Short
                then not MHR.Destination_PAN_ID.Present
@@ -267,21 +275,42 @@ is
                  = (Decoder_Model.Get_MP_L_FC (Frame).PAN_ID_Present
                     = Present)))
 
-       --  Compare the "PAN ID compression" field for general frame types
+       --  Compare the presence of the PAN ID fields for general frame types
        and then
-         (if MHR.Frame_Type in Beacon | Data | Ack | MAC_Command
+         (if MHR.Frame_Type in General_Frame_Types
           then
+            --  PAN ID Compression
             Decoder_Model.Get_FC (Frame).PAN_ID_Compression
-            = PAN_ID_Model.Get_PAN_ID_Compression
-                (Frame_Version              => MHR.Frame_Version,
-                 Destination_Address_Mode   => MHR.Destination_Address.Mode,
-                 Source_Address_Mode        => MHR.Source_Address.Mode,
-                 Destination_PAN_ID_Present => MHR.Destination_PAN_ID.Present,
-                 Source_PAN_ID_Present      =>
-                   Compressed_Source_PAN_ID
-                     (Destination_PAN_ID => MHR.Destination_PAN_ID,
-                      Source_PAN_ID      => MHR.Source_PAN_ID)
-                     .Present)));
+            = MHR.PAN_ID_Compression
+
+            --  Destination PAN ID field presence
+            and then
+              Decoder_Model.Is_Destination_PAN_ID_Present (Frame)
+              = MHR.Destination_PAN_ID.Present
+
+            --  Source PAN ID field presence
+            --
+            --  The MHR stores the decompressed Source PAN ID, so will be
+            --  present in MHR but not in the Frame when PAN ID Compression was
+            --  used.
+            and then
+              (if Decoder_Model.Is_Source_PAN_ID_Present (Frame)
+               then MHR.Source_PAN_ID.Present
+
+               elsif PAN_ID_Model.Is_Source_PAN_ID_Compressed
+                       (Frame_Version            =>
+                          Decoder_Model.Get_Frame_Version (Frame),
+                        Destination_Address_Mode =>
+                          Decoder_Model.Get_Dest_Address_Mode (Frame),
+                        Source_Address_Mode      =>
+                          Decoder_Model.Get_Src_Address_Mode (Frame),
+                        PAN_ID_Compression       =>
+                          Decoder_Model.Get_FC (Frame).PAN_ID_Compression)
+               then
+                 MHR.Source_PAN_ID.Present
+                 and then MHR.Source_PAN_ID = MHR.Destination_PAN_ID
+
+               else not MHR.Source_PAN_ID.Present)));
    --  Returns True if the Frame Control field in a frame buffer is equivalent
    --  to the information in a MAC_Header record.
 
@@ -310,12 +339,10 @@ is
 
    function Destination_Address_Equal
      (MHR : Valid_MAC_Header; Frame : Byte_Array) return Boolean
-   is (if MHR.Destination_Address.Mode /= Not_Present
-       then
-         Address_Equal_At
-           (Frame,
-            Get_Destination_Address_Offset (MHR),
-            MHR.Destination_Address))
+   is (Address_Equal_At
+         (Frame,
+          Get_Destination_Address_Offset (MHR),
+          MHR.Destination_Address))
    with
      Pre =>
        Frame'Length
@@ -324,16 +351,19 @@ is
 
    function Source_PAN_ID_Equal
      (MHR : Valid_MAC_Header; Frame : Byte_Array) return Boolean
-   is (declare
-         Source_PAN_ID : constant Variant_PAN_ID :=
-           Compressed_Source_PAN_ID
-             (Destination_PAN_ID => MHR.Destination_PAN_ID,
-              Source_PAN_ID      => MHR.Source_PAN_ID);
-       begin
-         (if Source_PAN_ID.Present
+   is (if MHR.Source_PAN_ID.Present
+       then
+         (if PAN_ID_Model.Is_Source_PAN_ID_Compressed
+               (Frame_Version            => MHR.Frame_Version,
+                Destination_Address_Mode => MHR.Destination_Address.Mode,
+                Source_Address_Mode      => MHR.Source_Address.Mode,
+                PAN_ID_Compression       => MHR.PAN_ID_Compression)
           then
             PAN_ID_Equal_At
-              (Frame, Get_Source_PAN_ID_Offset (MHR), Source_PAN_ID)))
+              (Frame, Get_Destination_PAN_ID_Offset (MHR), MHR.Source_PAN_ID)
+          else
+            PAN_ID_Equal_At
+              (Frame, Get_Source_PAN_ID_Offset (MHR), MHR.Source_PAN_ID)))
    with
      Pre =>
        Frame'Length
@@ -341,10 +371,8 @@ is
 
    function Source_Address_Equal
      (MHR : Valid_MAC_Header; Frame : Byte_Array) return Boolean
-   is (if MHR.Source_Address.Mode /= Not_Present
-       then
-         Address_Equal_At
-           (Frame, Get_Source_Address_Offset (MHR), MHR.Source_Address))
+   is (Address_Equal_At
+         (Frame, Get_Source_Address_Offset (MHR), MHR.Source_Address))
    with
      Pre =>
        Frame'Length

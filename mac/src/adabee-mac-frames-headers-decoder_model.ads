@@ -210,9 +210,9 @@ is
    is (Frame'Length > 0
        and then
          (case Get_Frame_Type (Frame) is
-            when Unsupported_Frame_Types           => False,
+            when Unsupported_Frame_Types => False,
 
-            when Multipurpose                      =>
+            when Multipurpose            =>
               Get_MP_S_FC (Frame).Dest_Address_Mode /= Reserved
               and then Get_MP_S_FC (Frame).Src_Address_Mode /= Reserved
               and then
@@ -229,7 +229,7 @@ is
                      Get_MP_L_FC (Frame).Frame_Version
                      = Frame_Version_Field'First),
 
-            when Beacon | Data | Ack | MAC_Command =>
+            when General_Frame_Types     =>
               --  Frame Control field for general frame types is always 16 bits
               --  Ref. IEEE 802.15.4-2024 Section 7.2.2.1
               Frame'Length
@@ -255,30 +255,15 @@ is
               --  We interpret this as implicitly meaning that non-reserved
               --  values are also prohibited, like for the Destination
               --  Addressing Mode field.
-              and then Get_FC (Frame).Src_Address_Mode /= Reserved
-
-              --  IEEE 802.15.4-2024 Section 7.2.2.6 states for frame versions
-              --  0b00 and 0b01:
-              --  "If only either the destination or the source addressing
-              --  information is present, the PAN ID Compression field shall be
-              --  set to zero"
-              and then
-                (if Get_FC (Frame).Frame_Version
-                    in IEEE_802_15_4_2003 | IEEE_802_15_4_2006
-                   and then
-                     (Get_FC (Frame).Dest_Address_Mode = Not_Present
-                      or else Get_FC (Frame).Src_Address_Mode = Not_Present)
-                 then Get_FC (Frame).PAN_ID_Compression = Not_Compressed)));
+              and then Get_FC (Frame).Src_Address_Mode /= Reserved));
    --  Check if the frame contains a valid frame control field
 
    function Get_Dest_Address_Mode
      (Frame : Byte_Array) return Valid_Address_Mode_Field
    is (case Supported_Frame_Types (Get_Frame_Type (Frame)) is
-         when Beacon | Data | Ack | MAC_Command =>
-           Get_FC (Frame).Dest_Address_Mode,
+         when General_Frame_Types => Get_FC (Frame).Dest_Address_Mode,
 
-         when Multipurpose                      =>
-           Get_MP_S_FC (Frame).Dest_Address_Mode)
+         when Multipurpose        => Get_MP_S_FC (Frame).Dest_Address_Mode)
    with Pre => Frame_Control_Valid (Frame);
    --  Read the destination addressing mode from the frame control field
    --
@@ -288,11 +273,9 @@ is
    function Get_Src_Address_Mode
      (Frame : Byte_Array) return Valid_Address_Mode_Field
    is (case Supported_Frame_Types (Get_Frame_Type (Frame)) is
-         when Beacon | Data | Ack | MAC_Command =>
-           Get_FC (Frame).Src_Address_Mode,
+         when General_Frame_Types => Get_FC (Frame).Src_Address_Mode,
 
-         when Multipurpose                      =>
-           Get_MP_S_FC (Frame).Src_Address_Mode)
+         when Multipurpose        => Get_MP_S_FC (Frame).Src_Address_Mode)
    with Pre => Frame_Control_Valid (Frame);
    --  Read the source addressing mode from the frame control field
    --
@@ -301,8 +284,8 @@ is
 
    function Get_Frame_Control_Length (Frame : Byte_Array) return Natural
    is (case Supported_Frame_Types (Get_Frame_Type (Frame)) is
-         when Beacon | Data | Ack | MAC_Command => 2,
-         when Multipurpose                      =>
+         when General_Frame_Types => 2,
+         when Multipurpose        =>
            (if Get_MP_S_FC (Frame).Long_Frame_Control = Long then 2 else 1))
    with
      Pre  => Frame_Control_Valid (Frame),
@@ -427,10 +410,10 @@ is
 
    function Is_Sequence_Number_Present (Frame : Byte_Array) return Boolean
    is (case Supported_Frame_Types (Get_Frame_Type (Frame)) is
-         when Beacon | Data | Ack | MAC_Command =>
+         when General_Frame_Types =>
            Get_FC (Frame).SN_Suppression = Not_Suppressed,
 
-         when Multipurpose                      =>
+         when Multipurpose        =>
            Get_MP_S_FC (Frame).Long_Frame_Control = Long
            and then Get_MP_L_FC (Frame).SN_Suppression = Not_Suppressed)
    with
@@ -495,14 +478,14 @@ is
 
    function Is_Destination_PAN_ID_Present (Frame : Byte_Array) return Boolean
    is (case Supported_Frame_Types (Get_Frame_Type (Frame)) is
-         when Beacon | Data | Ack | MAC_Command =>
+         when General_Frame_Types =>
            PAN_ID_Model.Is_Destination_PAN_ID_Present
              (Frame_Version            => Get_FC (Frame).Frame_Version,
               Destination_Address_Mode => Get_FC (Frame).Dest_Address_Mode,
               Source_Address_Mode      => Get_FC (Frame).Src_Address_Mode,
               PAN_ID_Compression       => Get_FC (Frame).PAN_ID_Compression),
 
-         when Multipurpose                      =>
+         when Multipurpose        =>
            (if Get_MP_S_FC (Frame).Long_Frame_Control = Long
             then Get_MP_L_FC (Frame).PAN_ID_Present = Present
             else False))
@@ -604,14 +587,14 @@ is
 
    function Is_Source_PAN_ID_Present (Frame : Byte_Array) return Boolean
    is (case Supported_Frame_Types (Get_Frame_Type (Frame)) is
-         when Beacon | Data | Ack | MAC_Command =>
+         when General_Frame_Types =>
            PAN_ID_Model.Is_Source_PAN_ID_Present
              (Frame_Version            => Get_FC (Frame).Frame_Version,
               Destination_Address_Mode => Get_FC (Frame).Dest_Address_Mode,
               Source_Address_Mode      => Get_FC (Frame).Src_Address_Mode,
               PAN_ID_Compression       => Get_FC (Frame).PAN_ID_Compression),
 
-         when Multipurpose                      => False)
+         when Multipurpose        => False)
    with Pre => Frame_Control_Valid (Frame);
 
    function Get_Source_PAN_ID_Offset (Frame : Byte_Array) return Natural
@@ -645,32 +628,11 @@ is
                + Get_Source_PAN_ID_Length (Frame));
    --  Read the destination PAN ID field from the frame
 
-   function Source_PAN_ID_Valid (Frame : Byte_Array) return Boolean
-   is (not Is_Source_PAN_ID_Present (Frame)
-       or else not Is_Destination_PAN_ID_Present (Frame)
-       or else Get_Source_PAN_ID (Frame) /= Get_Destination_PAN_ID (Frame))
-   with
-     Pre =>
-       Frame_Control_Valid (Frame)
-       and then
-         (if Is_Source_PAN_ID_Present (Frame)
-          then
-            Frame'Length
-            >= Get_Source_PAN_ID_Offset (Frame)
-               + Get_Source_PAN_ID_Length (Frame));
-   --  Checks whether the Source PAN ID field contains a valid value.
-   --
-   --  According to the rules in Section 7.2.2.6 of IEEE 802.15.4-2024, if the
-   --  Source and Destination PAN IDs are identical, then PAN ID compression
-   --  must be used and the Source PAN ID is omitted from the frame.
-   --  Therefore, it is not permitted for both PAN IDs to be present in the
-   --  frame with identical values, as doing so would violate Section 7.2.2.6.
-
    function Get_Decompressed_Source_PAN_ID
      (Frame : Byte_Array) return Variant_PAN_ID
    is (if Is_Source_PAN_ID_Present (Frame)
        then Get_Source_PAN_ID (Frame)
-       elsif Get_Frame_Type (Frame) in Beacon | Data | Ack | MAC_Command
+       elsif Get_Frame_Type (Frame) in General_Frame_Types
          and then
            PAN_ID_Model.Is_Source_PAN_ID_Compressed
              (Frame_Version            => Get_Frame_Version (Frame),
@@ -754,10 +716,9 @@ is
 
    function Is_Aux_Security_Header_Present (Frame : Byte_Array) return Boolean
    is (case Supported_Frame_Types (Get_Frame_Type (Frame)) is
-         when Beacon | Data | Ack | MAC_Command =>
-           Get_FC (Frame).Security_Enabled = Enabled,
+         when General_Frame_Types => Get_FC (Frame).Security_Enabled = Enabled,
 
-         when Multipurpose                      =>
+         when Multipurpose        =>
            (if Get_MP_S_FC (Frame).Long_Frame_Control = Long
             then Get_MP_L_FC (Frame).Security_Enabled = Enabled
             else False))
@@ -1115,8 +1076,7 @@ is
    function Is_MHR_Valid_Excluding_IEs (Frame : Byte_Array) return Boolean
    is (Frame_Control_Valid (Frame)
        and then Security_Control_Valid (Frame)
-       and then Frame'Length >= MHR_Length_Excluding_IEs (Frame)
-       and then Source_PAN_ID_Valid (Frame));
+       and then Frame'Length >= MHR_Length_Excluding_IEs (Frame));
    --  Returns True if all fields in the MAC header (excluding header IEs)
    --  are valid.
 
@@ -1124,8 +1084,7 @@ is
    is (Frame_Control_Valid (Frame)
        and then Security_Control_Valid (Frame)
        and then Is_Header_IEs_Valid (Frame)
-       and then Frame'Length >= MHR_Length (Frame)
-       and then Source_PAN_ID_Valid (Frame));
+       and then Frame'Length >= MHR_Length (Frame));
    --  Returns True if all fields in the MAC header (including header IEs)
    --  are valid.
 

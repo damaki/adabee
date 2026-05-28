@@ -16,9 +16,7 @@ is
      Pre                    =>
        Frame'Length > 0
        and then Frame'Last < Integer'Last
-       and then
-         Decoder_Model.Get_Frame_Type (Frame)
-         in Beacon | Data | Ack | MAC_Command,
+       and then Decoder_Model.Get_Frame_Type (Frame) in General_Frame_Types,
      Post                   =>
        (Result = Success) = Decoder_Model.Is_MHR_Valid_Excluding_IEs (Frame)
        and then
@@ -53,13 +51,13 @@ is
       end if;
 
       case Get_Frame_Type (Frame) is
-         when Beacon | Data | Ack | MAC_Command =>
+         when General_Frame_Types     =>
             Validate_General_MAC_Header (Ctx, Frame, Result);
 
-         when Multipurpose                      =>
+         when Multipurpose            =>
             Validate_Multipurpose_MAC_Header (Ctx, Frame, Result);
 
-         when Unsupported_Frame_Types           =>
+         when Unsupported_Frame_Types =>
             Result := Unsupported_Field;
       end case;
    end Validate;
@@ -83,7 +81,7 @@ is
       --  Check for any reserved or unsupported values in the Frame Control
 
       case Get_Frame_Type (Frame) is
-         when Beacon | Data | Ack | MAC_Command =>
+         when General_Frame_Types     =>
             if Frame'Length < 2 then
                Result := Malformed_Frame;
             else
@@ -93,26 +91,12 @@ is
                  or G_FC.Frame_Version = Reserved
                then
                   Result := Unsupported_Field;
-
-               --  IEEE 802.15.4-2024 Section 7.2.2.6 states for frame versions
-               --  0b00 and 0b01:
-               --  "If only either the destination or the source addressing
-               --  information is present, the PAN ID Compression field shall
-               --  be set to zero"
-               elsif G_FC.Frame_Version /= IEEE_802_15_4
-                 and
-                   (G_FC.Dest_Address_Mode = Not_Present
-                    or G_FC.Src_Address_Mode = Not_Present)
-                 and G_FC.PAN_ID_Compression /= Not_Compressed
-               then
-                  Result := Malformed_Frame;
-
                else
                   Result := Success;
                end if;
             end if;
 
-         when Multipurpose                      =>
+         when Multipurpose            =>
             S_FC := From_Bytes (Frame (Frame'First));
 
             if S_FC.Long_Frame_Control = Short then
@@ -140,7 +124,7 @@ is
                end if;
             end if;
 
-         when Unsupported_Frame_Types           =>
+         when Unsupported_Frame_Types =>
             Result := Unsupported_Field;
       end case;
    end Validate_Frame_Control;
@@ -175,19 +159,6 @@ is
         or FC.Frame_Version = Reserved
       then
          Result := Unsupported_Field;
-         return;
-
-      --  IEEE 802.15.4-2024 Section 7.2.2.6 states for frame versions
-      --  0b00 and 0b01:
-      --  "If only either the destination or the source addressing information
-      --  is present, the PAN ID Compression field shall be set to zero"
-      elsif FC.Frame_Version /= IEEE_802_15_4
-        and
-          (FC.Dest_Address_Mode = Not_Present
-           or FC.Src_Address_Mode = Not_Present)
-        and FC.PAN_ID_Compression /= Not_Compressed
-      then
-         Result := Malformed_Frame;
          return;
       end if;
 
@@ -278,29 +249,11 @@ is
           (Pos = Frame'First + Decoder_Model.Get_Source_PAN_ID_Offset (Frame));
 
       if Src_PAN_ID_Present then
-
-         --  Reject frames that contain both PAN IDs with identical values.
-         --  This is not permitted by Section 7.2.2.6 of IEEE 802.15.4-2024
-         --  since PAN ID compression should have been used in this case.
-
-         if Dest_PAN_ID_Present
-           and then
-             PAN_ID_Field'
-               (From_Bytes
-                  (Frame (Ctx.Dest_PAN_ID_Pos .. Ctx.Dest_PAN_ID_Pos + 1)))
-             = PAN_ID_Field'(From_Bytes (Frame (Pos .. Pos + 1)))
-         then
-            Result := Malformed_Frame;
-            return;
-         end if;
-
          Ctx.Src_PAN_ID_Pos := Pos;
          Pos := Pos + 2;
       else
          Ctx.Src_PAN_ID_Pos := 0;
       end if;
-
-      pragma Assert (Decoder_Model.Source_PAN_ID_Valid (Frame));
 
       --  Source Address field
 

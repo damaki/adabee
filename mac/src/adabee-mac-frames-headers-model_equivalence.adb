@@ -54,8 +54,7 @@ is
    ------------------------------------------
 
    procedure Lemma_MHR_Length_Excluding_IEs_Equal
-     (MHR : Valid_MAC_Header; Frame : Byte_Array)
-   is
+     (MHR : Valid_MAC_Header; Frame : Byte_Array) is
    begin
       Lemma_Addressing_Field_Positions_Equal (MHR, Frame);
       Lemma_Aux_Security_Header_Field_Positions_Equal (MHR, Frame);

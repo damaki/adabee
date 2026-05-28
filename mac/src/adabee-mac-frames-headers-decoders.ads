@@ -28,9 +28,10 @@ is
       Length : out Natural;
       Result : out Status_Code)
    with
-     Global => null,
-     Pre    => Buffer'Length > 0,
-     Post   =>
+     Global                 => null,
+     Relaxed_Initialization => MHR,
+     Pre                    => Buffer'Length > 0 and then not MHR'Constrained,
+     Post                   =>
        Length <= Buffer'Length
        and then Length <= Max_MHR_Length
        and then
@@ -38,7 +39,9 @@ is
        and then
          (if Result = Success
           then
-            Length = Decoder_Model.MHR_Length_Excluding_IEs (Buffer)
+            MHR'Initialized
+            and then Length = Decoder_Model.MHR_Length_Excluding_IEs (Buffer)
+            and then Length <= Buffer'Length
             and then Is_Valid (MHR)
             and then Encoder_Model.MHR_Equal_Excluding_IEs (MHR, Buffer));
    --  Decode the first part of the MAC Header, up to (and including) the
@@ -141,14 +144,16 @@ is
       Result            : out Status_Code)
    with
      Global => null,
-     Pre    => Buffer'Length > 0,
+     Relaxed_Initialization => MHR,
+     Pre    => Buffer'Length > 0 and then not MHR'Constrained,
      Post   =>
        (Result = Success) = Decoder_Model.Is_MHR_Valid (Buffer)
 
        and then
          (if Result = Success
           then
-            Is_Valid (MHR)
+            MHR'Initialized
+            and then Is_Valid (MHR)
             and then Encoder_Model.MHR_Equal_Excluding_IEs (MHR, Buffer)
 
             --  If header IEs are present, then the range

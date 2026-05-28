@@ -45,6 +45,13 @@ is
        Supported_Frame_Types
        in Beacon | Data | Ack | MAC_Command | Multipurpose;
 
+   subtype General_Frame_Types is Supported_Frame_Types
+   with
+     Static_Predicate =>
+       General_Frame_Types in Beacon | Data | Ack | MAC_Command;
+   --  The set of frame types that use the general Frame Control format,
+   --  described in Section 7.2.2 of IEEE 802.15.4-2024.
+
    ----------------------------
    -- Security Enabled Field --
    ----------------------------
@@ -766,7 +773,7 @@ is
             --  document IEEE P802. 15-15-0561-00-0mag which states:
             --
             --  "When both addresses are present and either is a short address,
-            --  PAN ID compression is used as per 2011." (meaning version 0b01)
+            --  PAN ID compression is used as per 2011."
 
             Source_Address_Mode
             /= Not_Present
@@ -825,11 +832,17 @@ is
          Source_PAN_ID_Present      : Boolean)
       with
         Pre  =>
+          --  The identity only holds when the rule in Section 7.2.2.6 of
+          --  IEEE 802.15.4-2024 is respected which states:
+          --  "If only either the destination or the source addressing
+          --  information is present, the PAN ID Compression field shall be set
+          --  to zero"
           (if Frame_Version in IEEE_802_15_4_2003 | IEEE_802_15_4_2006
              and
                (Destination_Address_Mode = Not_Present
                 or Source_Address_Mode = Not_Present)
            then PAN_ID_Compression = Not_Compressed)
+
           and then
             Destination_PAN_ID_Present
             = Is_Destination_PAN_ID_Present
@@ -969,20 +982,19 @@ is
    ----------------
    --  Ref. 7.2 of IEEE 802.15.4-2024
 
-   type MAC_Header is record
+   type MAC_Header (Frame_Type : Supported_Frame_Types := Beacon) is record
       --  Frame Control Fields.
       --  Note that some fields are in the discriminant part of other fields.
-      Frame_Type    : Supported_Frame_Types;
       Frame_Pending : Frame_Pending_Field;
       AR            : Ack_Required_Field;
       IE_Present    : IE_Present_Field;
       Frame_Version : Valid_Frame_Version_Field;
 
+      Long_Frame_Control : Long_Frame_Control_Field;
       --  Controls whether a 1-byte (short) or 2-byte (long) frame control
       --  field is used. Only Multipurpose frames may use the short frame
       --  control format, and then only if the fields in the upper byte would
       --  all be zero.
-      Long_Frame_Control : Long_Frame_Control_Field;
 
       --  Other fields
       Sequence_Number     : Variant_Sequence_Number;
@@ -991,6 +1003,22 @@ is
       Source_PAN_ID       : Variant_PAN_ID;
       Source_Address      : Variant_Address;
       Aux_Security_Header : Variant_Aux_Security_Header;
+
+      case Frame_Type is
+         when General_Frame_Types =>
+            PAN_ID_Compression : PAN_ID_Compression_Field;
+            --  Controls whether PAN ID compression is used in the frame.
+            --
+            --  This is only relevant for Beacon, Data, Ack, and MAC_Command
+            --  frame types.
+            --
+            --  Refer to the rules in Section 7.2.2.6 of IEEE 802.15.4-2024 for
+            --  when this must be set to Not_Compressed (zero) or Compressed
+            --  (one).
+
+         when Multipurpose =>
+            null;
+      end case;
    end record;
 
    function Long_Frame_Control_Valid (MHR : MAC_Header) return Boolean
@@ -1013,7 +1041,7 @@ is
 
    function Is_Valid (MHR : MAC_Header) return Boolean
    is ((case MHR.Frame_Type is
-          when Beacon | Data | Ack | MAC_Command =>
+          when General_Frame_Types =>
             --  The addressing fields must be a valid combination according to
             --  the PAN ID compression rules described in IEEE 802.15.4-2024
             --  Section 7.2.2.6.
@@ -1029,10 +1057,43 @@ is
                     Compressed_Source_PAN_ID
                          (Destination_PAN_ID => MHR.Destination_PAN_ID,
                           Source_PAN_ID      => MHR.Source_PAN_ID)
-                      .Present),
+                      .Present)
 
-          when Multipurpose                      =>
+            --  The Destination_PAN_ID presence must match the rest of the
+            --  frame configuration.
+            and then
+              MHR.Destination_PAN_ID.Present
+              = PAN_ID_Model.Is_Destination_PAN_ID_Present
+                  (Frame_Version            => MHR.Frame_Version,
+                   Destination_Address_Mode => MHR.Destination_Address.Mode,
+                   Source_Address_Mode      => MHR.Source_Address.Mode,
+                   PAN_ID_Compression       => MHR.PAN_ID_Compression)
+
+            --  The Source_PAN_ID must be specified when required by the
+            --  rest of the frame configuration.
+            and then
+              (if PAN_ID_Model.Is_Source_PAN_ID_Present
+                    (Frame_Version            => MHR.Frame_Version,
+                     Destination_Address_Mode => MHR.Destination_Address.Mode,
+                     Source_Address_Mode      => MHR.Source_Address.Mode,
+                     PAN_ID_Compression       => MHR.PAN_ID_Compression)
+               then MHR.Source_PAN_ID.Present
+
+               elsif PAN_ID_Model.Is_Source_PAN_ID_Compressed
+                       (Frame_Version            => MHR.Frame_Version,
+                        Destination_Address_Mode =>
+                          MHR.Destination_Address.Mode,
+                        Source_Address_Mode      => MHR.Source_Address.Mode,
+                        PAN_ID_Compression       => MHR.PAN_ID_Compression)
+               then
+                 MHR.Source_PAN_ID.Present
+                 and then MHR.Source_PAN_ID = MHR.Destination_PAN_ID
+
+               else not MHR.Source_PAN_ID.Present),
+
+          when Multipurpose        =>
             --  Multipurpose frames do not have a source PAN ID field
+            --  Ref. IEEE 802.15.4-2024 Section 7.3.5.1
             not MHR.Source_PAN_ID.Present
 
             --  Frame version must be zero for multipurpose frames.
@@ -1057,10 +1118,44 @@ is
             and then MHR.Aux_Security_Header.Security_Enabled = Disabled))
    with Ghost;
    --  Returns True if and only if a MAC_Header record contains a valid
-   --  configuration.
+   --  configuration as defined by IEEE 802.15.4-2024 Section 7.
 
    subtype Valid_MAC_Header is MAC_Header
    with Ghost_Predicate => Is_Valid (Valid_MAC_Header);
+
+   function Is_PAN_ID_Compression_Valid (MHR : MAC_Header) return Boolean
+   is (if MHR.Frame_Type in General_Frame_Types
+       then
+         MHR.PAN_ID_Compression
+         = PAN_ID_Model.Get_PAN_ID_Compression
+             (Frame_Version              => MHR.Frame_Version,
+              Destination_Address_Mode   => MHR.Destination_Address.Mode,
+              Source_Address_Mode        => MHR.Source_Address.Mode,
+              Destination_PAN_ID_Present => MHR.Destination_PAN_ID.Present,
+              Source_PAN_ID_Present      =>
+                Compressed_Source_PAN_ID
+                  (Destination_PAN_ID => MHR.Destination_PAN_ID,
+                   Source_PAN_ID      => MHR.Source_PAN_ID)
+                  .Present))
+   with
+     Ghost,
+     Pre =>
+       (if MHR.Frame_Type in General_Frame_Types
+        then
+          PAN_ID_Model.Is_Valid_Configuration
+            (Frame_Version              => MHR.Frame_Version,
+             Destination_Address_Mode   => MHR.Destination_Address.Mode,
+             Source_Address_Mode        => MHR.Source_Address.Mode,
+             Destination_PAN_ID_Present => MHR.Destination_PAN_ID.Present,
+             Source_PAN_ID_Present      =>
+               Compressed_Source_PAN_ID
+                 (Destination_PAN_ID => MHR.Destination_PAN_ID,
+                  Source_PAN_ID      => MHR.Source_PAN_ID)
+                 .Present));
+   --  Checks whether the PAN_ID_Compression field is set in accordance with
+   --  the rules in Section 7.2.2.6 of IEEE 802.15.4-2024. I.e., that when the
+   --  Source and Destination PAN IDs are both present and identical, then
+   --  PAN_ID_Compression is set to omit the Source PAN ID from the frame.
 
    -----------------
    -- Conversions --

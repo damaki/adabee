@@ -134,7 +134,9 @@ is
      Ghost,
      Relaxed_Initialization => (A, B),
      Pre                    =>
-       A_Length >= Encoder_Model.Get_Key_ID_Offset (MHR)
+       A_Length
+       >= Encoder_Model.Get_Frame_Counter_Offset (MHR)
+          + Encoder_Model.Get_Frame_Counter_Length (MHR)
        and then A_Length <= B_Length
        and then A_Length <= A'Length
        and then B_Length <= B'Length
@@ -158,8 +160,7 @@ is
      Relaxed_Initialization => Buffer,
      Global                 => null,
      Pre                    =>
-       Buffer'Length >= 2
-       and then MHR.Frame_Type in Beacon | Data | Ack | MAC_Command,
+       Buffer'Length >= 2 and then MHR.Frame_Type in General_Frame_Types,
      Post                   =>
        Length = Encoder_Model.Get_Frame_Control_Length (MHR)
        and then Prefix_Initialized (Buffer, Length)
@@ -290,7 +291,8 @@ is
      Pre                    =>
        Buffer'Length >= Max_MHR_Length
        and then Offset = Encoder_Model.Get_Destination_PAN_ID_Offset (MHR)
-       and then Prefix_Initialized (Buffer, Offset),
+       and then Prefix_Initialized (Buffer, Offset)
+       and then Is_PAN_ID_Compression_Valid (MHR),
      Post                   =>
        Offset = Encoder_Model.Get_Aux_Security_Header_Offset (MHR)
        and then Prefix_Initialized (Buffer, Offset)
@@ -640,15 +642,7 @@ is
            Security_Enabled   => MHR.Aux_Security_Header.Security_Enabled,
            Frame_Pending      => MHR.Frame_Pending,
            AR                 => MHR.AR,
-           PAN_ID_Compression =>
-             Get_PAN_ID_Compression
-               (Frame_Version              => MHR.Frame_Version,
-                Destination_Address_Mode   => MHR.Destination_Address.Mode,
-                Source_Address_Mode        => MHR.Source_Address.Mode,
-                Destination_PAN_ID_Present => MHR.Destination_PAN_ID.Present,
-                Source_PAN_ID_Present      =>
-                  not Same_PAN_ID (MHR.Destination_PAN_ID, MHR.Source_PAN_ID)
-                  and then MHR.Source_PAN_ID.Present),
+           PAN_ID_Compression => MHR.PAN_ID_Compression,
            Reserved           => 0,
            SN_Suppression     => MHR.Sequence_Number.Suppression,
            IE_Present         => MHR.IE_Present,
@@ -718,10 +712,10 @@ is
      (MHR : Valid_MAC_Header; Buffer : out Byte_Array; Length : out Natural) is
    begin
       case MHR.Frame_Type is
-         when Beacon | Data | Ack | MAC_Command =>
+         when General_Frame_Types =>
             Encode_General_Frame_Control (MHR, Buffer, Length);
 
-         when Multipurpose                      =>
+         when Multipurpose        =>
             Encode_Multipurpose_Frame_Control (MHR, Buffer, Length);
       end case;
    end Encode_Frame_Control;
@@ -957,6 +951,7 @@ is
          Lemma_Frame_Counter_Preserved
            (Buffer_FC, Offset_FC, Buffer, Offset, MHR);
 
+         pragma Assert (Buffer_Old = Slice (Buffer, Buffer_Old'Length));
          pragma Assert (SC = From_Bytes (Buffer (SC_Pos)));
 
          pragma

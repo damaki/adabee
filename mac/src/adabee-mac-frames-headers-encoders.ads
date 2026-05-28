@@ -19,7 +19,9 @@ is
      Relaxed_Initialization => Buffer,
      Global                 => null,
      Depends                => ((Buffer, Length) => (Buffer, MHR)),
-     Pre                    => Buffer'Length >= Max_MHR_Length,
+     Pre                    =>
+       Buffer'Length >= Max_MHR_Length
+       and then (Is_PAN_ID_Compression_Valid (MHR)),
      Post                   =>
        (Length <= Buffer'Length
         and then

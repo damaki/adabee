@@ -101,9 +101,7 @@ is
      Global => null,
      Pre    =>
        Decoder_Model.Frame_Control_Valid (Frame)
-       and then
-         Decoder_Model.Get_Frame_Type (Frame)
-         in Beacon | Data | Ack | MAC_Command,
+       and then Decoder_Model.Get_Frame_Type (Frame) in General_Frame_Types,
      Post   => Get_General_Frame_Control'Result = Decoder_Model.Get_FC (Frame);
    --  Get the Frame Control field for general frame types.
 
@@ -149,9 +147,7 @@ is
      Global => null,
      Pre    =>
        Decoder_Model.Frame_Control_Valid (Frame)
-       and then
-         Decoder_Model.Get_Frame_Type (Frame)
-         in Beacon | Data | Ack | MAC_Command,
+       and then Decoder_Model.Get_Frame_Type (Frame) in General_Frame_Types,
      Post   =>
        Get_PAN_ID_Compression'Result
        = Decoder_Model.Get_FC (Frame).PAN_ID_Compression;
@@ -401,6 +397,7 @@ is
      Post   =>
        Get_Aux_Security_Header'Result
        = Decoder_Model.Get_Aux_Security_Header (Frame);
+   --  Read the entire Auxiliary Security Header field from the MAC header
 
 private
 
