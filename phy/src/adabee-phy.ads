@@ -83,11 +83,14 @@ package AdaBee.PHY
        Packet_Info,
        PIB_Attributes,
        Receive_Filters),
-    Initial_Condition => Current_State = Off,
+    Initial_Condition =>
+      Current_State = Off
+      and then Get_Receive_Filters = All_Packets_Allowed_Filter,
     Always_Terminates
 is
 
    use type AdaBee.Time_Units.Time_Span;
+   use type Interfaces.Unsigned_8;
 
    -----------
    -- Types --
@@ -103,7 +106,7 @@ is
 
    type RF_Channel_Number is range 0 .. 72;
    --  Channel numbers supported for a subset of PHYs defined in
-   --  IEEE 802.15.4-2020.
+   --  IEEE 802.15.4-2024.
 
    type LQI_Number is range 0 .. 255;
    --  Link Quality Indicator
@@ -123,11 +126,12 @@ is
 
    Max_Symbols_Duration : constant Time_Units.Time_Span :=
      Time_Units.Time_Span (Symbol_Count'Last)
-     / 4_800.0; --  Slowest symbol rate of any PHYs in IEEE 802.15.4-2020
+     / 2_400.0; --  Slowest symbol rate of any PHYs in IEEE 802.15.4-2024
    --  Maximum possible duration of any Symbol_Count quantity.
    --
-   --  For 2**24 - 1 symbols at the slowest symbol rate (4.8 ksym/s) this is
-   --  approximately equal to 3_495.25 seconds (a little over 58 minutes).
+   --  For 2**24 - 1 symbols at the slowest symbol rate (2.4 ksym/s for FSK-A
+   --  PHY mode 6) this is approximately equal to 6990 seconds (a little
+   --  under two hours).
 
    type Packet_Timestamps is record
       Preamble_Start : Radio_Clock_Time_Range;
@@ -465,7 +469,7 @@ is
 
    procedure Wait_For_Events
      (Events : out Event_Flags_Array;
-      Filter : Event_Flags_Array := (others => True))
+      Filter : Event_Flags_Array := [others => True])
    with
      Always_Terminates => False,
      Global            =>
@@ -883,6 +887,82 @@ is
    --  Note that if the current CCA mode is ALOHA, then this always reports
    --  that the channel is Clear.
 
+   -----------------------
+   -- Receive Filtering --
+   -----------------------
+
+   --  Receive filters can be used to only receive packets that meet the filter
+   --  criteria. If the PHY receives a packet that is rejected by the filter,
+   --  then it silently ignores the packet and re-enables the receiver to
+   --  continue listening. This reduces the amount of processing overhead and
+   --  context switching in the MAC layer as only packets that pass the filter
+   --  are passed onto the MAC layer.
+
+   type Filter_Kind is
+     (
+     --  These filters only allow packets with certain MAC Frame Types
+     --  defined by Table 7-1 of IEEE 802.15.4-2024
+     --  (i.e. checks bits 0..2 of the first octet of the packet)
+     Allow_Frame_Type_Beacon,         --  2#000#
+      Allow_Frame_Type_Data,           --  2#001#
+      Allow_Frame_Type_Ack,            --  2#010#
+      Allow_Frame_Type_MAC_Command,    --  2#011#
+      Allow_Frame_Type_Reserved,       --  2#100#
+      Allow_Frame_Type_Multipurpose,   --  2#101#
+      Allow_Frame_Type_Frak,           --  2#110#
+      Allow_Frame_Type_Extended,       --  2#111#
+
+      Allow_Invalid_CRC,
+      --  Allow packets with an invalid CRC
+
+      Allow_Empty_Packets
+      --  Allow zero-length packets
+     );
+
+   type Filter_Array is array (Filter_Kind) of Boolean with Pack;
+
+   All_Packets_Allowed_Filter : constant Filter_Array := [others => True];
+   --  Filter that allows all packets
+
+   function Get_Receive_Filters return Filter_Array
+   with Inline, Global => (Input => Receive_Filters);
+   --  Get the currently configured receive filters
+
+   procedure Set_Receive_Filter (Filter : Filter_Kind; Enabled : Boolean)
+   with
+     Inline,
+     Global  => (In_Out => Receive_Filters, Proof_In => Radio_State),
+     Depends => (Receive_Filters => (Receive_Filters, Filter, Enabled)),
+     Pre     => Current_State in Off | Sleeping | Exiting_Sleep | Idle,
+     Post    =>
+       Get_Receive_Filters
+       = (Get_Receive_Filters'Old with delta Filter => Enabled);
+   --  Configure one filter criteria.
+   --
+   --  The other filter criteria are unchanged.
+   --
+   --  The receive filters cannot be changed while the the radio is actively
+   --  transmitting or receiving.
+
+   function Receive_Filter_Enabled (Filter : Filter_Kind) return Boolean
+   with
+     Inline,
+     Global => (Input => Receive_Filters),
+     Post   => Receive_Filter_Enabled'Result = Get_Receive_Filters (Filter);
+   --  Check if one filter criteria is enabled
+
+   procedure Set_Receive_Filters (Filters : Filter_Array)
+   with
+     Inline,
+     Global  => (Output => Receive_Filters, Proof_In => Radio_State),
+     Depends => (Receive_Filters => Filters),
+     Pre     => Current_State in Off | Sleeping | Exiting_Sleep | Idle,
+     Post    => Get_Receive_Filters = Filters;
+   --  Set all receive filter criteria
+   --
+   --  The receive filters cannot be changed while the the radio is actively
+   --  transmitting or receiving.
+
    ---------------------
    -- Receive Control --
    ---------------------
@@ -890,7 +970,7 @@ is
    --  Packet reception can be started when the radio is in the Idle state.
    --  To receive a packet:
    --   1. Call Receive_Now or Receive_Delayed.
-   --   2. Call Wait_For_Event until the Operation_Completed flag is set.
+   --   2. Call Wait_For_Event until the Operation_Complete flag is set.
    --   4. Call Packet_Received to determine whether a packet is available.
    --   5. If a packet was received, then call Get_Received_Packet to get the
    --      received packet and return back to the Idle state.
@@ -899,7 +979,7 @@ is
    --
    --  Alternatively, a polling approach can be used:
    --   1. Call Receive_Now or Receive_Delayed.
-   --   2. Call Finish_Receive, then check if Current_State
+   --   2. Call Finish_Receive, then check if Current_State = Rx_Complete
 
    type Receive_Metadata is record
       RSSI : RF_Power_dBm;
@@ -1020,15 +1100,61 @@ is
       Length   : out Packet_Length_Number;
       Metadata : out Receive_Metadata)
    with
-     Global                 => (Input => Packet_Info, Proof_In => Radio_State),
+     Global                 =>
+       (Input => Packet_Info, Proof_In => (Radio_State, Receive_Filters)),
      Depends                => ((Packet, Length, Metadata) => Packet_Info),
      Relaxed_Initialization => Packet,
      Pre                    =>
        (Current_State = Rx_Complete
         and then Packet_Received
-        and then Packet'Length = Maximum_Packet_Length),
+        and then Packet'Length >= Maximum_Packet_Length),
      Post                   =>
-       Packet (Packet'First .. Packet'First + Length - 1)'Initialized;
+       Packet (Packet'First .. Packet'First + Length - 1)'Initialized
+
+       and then
+         (if not Receive_Filter_Enabled (Allow_Empty_Packets) then Length > 0)
+
+       and then
+         (if not Receive_Filter_Enabled (Allow_Invalid_CRC)
+          then Length >= 2 and then Metadata.CRC_Valid)
+
+       and then
+         (if Length > 0
+          then
+            (declare
+               Frame_Type : constant Interfaces.Unsigned_8 :=
+                 Packet (Packet'First) and 2#111#;
+             begin
+               (if not Receive_Filter_Enabled (Allow_Frame_Type_Beacon)
+                then Frame_Type /= 2#000#)
+
+               and then
+                 (if not Receive_Filter_Enabled (Allow_Frame_Type_Data)
+                  then Frame_Type /= 2#001#)
+
+               and then
+                 (if not Receive_Filter_Enabled (Allow_Frame_Type_Ack)
+                  then Frame_Type /= 2#010#)
+
+               and then
+                 (if not Receive_Filter_Enabled (Allow_Frame_Type_MAC_Command)
+                  then Frame_Type /= 2#011#)
+
+               and then
+                 (if not Receive_Filter_Enabled (Allow_Frame_Type_Reserved)
+                  then Frame_Type /= 2#100#)
+
+               and then
+                 (if not Receive_Filter_Enabled (Allow_Frame_Type_Multipurpose)
+                  then Frame_Type /= 2#101#)
+
+               and then
+                 (if not Receive_Filter_Enabled (Allow_Frame_Type_Frak)
+                  then Frame_Type /= 2#110#)
+
+               and then
+                 (if not Receive_Filter_Enabled (Allow_Frame_Type_Extended)
+                  then Frame_Type /= 2#111#)));
    --  Get the packet that was received.
    --
    --  This can only be called when the PHY is in the Rx_Complete state and
@@ -1038,75 +1164,13 @@ is
    --  @param Length The length of the received packet in bytes.
    --  @param Metadata Information about the received packet (RSSI, LQI, etc).
 
-   -----------------------
-   -- Receive Filtering --
-   -----------------------
-
-   --  Receive filters can be used to only receive packets that meet the filter
-   --  criteria. If the PHY receives a packet that is rejected by the filter,
-   --  then it silently ignores the packet and re-enables the receiver to
-   --  continue listening. This reduces the amount of processing overhead and
-   --  context switching in the MAC layer as only packets that pass the filter
-   --  are passed onto the MAC layer.
-
-   type Filter_Kind is
-     (
-     --  These filters only allow packets with certain MAC Frame Types
-     --  defined by Table 7-1 of IEEE 802.15.4-2020
-     --  (i.e. checks bits 0..2 of the first octet of the packet)
-     Allow_Frame_Type_Beacon,         --  2#000#
-      Allow_Frame_Type_Data,           --  2#001#
-      Allow_Frame_Type_Ack,            --  2#010#
-      Allow_Frame_Type_MAC_Command,    --  2#011#
-      Allow_Frame_Type_Reserved,       --  2#100#
-      Allow_Frame_Type_Multipurpose,   --  2#101#
-      Allow_Frame_Type_Frak,           --  2#110#
-      Allow_Frame_Type_Extended,       --  2#111#
-
-      Allow_Invalid_CRC
-      --  Allow packets with an invalid CRC
-     );
-
-   type Filter_Array is array (Filter_Kind) of Boolean with Pack;
-
-   All_Packets_Allowed_Filter : constant Filter_Array := (others => True);
-   --  Filter that allows all packets
-
-   procedure Set_Receive_Filter (Filter : Filter_Kind; Enabled : Boolean)
-   with
-     Inline,
-     Global  => (In_Out => Receive_Filters),
-     Depends => (Receive_Filters => (Receive_Filters, Filter, Enabled)),
-     Post    =>
-       Receive_Filter_Enabled (Filter) = Enabled
-       and then Get_Receive_Filters (Filter) = Enabled;
-   --  Configure one filter criteria.
-   --
-   --  The other filter criteria are unchanged.
-
-   function Receive_Filter_Enabled (Filter : Filter_Kind) return Boolean
-   with Inline, Global => (Input => Receive_Filters);
-   --  Check if one filter criteria is enabled
-
-   procedure Set_Receive_Filters (Filters : Filter_Array)
-   with
-     Inline,
-     Global  => (Output => Receive_Filters),
-     Depends => (Receive_Filters => Filters),
-     Post    => Get_Receive_Filters = Filters;
-   --  Set all receive filter criteria
-
-   function Get_Receive_Filters return Filter_Array
-   with Inline, Global => (Input => Receive_Filters);
-   --  Get the currently configured receive filters
-
    -------------------------------
    -- Energy Detection Scanning --
    -------------------------------
 
    type ED_Range is range 0 .. 255 with Size => 8;
-   --  Energy Detection (ED) measurement value specified in Section 10.2.6 of
-   --  IEEE 802.15.4-2020.
+   --  Energy Detection (ED) measurement value specified in Section 11.2.6 of
+   --  IEEE 802.15.4-2024.
    --
    --  The minimum ED value (zero) indicates received power less than 10 dB
    --  above the lowest receiver sensitivity, in dBm.

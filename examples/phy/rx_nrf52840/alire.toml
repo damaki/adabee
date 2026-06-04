@@ -11,6 +11,9 @@ tags = []
 
 executables = ["rx_nrf52840"]
 
+[build-switches]
+"*".ada_version = "Ada2022"
+
 [[depends-on]]
 adabee_phy = "*"
 light_tasking_nrf52840 = "^15.4.0"

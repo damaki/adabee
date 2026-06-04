@@ -10,6 +10,7 @@ website = ""
 tags = []
 
 [build-switches]
+"*".ada_version = "Ada2022"
 "*".style_checks = [
   "-gnaty3",  # Specify indentation level of 3
   "-gnatya",  # Check attribute casing

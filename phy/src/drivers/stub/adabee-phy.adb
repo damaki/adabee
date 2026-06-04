@@ -143,7 +143,7 @@ is
 
    procedure Wait_For_Events
      (Events : out Event_Flags_Array;
-      Filter : Event_Flags_Array := (others => True))
+      Filter : Event_Flags_Array := [others => True])
    is
       pragma Unreferenced (Events);
       pragma Unreferenced (Filter);

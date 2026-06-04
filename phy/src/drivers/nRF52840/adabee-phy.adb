@@ -154,7 +154,7 @@ is
    PHY_API_State : State_Kind := Off;
    --  Keeps track of which state the PHY API is in
 
-   PHY_Channel  : Supported_RF_Channel_Number := 11
+   PHY_Channel : Supported_RF_Channel_Number := 11
    with Atomic;
 
    PHY_CCA_Mode : CCA_Mode_Kind := ALOHA
@@ -588,6 +588,9 @@ is
          Frame_Type := PHY_Packet_Buffer.Payload (1) and 2#0000_0111#;
 
          if (PHY_Rx_Filters (Allow_Invalid_CRC) or else CRC_OK)
+           and then
+             (PHY_Rx_Filters (Allow_Empty_Packets)
+              or else PHY_Packet_Buffer.Length = 0)
            and then PHY_Rx_Filters (Filter_Kind'Val (Frame_Type))
          then
             --  Packet passes the rx filters
@@ -2213,18 +2216,24 @@ is
    ---------------------------
 
    procedure Get_Packet_Timestamps
-     (Timestamps : out Packet_Timestamps; Length : Packet_Length_Number) is
+     (Timestamps : out Packet_Timestamps; Length : Packet_Length_Number)
+   is
+      SFD_Time : constant Radio_Clock_Time_Range := Driver.Get_SFD_Time;
    begin
-      Timestamps.SFD := Driver.Get_SFD_Time;
+      --  Do one assignment to Timestamps to avoid temporarily violating its
+      --  type predicate.
 
-      Timestamps.Preamble_Start :=
-        Time_Units.Time_Span'Max
-          (0.0, Timestamps.SFD - SHR_Duration - PHR_Duration);
+      Timestamps :=
+        (SFD            => SFD_Time,
 
-      Timestamps.Payload_End :=
-        Timestamps.SFD
-        + ((Time_Units.Time_Span (Length) * Nb_Symbols_Per_Octet)
-           / Symbol_Rate);
+         Preamble_Start =>
+           Time_Units.Time_Span'Max
+             (0.0, SFD_Time - (SHR_Duration + PHR_Duration)),
+
+         Payload_End    =>
+           SFD_Time
+           + ((Time_Units.Time_Span (Length) * Nb_Symbols_Per_Octet)
+              / Symbol_Rate));
    end Get_Packet_Timestamps;
 
    ----------------
