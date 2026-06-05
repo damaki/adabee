@@ -69,7 +69,10 @@ is
      Global => null,
      Post   =>
        (Result = Success)
-       = Info_Elements.Headers.Lists.IE_Model.Valid_IE_List (Buffer)
+       = (Info_Elements.Headers.Lists.IE_Model.Valid_IE_List (Buffer)
+          and then
+            Buffer'Length - FCS_Length
+            >= Info_Elements.Headers.Lists.IE_Model.IE_List_Length (Buffer))
 
        and then
          (if Result = Success
@@ -80,12 +83,12 @@ is
             --  Buffer, after the IE list.
             and then
               ((MAC_Payload_First <= MAC_Payload_Last)
-               = (Header_IE_Last < Buffer'Last))
+               = (Header_IE_Last < Buffer'Last - FCS_Length))
             and then
-              (if Header_IE_Last < Buffer'Last
+              (if Header_IE_Last < Buffer'Last - FCS_Length
                then
                  MAC_Payload_First = Header_IE_Last + 1
-                 and then MAC_Payload_Last = Buffer'Last)
+                 and then MAC_Payload_Last = Buffer'Last - FCS_Length)
 
             --  Header_IE_Last is the index of the last byte of the IE list
             and then
@@ -143,11 +146,14 @@ is
       Has_Payload_IEs   : out Boolean;
       Result            : out Status_Code)
    with
-     Global => null,
+     Global                 => null,
      Relaxed_Initialization => MHR,
-     Pre    => Buffer'Length > 0 and then not MHR'Constrained,
-     Post   =>
-       (Result = Success) = Decoder_Model.Is_MHR_Valid (Buffer)
+     Pre                    => Buffer'Length > 0 and then not MHR'Constrained,
+     Post                   =>
+       (Result = Success)
+       = (Decoder_Model.Is_MHR_Valid (Buffer)
+          and then
+            Buffer'Length - FCS_Length >= Decoder_Model.MHR_Length (Buffer))
 
        and then
          (if Result = Success

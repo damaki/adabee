@@ -426,15 +426,22 @@ is
          MAC_Payload_Last := 0;
          Has_Payload_IEs := False;
 
+      elsif Header_IE_List_Length > Buffer'Length - FCS_Length then
+         --  The IE list goes into the FCS field
+         Result := Malformed_Frame;
+         Header_IE_Last := 0;
+         MAC_Payload_First := 1;
+         MAC_Payload_Last := 0;
+         Has_Payload_IEs := False;
       else
 
          Header_IE_Last := Buffer'First + (Header_IE_List_Length - 1);
 
          --  Determine whether the MAC payload is present
 
-         if Header_IE_Last < Buffer'Last then
+         if Header_IE_Last < Buffer'Last - FCS_Length then
             MAC_Payload_First := Header_IE_Last + 1;
-            MAC_Payload_Last := Buffer'Last;
+            MAC_Payload_Last := Buffer'Last - FCS_Length;
 
             --  Check whether the MAC payload contains payload IEs
 
@@ -519,6 +526,15 @@ is
                end if;
             end if;
 
+         --  Ensure that the MHR doesn't run into the FCS.
+         elsif MHR_Length > Buffer'Length - FCS_Length then
+            Header_IE_First := 1;
+            Header_IE_Last := 0;
+            MAC_Payload_First := 1;
+            MAC_Payload_Last := 0;
+            Has_Payload_IEs := False;
+            Result := Malformed_Frame;
+
          else
             --  No IE list is present, but a MAC payload might be present
 
@@ -526,12 +542,12 @@ is
             Header_IE_Last := 0;
             Has_Payload_IEs := False;
 
-            if MHR_Length = Buffer'Length then
+            if MHR_Length = Buffer'Length - FCS_Length then
                MAC_Payload_First := 1;
                MAC_Payload_Last := 0;
             else
                MAC_Payload_First := Buffer'First + MHR_Length;
-               MAC_Payload_Last := Buffer'Last;
+               MAC_Payload_Last := Buffer'Last - FCS_Length;
             end if;
          end if;
 

@@ -207,7 +207,7 @@ is
    --  Ref IEEE 802.15.4-2024 Section 7.3.5 (multipurpose frame types)
 
    function Frame_Control_Valid (Frame : Byte_Array) return Boolean
-   is (Frame'Length > 0
+   is (Frame'Length >= 1
        and then
          (case Get_Frame_Type (Frame) is
             when Unsupported_Frame_Types => False,
@@ -981,7 +981,7 @@ is
        + Get_Source_Address_Length (Frame)
        + Get_Aux_Security_Header_Length (Frame)
        + Get_Header_IEs_Length (Frame)
-       < Frame'Length)
+       < Frame'Length - FCS_Length)
    with
      Pre =>
        Security_Control_Valid (Frame) and then Is_Header_IEs_Valid (Frame);
@@ -1001,7 +1001,7 @@ is
 
    function Get_MAC_Payload_Length (Frame : Byte_Array) return Natural
    is (if Is_MAC_Payload_Present (Frame)
-       then Frame'Length - Get_MAC_Payload_Offset (Frame)
+       then (Frame'Length - FCS_Length) - Get_MAC_Payload_Offset (Frame)
        else 0)
    with
      Pre =>
