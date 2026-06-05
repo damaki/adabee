@@ -1,5 +1,5 @@
-name = "adabee_mac"
-description = "MAC layer for the AdaBee protocol stack"
+name = "adabee_mac_frames"
+description = "Library for encoding and decoding IEEE 802.15.4 MAC frames"
 version = "0.1.0-dev"
 
 authors = ["Daniel King"]
@@ -40,11 +40,9 @@ release.runtime_checks = "None"
 
 [[depends-on]]
 adabee_common = "*"
-adabee_phy = "*"
 
 [[pins]]
-adabee_common = { path='../common' }
-adabee_phy = { path='../phy' }
+adabee_common = { path='../../common' }
 
 # [[depends-on]]
 # gnatprove = "^15"

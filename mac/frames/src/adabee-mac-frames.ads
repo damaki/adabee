@@ -3,7 +3,6 @@
 --
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
-with AdaBee.PHY_Constants;
 
 --  @summary
 --  Root package for IEEE 802.15.4 MAC frame definitions and encoders/decoders.
@@ -25,9 +24,6 @@ is
 
    --  Length of the Frame Check Sequence (FCS)
    FCS_Length : constant := 2;
-
-   Max_Payload_Length : constant :=
-     AdaBee.PHY_Constants.Max_PHY_Packet_Size - Min_MHR_Length - FCS_Length;
 
    ----------------------------
    -- Fixed-Size Byte Arrays --
@@ -55,25 +51,5 @@ is
    type Beacon_Order_Number is range 0 .. 15 with Size => 4;
    type Superframe_Order_Number is range 0 .. 15 with Size => 4;
    type Slot_Number is range 0 .. 15 with Size => 4;
-
-   type Frame_Indices is record
-      Header_IE_First : Natural := 0;
-      --  Index of the first byte of the header IE list in the frame buffer
-
-      Header_IE_Length : Natural := 0;
-      --  Length of the header IE list in bytes, excluding any termination IE
-
-      Payload_IE_First : Natural := 0;
-      --  Index of the first byte of the payload IE list in the frame buffer
-
-      Payload_IE_Length : Natural := 0;
-      --  Length of the payload IE list in bytes, excluding any termination IE
-
-      Payload_First : Natural := 0;
-      --  Index of the first byte of the payload in the frame buffer
-
-      Payload_Length : Natural := 0;
-      --  Length of the payload in bytes.
-   end record;
 
 end AdaBee.MAC.Frames;

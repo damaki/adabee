@@ -1,11 +1,11 @@
-with "config/adabee_mac_config.gpr";
-project Adabee_Mac is
+with "config/adabee_mac_frames_config.gpr";
+project Adabee_Mac_Frames is
 
-   for Library_Name use "Adabee_Mac";
-   for Library_Version use Project'Library_Name & ".so." & Adabee_Mac_Config.Crate_Version;
+   for Library_Name use "Adabee_Mac_Frames";
+   for Library_Version use Project'Library_Name & ".so." & Adabee_Mac_Frames_Config.Crate_Version;
 
    for Source_Dirs use ("src/", "config/");
-   for Object_Dir use "obj/" & Adabee_Mac_Config.Build_Profile;
+   for Object_Dir use "obj/" & Adabee_Mac_Frames_Config.Build_Profile;
    for Create_Missing_Dirs use "True";
    for Library_Dir use "lib";
 
@@ -15,7 +15,7 @@ project Adabee_Mac is
    for Library_Kind use Library_Type;
 
    package Compiler is
-      for Default_Switches ("Ada") use Adabee_Mac_Config.Ada_Compiler_Switches;
+      for Default_Switches ("Ada") use Adabee_Mac_Frames_Config.Ada_Compiler_Switches;
    end Compiler;
 
    package Binder is
@@ -26,4 +26,4 @@ project Adabee_Mac is
       for Artifacts (".") use ("share");
    end Install;
 
-end Adabee_Mac;
+end Adabee_Mac_Frames;
