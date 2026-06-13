@@ -32,6 +32,7 @@ is
       Transaction_Overflow,
       Unavailable_Key,
       Unsupported_Attribute,
+      Unsupported_Feature,
       Unsupported_Field,
       Unsupported_Legacy,
       Unsupported_Security);
