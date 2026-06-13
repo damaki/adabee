@@ -383,7 +383,7 @@ is
      Global => null,
      Post   =>
        Symbols_Duration'Result in 0.0 .. Max_Symbols_Duration
-       and then (if Nb_Symbols = 0 then Symbols_Duration'Result = 0.0);
+       and then (Nb_Symbols = 0) = (Symbols_Duration'Result = 0.0);
    --  Calculate the duration of a quantity of symbols based on the PHY's
    --  current symbol rate.
 
@@ -473,11 +473,12 @@ is
    with
      Always_Terminates => False,
      Global            =>
-       (In_Out => (Radio_Device, Radio_Events, Radio_State)),
+       (In_Out => (Radio_Device, Radio_Events, Radio_State, Packet_Info)),
      Depends           =>
        (Radio_Events => (Radio_Events, Filter),
         Radio_Device => (Radio_Device, Radio_Events, Radio_State),
         Radio_State  => (Radio_State, Radio_Events),
+        Packet_Info  => (Packet_Info, Radio_Events, Radio_State, Radio_Device),
         Events       => (Radio_Events, Filter)),
      Pre               =>
        --  Must wait for at least one event
@@ -648,8 +649,40 @@ is
    --
    --  @param Events The set of event flags that have occurred.
 
+   function Get_Events return Event_Flags_Array
+   with
+     Inline,
+     Volatile_Function,
+     Global => (Input => Radio_Events, Proof_In => Radio_State),
+     Post   =>
+       --  Operation_Complete event is only set in a subset of API states
+       (if Get_Events'Result (Operation_Complete)
+        then
+          Current_State
+          in Exiting_Sleep
+           | CCA_Scan_Active
+           | Transmitting
+           | Receiving
+           | ED_Scan_Active);
+   --  Get the set of currently set event flags.
+   --
+   --  This does not clear the events.
+
    function Is_Event_Set (Event : Event_Kind) return Boolean
-   with Inline, Volatile_Function, Global => (Input => Radio_Events);
+   with
+     Inline,
+     Volatile_Function,
+     Global => (Input => Radio_Events, Proof_In => Radio_State),
+     Post =>
+       --  Operation_Complete event is only set in a subset of API states
+       (if Event = Operation_Complete and then Is_Event_Set'Result
+        then
+          Current_State
+          in Exiting_Sleep
+           | CCA_Scan_Active
+           | Transmitting
+           | Receiving
+           | ED_Scan_Active);
    --  Query if an event flag is set
    --
    --  @param Event The event flag to check
@@ -1193,8 +1226,11 @@ is
 
    procedure Finish_ED_Scan
    with
-     Global  => (Input => Radio_Device, In_Out => Radio_State),
-     Depends => (Radio_State => (Radio_State, Radio_Device)),
+     Global  =>
+       (Input => Radio_Device, In_Out => Radio_State, Output => Packet_Info),
+     Depends =>
+       (Radio_State => (Radio_State, Radio_Device),
+        Packet_Info => Radio_Device),
      Pre     => Current_State = ED_Scan_Active,
      Post    => Current_State in ED_Scan_Active | ED_Scan_Complete;
    --  Finish an energy detection scan.
@@ -1206,8 +1242,8 @@ is
 
    procedure Get_ED_Scan_Result (Max_ED : out ED_Range)
    with
-     Global  => (Input => Radio_Device, Proof_In => Radio_State),
-     Depends => (Max_ED => Radio_Device),
+     Global  => (Input => Packet_Info, Proof_In => Radio_State),
+     Depends => (Max_ED => Packet_Info),
      Pre     => Current_State = ED_Scan_Complete;
    --  Get the energy detection scan result and transition to the Idle state.
    --

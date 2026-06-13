@@ -19,8 +19,8 @@ is
    PHY_Rx_Filters : Filter_Array := All_Packets_Allowed_Filter
    with Atomic;
 
-   function Supported_Channels return Channel_Boolean_Array is
-   (Channel_Boolean_Array'(0 => True, others => False));
+   function Supported_Channels return Channel_Boolean_Array
+   is (Channel_Boolean_Array'(0 => True, others => False));
 
    function Channel_Supported (Channel : RF_Channel_Number) return Boolean
    is (Channel = 0);
@@ -160,6 +160,9 @@ is
          delay until Ada.Real_Time.Time_Last;
       end loop;
    end Wait_For_Event;
+
+   function Get_Events return Event_Flags_Array
+   is ([others => False]);
 
    function Is_Event_Set (Event : Event_Kind) return Boolean
    is (False);

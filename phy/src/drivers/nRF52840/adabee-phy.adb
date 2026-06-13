@@ -376,6 +376,8 @@ is
 
       procedure Send_User_Event;
 
+      function Get_Events return Event_Flags_Array;
+
       function Is_Event_Set (Event : Event_Kind) return Boolean;
 
       procedure Set_Event (Event : Event_Kind)
@@ -477,6 +479,13 @@ is
             Has_Event := True;
          end if;
       end Send_User_Event;
+
+      ----------------
+      -- Get_Events --
+      ----------------
+
+      function Get_Events return Event_Flags_Array
+      is (Event_Flags);
 
       ------------------
       -- Is_Event_Set --
@@ -1111,6 +1120,13 @@ is
       Filter (Event) := True;
       Wait_For_Events (Events, Filter);
    end Wait_For_Event;
+
+   ----------------
+   -- Get_Events --
+   ----------------
+
+   function Get_Events return Event_Flags_Array
+   is (Driver.Get_Events);
 
    ------------------
    -- Is_Event_Set --
