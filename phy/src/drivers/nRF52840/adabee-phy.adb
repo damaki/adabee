@@ -87,7 +87,7 @@ is
 
    Tx_Power_Table :
      constant array (RF_Power_dBm) of NRF52840.RADIO.TXPOWER_TXPOWER_Field :=
-       (-256 .. -21 => Neg40dBm,
+       [-256 .. -21 => Neg40dBm,
         -20 .. -17  => Neg20dBm,
         -16 .. -13  => Neg16dBm,
         -12 .. -9   => Neg12dBm,
@@ -100,7 +100,7 @@ is
         5           => Pos5dBm,
         6           => Pos6dBm,
         7           => Pos7dBm,
-        8 .. 255    => Pos8dBm);
+        8 .. 255    => Pos8dBm];
    --  Lookup table mapping tx power in dBm to the TXPOWER register value.
    --
    --  The dBm value is interpreted as a maximum allowed transmit power, so
@@ -110,13 +110,13 @@ is
 
    CCA_Mode_Table :
      constant array (CCA_Mode_Kind) of NRF52840.RADIO.CCACTRL_CCAMODE_Field :=
-       (Energy_Above_Threshold                       => EdMode,
+       [Energy_Above_Threshold                       => EdMode,
         Carrier_Sense_Only                           => CarrierMode,
         Carrier_Sense_And_Energy_Above_Treshold      => CarrierAndEdMode,
         Carrier_Sense_Or_Energy_Above_Treshold       => CarrierOrEdMode,
         ALOHA                                        => EdMode,
         HRP_UWB_Preamble_Sense_SHR                   => CarrierMode,
-        HRP_UWB_Preamble_Sense_Multipliexed_Preamble => CarrierMode);
+        HRP_UWB_Preamble_Sense_Multipliexed_Preamble => CarrierMode];
    --  Lookup table mapping CCA_Mode_Kind to the CCAMODE field
 
    --=====================--
@@ -164,7 +164,7 @@ is
    with Atomic;
 
    PHY_Packet_Buffer : Radio_Packet :=
-     (Length => 0, Reserved => 0, Payload => (others => 0));
+     (Length => 0, Reserved => 0, Payload => [others => 0]);
    --  Buffer used with the RADIO's EasyDMA
 
    PHY_Rx_Filters : Filter_Array := All_Packets_Allowed_Filter
@@ -424,8 +424,8 @@ is
       -- Event Data --
       ----------------
 
-      Event_Flags  : Event_Flags_Array := (others => False);
-      Event_Filter : Event_Flags_Array := (others => True);
+      Event_Flags  : Event_Flags_Array := [others => False];
+      Event_Filter : Event_Flags_Array := [others => True];
       Has_Event    : Boolean := False;
 
       ----------------
@@ -464,7 +464,7 @@ is
 
       procedure Clear_All_Events is
       begin
-         Event_Flags := (others => False);
+         Event_Flags := [others => False];
          Has_Event := False;
       end Clear_All_Events;
 
@@ -772,9 +772,9 @@ is
                PPI_Periph.CHENCLR :=
                  (As_Array => True,
                   Arr      =>
-                    (PPI_CH_CCA_Delayed_RXEN    => Clear,
+                    [PPI_CH_CCA_Delayed_RXEN    => Clear,
                      PPA_CH_CCA_CCAIDLE_DISABLE => Clear,
-                     others                     => <>));
+                     others                     => <>]);
 
                --  Cancel all CCA alarms
 
@@ -981,7 +981,7 @@ is
       EGU_Periph.INTENSET :=
         (TRIGGERED =>
            (As_Array => True,
-            Arr      => (EGU_CH_HFCLK_Started => Set, others => <>)),
+            Arr      => [EGU_CH_HFCLK_Started => Set, others => <>]),
          others    => <>);
 
       --  Configure a PPI channel to connect the HFCLK_STARTED event
@@ -1076,7 +1076,7 @@ is
 
    procedure Wait_For_Events
      (Events : out Event_Flags_Array;
-      Filter : Event_Flags_Array := (others => True)) is
+      Filter : Event_Flags_Array := [others => True]) is
    begin
       Driver.Set_Event_Filter (Filter);
       Driver.Wait_For_Events (Events);
@@ -1118,7 +1118,7 @@ is
    --------------------
 
    procedure Wait_For_Event (Event : Event_Kind) is
-      Filter : Event_Flags_Array := (others => False);
+      Filter : Event_Flags_Array := [others => False];
       Events : Event_Flags_Array;
    begin
       Filter (Event) := True;
@@ -2001,10 +2001,10 @@ is
       PPI_Periph.CHENCLR :=
         (As_Array => True,
          Arr      =>
-           (PPI_CH_Rx_Delayed_RXEN => Clear,
+           [PPI_CH_Rx_Delayed_RXEN => Clear,
             PPI_CH_Rx_Window_End   => Clear,
             PPI_CH_Rx_FRAMESTART   => Clear,
-            others                 => <>));
+            others                 => <>]);
 
       EGU_Periph.INTENCLR :=
         (TRIGGERED => (As_Array => False, Val => 2 ** EGU_CH_Rx_End),
@@ -2030,9 +2030,9 @@ is
       PPI_Periph.CHENCLR :=
         (As_Array => True,
          Arr      =>
-           (PPI_CH_Tx_Delayed_TXEN => Clear,
+           [PPI_CH_Tx_Delayed_TXEN => Clear,
             PPI_CH_Tx_FRAMESTART   => Clear,
-            others                 => <>));
+            others                 => <>]);
 
       --  Cancel all tx alarms
 
@@ -2215,9 +2215,9 @@ is
             PPI_Periph.CHENCLR :=
               (As_Array => True,
                Arr      =>
-                 (PPI_CH_CCA_Delayed_RXEN    => Clear,
+                 [PPI_CH_CCA_Delayed_RXEN    => Clear,
                   PPA_CH_CCA_CCAIDLE_DISABLE => Clear,
-                  others                     => <>));
+                  others                     => <>]);
       end case;
 
       --  Disable the radio, if it isn't already

@@ -235,7 +235,7 @@ package body AdaBee.PHY.PPI_Scheduler is
               (COMPARE =>
                  (As_Array => True,
                   Arr      =>
-                    (RTC_CC_Idx_Periodic_Wakeup => Set, others => <>)),
+                    [RTC_CC_Idx_Periodic_Wakeup => Set, others => <>]),
                others  => <>);
 
             --  Need the OVRFLW event to detect counter wrap-around
@@ -754,8 +754,8 @@ package body AdaBee.PHY.PPI_Scheduler is
          PPI_Periph.CHENCLR :=
            (As_Array => True,
             Arr      =>
-              (TIMER_RTC_Sync_PPI_Channel => Clear,
-               others                     => CHENCLR_CH0_Field_Reset));
+              [TIMER_RTC_Sync_PPI_Channel => Clear,
+               others                     => CHENCLR_CH0_Field_Reset]);
 
          --  Cancel all high precision alarms
 
@@ -803,8 +803,8 @@ package body AdaBee.PHY.PPI_Scheduler is
          PPI_Periph.CHENSET :=
            (As_Array => True,
             Arr      =>
-              (TIMER_RTC_Sync_PPI_Channel => Set,
-               others                     => CHENSET_CH0_Field_Reset));
+              [TIMER_RTC_Sync_PPI_Channel => Set,
+               others                     => CHENSET_CH0_Field_Reset]);
 
          --  Enable the RTC TICK event
 

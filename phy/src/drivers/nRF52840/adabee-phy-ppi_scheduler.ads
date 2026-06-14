@@ -284,8 +284,8 @@ is
 
       Started      : Boolean := False;
       Current_Mode : Mode_Type := Low_Power;
-      LP_Alarms    : LP_Channel_Alarm_Data_Array := (others => <>);
-      HP_Alarms    : HP_Channel_Alarm_Data_Array := (others => <>);
+      LP_Alarms    : LP_Channel_Alarm_Data_Array := [others => <>];
+      HP_Alarms    : HP_Channel_Alarm_Data_Array := [others => <>];
       RTC_Time_Hi  : AdaBee.Time_Units.Time := 0.0;
 
    end Scheduler;
