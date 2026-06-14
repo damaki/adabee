@@ -88,6 +88,16 @@ is
    --  The PHY may be in any low-power state. If the PHY is sleeping, then this
    --  procedure powers up the PHY before initiating the scan.
 
+   procedure Cancel_ED_Scan
+     (Handle : in out AdaBee.MAC.MLME.Req_SAP.Service_Handle)
+   with
+     Always_Terminates => False,
+     Pre               =>
+       Is_Valid_ED_SCAN_Req_And_Cfm (Handle)
+       and then AdaBee.PHY.Current_State = ED_Scan_Active,
+     Post              =>
+       Req_SAP.Is_Null (Handle) and then AdaBee.PHY.Current_State = Idle;
+
    procedure Notify_PHY_Operation_Complete
      (Scan   : in out Scan_State;
       Handle : in out AdaBee.MAC.MLME.Req_SAP.Service_Handle)

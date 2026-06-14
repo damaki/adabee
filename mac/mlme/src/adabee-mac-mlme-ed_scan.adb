@@ -96,6 +96,35 @@ is
       Start_ED_Scan_On_Next_Channel (Scan, Handle);
    end Begin_ED_Scan;
 
+   --------------------
+   -- Cancel_ED_Scan --
+   --------------------
+
+   procedure Cancel_ED_Scan
+     (Handle : in out AdaBee.MAC.MLME.Req_SAP.Service_Handle)
+   is
+      procedure Set_Cancelled_Status
+        (Request : MLME_Request_Type; Confirm : in out MLME_Confirm_Type)
+      with
+        Pre  => Is_Valid_ED_SCAN_Req_And_Cfm (Request, Confirm),
+        Post => Valid_Confirm (Request, Confirm)
+      is
+      begin
+         Confirm.SCAN.Status := Cancelled;
+      end Set_Cancelled_Status;
+
+      procedure Set_Cancelled_Status is new
+        Req_SAP.Update_Confirm
+          (Update        => Set_Cancelled_Status,
+           Precondition  => Is_Valid_ED_SCAN_Req_And_Cfm,
+           Postcondition => Valid_Confirm);
+   begin
+      AdaBee.PHY.Go_Idle;
+
+      Set_Cancelled_Status (Handle);
+      Req_SAP.Send_Confirm (Handle);
+   end Cancel_ED_Scan;
+
    -----------------------------------
    -- Notify_PHY_Operation_Complete --
    -----------------------------------

@@ -27,6 +27,65 @@ is
       end if;
    end Notify_SCAN_Req;
 
+   ----------------------
+   -- Notify_RESET_Req --
+   ----------------------
+
+   procedure Notify_RESET_Req
+     (FSM    : in out Machine;
+      Handle : in out AdaBee.MAC.MLME.Req_SAP.Service_Handle)
+   is
+      function Is_RESET_Req (Request : MLME_Request_Type) return Boolean
+      is (Request.Kind = MLME_RESET_Req)
+      with Ghost;
+
+      procedure Write_RESET_Cfm
+        (Request : MLME_Request_Type; Confirm : out MLME_Confirm_Type)
+      with
+        Pre  => Is_RESET_Req (Request) and then not Confirm'Constrained,
+        Post => Valid_Confirm (Request, Confirm)
+      is
+         pragma Unreferenced (Request);
+      begin
+         Confirm := (Kind => MLME_RESET_Cfm, RESET => (Status => Success));
+      end Write_RESET_Cfm;
+
+      procedure Write_RESET_Cfm is new
+        Req_SAP.Initialize_Confirm
+          (Initialize    => Write_RESET_Cfm,
+           Precondition  => Is_RESET_Req,
+           Postcondition => Valid_Confirm);
+
+   begin
+      case FSM.State is
+         when Idle          =>
+            null;
+
+         when Exiting_Sleep =>
+            Scan_FSM.Cancel_Scan (FSM.Scan_Machine);
+
+            AdaBee.PHY.Wait_For_Event (AdaBee.PHY.Operation_Complete);
+            AdaBee.PHY.Enter_Sleep;
+            AdaBee.PHY.Turn_Off;
+
+         when Scan_Active   =>
+            Scan_FSM.Cancel_Scan (FSM.Scan_Machine);
+
+            AdaBee.PHY.Enter_Sleep;
+            AdaBee.PHY.Turn_Off;
+
+      end case;
+
+      FSM.State := Idle;
+
+      if Req_SAP.Request_Reference (Handle).all.RESET.Set_Default_PIB then
+         AdaBee.MAC.MLME.PIB.Reset;
+      end if;
+
+      Write_RESET_Cfm (Handle);
+      Req_SAP.Send_Confirm (Handle);
+   end Notify_RESET_Req;
+
    -----------------------------------
    -- Notify_PHY_Operation_Complete --
    -----------------------------------

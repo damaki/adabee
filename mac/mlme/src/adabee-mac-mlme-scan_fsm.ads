@@ -111,6 +111,20 @@ is
              then AdaBee.PHY.Current_State = Old_PHY_State
              else AdaBee.PHY.Current_State = ED_Scan_Active));
 
+   procedure Cancel_Scan (FSM : in out Machine)
+   with
+     Always_Terminates => False,
+     Pre               => Valid_PHY_Active_State (FSM),
+     Post              =>
+       (declare
+          Old_PHY_State : constant AdaBee.PHY.State_Kind :=
+            AdaBee.PHY.Current_State'Old;
+        begin
+          (if Current_State (FSM)'Old = Scan_Active
+           then AdaBee.PHY.Current_State = Idle
+           else AdaBee.PHY.Current_State = Old_PHY_State)
+          and then Current_State (FSM) = Idle);
+
    procedure Notify_PHY_Operation_Complete (FSM : in out Machine)
    with
      Always_Terminates => False,

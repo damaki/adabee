@@ -297,11 +297,36 @@ is
      (Request : MLME_GET_Req_Type; Confirm : MLME_GET_Cfm_Type) return Boolean
    is (Confirm.PIB_Attribute = Request.PIB_Attribute);
 
+   ------------------------
+   -- MLME-RESET.request --
+   ------------------------
+
+   --  Ref. IEEE 802.15.4-2024 Section 8.2.6.2
+
+   type MLME_RESET_Req_Type is record
+      Set_Default_PIB : Boolean := True;
+   end record;
+
+   ------------------------
+   -- MLME-RESET.confirm --
+   ------------------------
+
+   --  Ref. IEEE 802.15.4-2024 Section 8.2.6.3
+
+   --  Success is the only alowed result, as specified in Table 8-13 of
+   --  IEEE 802.15.4-2024.
+
+   type MLME_RESET_Cfm_Type is record
+      Status : Status_Code := Success;
+   end record
+   with Predicate => Status = Success;
+
    -------------------
    -- MLME Requests --
    -------------------
 
-   type MLME_Request_Kind is (MLME_SCAN_Req, MLME_SET_Req, MLME_GET_Req);
+   type MLME_Request_Kind is
+     (MLME_SCAN_Req, MLME_SET_Req, MLME_GET_Req, MLME_RESET_Req);
 
    type MLME_Request_Type
      (Kind : MLME_Request_Kind := MLME_Request_Kind'First)
@@ -315,6 +340,9 @@ is
 
          when MLME_GET_Req =>
             GET : MLME_GET_Req_Type := (others => <>);
+
+         when MLME_RESET_Req =>
+            RESET : MLME_RESET_Req_Type := (others => <>);
       end case;
    end record;
 
@@ -323,9 +351,10 @@ is
 
    function Requires_Confirm (Request : MLME_Request_Type) return Boolean
    is (case Request.Kind is
-         when MLME_SCAN_Req => True,
-         when MLME_SET_Req  => True,
-         when MLME_GET_Req  => True);
+         when MLME_SCAN_Req  => True,
+         when MLME_SET_Req   => True,
+         when MLME_GET_Req   => True,
+         when MLME_RESET_Req => True);
 
    function Request_Requires_Cleanup
      (Request : MLME_Request_Type with Unreferenced) return Boolean
@@ -343,7 +372,8 @@ is
    -- MLME Confirmations --
    ------------------------
 
-   type MLME_Confirm_Kind is (MLME_SCAN_Cfm, MLME_SET_Cfm, MLME_GET_Cfm);
+   type MLME_Confirm_Kind is
+     (MLME_SCAN_Cfm, MLME_SET_Cfm, MLME_GET_Cfm, MLME_RESET_Cfm);
 
    type MLME_Confirm_Type
      (Kind : MLME_Confirm_Kind := MLME_Confirm_Kind'First)
@@ -357,6 +387,9 @@ is
 
          when MLME_GET_Cfm =>
             GET : MLME_GET_Cfm_Type := (others => <>);
+
+         when MLME_RESET_Cfm =>
+            RESET : MLME_RESET_Cfm_Type := (others => <>);
       end case;
    end record;
 
@@ -367,16 +400,18 @@ is
    function Valid_Confirm
      (Request : MLME_Request_Type; Confirm : MLME_Confirm_Type) return Boolean
    is (case Request.Kind is
-         when MLME_SCAN_Req =>
+         when MLME_SCAN_Req  =>
            Confirm.Kind = MLME_SCAN_Cfm
            and then Is_Valid_SCAN_Cfm (Request.SCAN, Confirm.SCAN),
 
-         when MLME_SET_Req  =>
+         when MLME_SET_Req   =>
            Confirm.Kind = MLME_SET_Cfm
            and then Is_Valid_SET_Cfm (Request.SET, Confirm.SET),
 
-         when MLME_GET_Req  =>
+         when MLME_GET_Req   =>
            Confirm.Kind = MLME_GET_Cfm
-           and then Is_Valid_GET_Cfm (Request.GET, Confirm.GET));
+           and then Is_Valid_GET_Cfm (Request.GET, Confirm.GET),
+
+         when MLME_RESET_Req => Confirm.Kind = MLME_RESET_Cfm);
 
 end AdaBee.MAC.MLME;

@@ -140,6 +140,10 @@ is
                            AdaBee.MAC.MLME.MLME_FSM.Notify_SCAN_Req
                              (MLME_Machine, Handle);
 
+                        when MLME_RESET_Req =>
+                           AdaBee.MAC.MLME.MLME_FSM.Notify_RESET_Req
+                             (MLME_Machine, Handle);
+
                         when MLME_SET_Req  =>
                            AdaBee.MAC.MLME.PIB.SET_Request (Handle);
 

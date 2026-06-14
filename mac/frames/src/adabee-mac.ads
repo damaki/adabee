@@ -35,6 +35,7 @@ is
       Unsupported_Feature,
       Unsupported_Field,
       Unsupported_Legacy,
-      Unsupported_Security);
+      Unsupported_Security,
+      Cancelled);
 
 end AdaBee.MAC;

@@ -28,12 +28,14 @@ is
       MAC_Security_Enabled  : Boolean := False;
    end record;
 
+   Default_PIB : constant PIB_Attributes := (others => <>);
+
    DB : PIB_Attributes := (others => <>);
 
    function MAC_Extended_Address return Frames.Headers.Extended_Address_Field;
 
    procedure Reset
-   with Post => DB = PIB_Attributes'(others => <>);
+   with Post => DB = Default_PIB;
    --  Reset the PIB to its default values.
 
    procedure SET_Request (Handle : in out Req_SAP.Service_Handle)
