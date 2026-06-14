@@ -3,6 +3,7 @@
 --
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
+
 package body AdaBee.MAC.MLME.Scan_FSM
   with SPARK_Mode
 is
@@ -26,15 +27,14 @@ is
       Handle : in out AdaBee.MAC.MLME.Req_SAP.Service_Handle)
    is
 
-      ED_Scan_State : ED_Scan.Scan_State;
-
-      function Is_Valid
-        (Request : MLME_Request_Type; Confirm : MLME_Confirm_Type)
-         return Boolean
-      is (ED_Scan.Is_Valid (ED_Scan_State, Request, Confirm));
+      function Is_Supported_SCAN_Req
+        (Request : MLME_Request_Type) return Boolean
+      is (Request.Kind = MLME_SCAN_Req
+          and then Request.SCAN.Scan_Type in Supported_Scan_Types);
 
       procedure Move_Handle is new
-        Req_SAP.Move_Service_Handle_With_Property (Pair_Property => Is_Valid);
+        Req_SAP.Move_Service_Handle_With_Property
+          (Request_Property => Is_Supported_SCAN_Req);
 
    begin
 
@@ -44,20 +44,26 @@ is
       if Current_State (FSM) /= Idle then
          Reject_SCAN_Req (Handle, Transaction_Overflow);
 
-      elsif Req_SAP.Request_Reference (Handle).all.SCAN.Scan_Type not in ED
+      elsif Req_SAP.Request_Reference (Handle).all.SCAN.Scan_Type
+            not in Supported_Scan_Types
       then
          Reject_SCAN_Req (Handle, Unsupported_Feature);
 
       else
-         ED_Scan.Begin_ED_Scan (FSM.ED_Scan, Handle);
-
-         ED_Scan_State := FSM.ED_Scan;
-
-         if not Req_SAP.Is_Null (Handle) then
-            Move_Handle (Target => FSM.Handle, Source => Handle);
-         end if;
+         FSM.Pending := True;
+         Move_Handle (Target => FSM.Handle, Source => Handle);
       end if;
    end Notify_SCAN_Req;
+
+   ----------------
+   -- Begin_Scan --
+   ----------------
+
+   procedure Begin_Scan (FSM : in out Machine) is
+   begin
+      FSM.Pending := False;
+      ED_Scan.Begin_ED_Scan (FSM.ED_Scan, FSM.Handle);
+   end Begin_Scan;
 
    -----------------------------------
    -- Notify_PHY_Operation_Complete --

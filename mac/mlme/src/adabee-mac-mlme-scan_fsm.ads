@@ -29,16 +29,43 @@ is
 
    use all type AdaBee.PHY.State_Kind;
 
-   type State_Kind is (Idle, ED_Scan_Active);
-
    function Is_SCAN_Req
-     (Handle : AdaBee.MAC.MLME.Req_SAP.Service_Handle) return Boolean;
+     (Handle : AdaBee.MAC.MLME.Req_SAP.Service_Handle) return Boolean
+   with Global => null;
+   --  Returns True if `Handle` is a non-null handle that contains an
+   --  MLME-SCAN.request primitive.
+
+   -----------
+   -- Types --
+   -----------
+
+   type State_Kind is (Idle, Scan_Pending, Scan_Active);
+   --  The set of types for the state machine
+
+   subtype Supported_Scan_Types is Scan_Type_Kind
+   with Static_Predicate => Supported_Scan_Types in ED;
+   --  The set of scan types that are supported in this implementation
+
+   ------------------------
+   -- Scan State Machine --
+   ------------------------
 
    type Machine is limited private
    with Default_Initial_Condition => Current_State (Machine) = Idle;
 
    function Current_State (FSM : Machine) return State_Kind
    with Global => null;
+   --  Gets the current state of the state machine
+
+   function Current_Scan_Type (FSM : Machine) return Supported_Scan_Types
+   with Global => null, Pre => Current_State (FSM) /= Idle;
+   --  Gets the scan type that is currently being processed by the state
+   --  machine.
+
+   function Valid_PHY_Active_State (FSM : Machine) return Boolean
+   with Ghost, Global => (Input => AdaBee.PHY.Radio_State);
+   --  Returns True if the PHY is in the correct state for the current scan
+   --  state machine state.
 
    procedure Notify_SCAN_Req
      (FSM    : in out Machine;
@@ -47,30 +74,17 @@ is
      Pre  =>
        Is_SCAN_Req (Handle)
        and then not Req_SAP.Confirm_Written (Handle)
-       and then
-         (if Current_State (FSM) = Idle
-          then
-            AdaBee.PHY.Current_State in Off | Sleeping | Exiting_Sleep | Idle),
+       and then Valid_PHY_Active_State (FSM),
      Post =>
-       Req_SAP.Is_Null (Handle)
-       and then
-         (declare
-            Old_PHY_State : constant AdaBee.PHY.State_Kind :=
-              AdaBee.PHY.Current_State'Old;
-            Old_FSM_State : constant State_Kind := Current_State (FSM)'Old;
-          begin
-            (if Old_FSM_State /= Idle
-             then
-               Current_State (FSM) = Old_FSM_State
-               and then AdaBee.PHY.Current_State = Old_PHY_State
-
-             elsif Current_State (FSM) = Idle
-             then AdaBee.PHY.Current_State = Old_PHY_State
-
-             elsif Old_PHY_State in Off | Sleeping | Exiting_Sleep
-             then AdaBee.PHY.Current_State = Exiting_Sleep
-
-             else AdaBee.PHY.Current_State = ED_Scan_Active));
+       (declare
+          Old_State : constant State_Kind := Current_State (FSM)'Old;
+        begin
+          Req_SAP.Is_Null (Handle)
+          and then Valid_PHY_Active_State (FSM)
+          and then
+            (if Old_State = Idle
+             then Current_State (FSM) in Idle | Scan_Pending
+             else Current_State (FSM) = Old_State));
    --  Notify the state machine that a new MLME-SCAN.request primitive has
    --  been received.
    --
@@ -81,16 +95,39 @@ is
    --  If a scan is already in progress, then the new MLME-SCAN.request is
    --  rejected.
 
+   procedure Begin_Scan (FSM : in out Machine)
+   with
+     Pre  =>
+       Current_State (FSM) = Scan_Pending
+       and then
+         AdaBee.PHY.Current_State in Off | Sleeping | Exiting_Sleep | Idle,
+     Post =>
+       (declare
+          Old_PHY_State : constant AdaBee.PHY.State_Kind :=
+            AdaBee.PHY.Current_State'Old;
+        begin
+          Current_State (FSM) in Idle | Scan_Active
+          and then
+            (if Current_State (FSM) = Idle
+             then AdaBee.PHY.Current_State = Old_PHY_State
+             elsif Old_PHY_State in Off | Sleeping | Exiting_Sleep
+             then AdaBee.PHY.Current_State = Exiting_Sleep
+             else AdaBee.PHY.Current_State = ED_Scan_Active));
+
    procedure Notify_PHY_Operation_Complete (FSM : in out Machine)
    with
      Always_Terminates => False,
      Pre               =>
-       Current_State (FSM) /= Idle
-       and then AdaBee.PHY.Current_State in Idle | ED_Scan_Complete,
+       Current_State (FSM) = Scan_Active
+       and then
+         (case Current_Scan_Type (FSM) is
+            when ED => AdaBee.PHY.Current_State in Idle | ED_Scan_Complete),
+
      Post              =>
        (case Current_State (FSM) is
-          when Idle           => AdaBee.PHY.Current_State = Idle,
-          when ED_Scan_Active => AdaBee.PHY.Current_State = ED_Scan_Active);
+          when Idle         => AdaBee.PHY.Current_State = Idle,
+          when Scan_Pending => False,
+          when Scan_Active  => AdaBee.PHY.Current_State = ED_Scan_Active);
    --  Notify the state machine that the PHY has emitted the
    --  `Operation_Complete` event.
 
@@ -115,19 +152,56 @@ private
    type Machine is limited record
       Handle  : AdaBee.MAC.MLME.Req_SAP.Service_Handle;
       ED_Scan : AdaBee.MAC.MLME.ED_Scan.Scan_State;
+      Pending : Boolean := False;
    end record
    with
      Type_Invariant =>
        (if not Req_SAP.Is_Null (Handle)
         then
-          Is_SCAN_Req (Handle)
-          and then AdaBee.MAC.MLME.ED_Scan.Is_Valid (ED_Scan, Handle));
+          --  The Handle is always an MLME-SCAN.request with one of the
+          --  supported scan types.
+          Req_SAP.Request_Reference (Handle).all.Kind = MLME_SCAN_Req
+          and then
+            Req_SAP.Request_Reference (Handle).all.SCAN.Scan_Type
+            in Supported_Scan_Types
+
+          --  The confirm primitive has not been written yet while the scan
+          --  is pending.
+          and then
+            (if Pending
+             then not Req_SAP.Confirm_Written (Handle)
+             else AdaBee.MAC.MLME.ED_Scan.Is_Valid (ED_Scan, Handle)));
 
    -------------------
    -- Current_State --
    -------------------
 
    function Current_State (FSM : Machine) return State_Kind
-   is (if Req_SAP.Is_Null (FSM.Handle) then Idle else ED_Scan_Active);
+   is (if Req_SAP.Is_Null (FSM.Handle)
+       then Idle
+
+       elsif FSM.Pending
+       then Scan_Pending
+
+       else Scan_Active);
+
+   -----------------------
+   -- Current_Scan_Type --
+   -----------------------
+
+   function Current_Scan_Type (FSM : Machine) return Supported_Scan_Types
+   is (Req_SAP.Request_Reference (FSM.Handle).all.SCAN.Scan_Type);
+
+   ----------------------------
+   -- Valid_PHY_Active_State --
+   ----------------------------
+
+   function Valid_PHY_Active_State (FSM : Machine) return Boolean
+   is (case Current_State (FSM) is
+         when Idle | Scan_Pending => True,
+         when Scan_Active         =>
+           (case Current_Scan_Type (FSM) is
+              when ED =>
+                AdaBee.PHY.Current_State in Exiting_Sleep | ED_Scan_Active));
 
 end AdaBee.MAC.MLME.Scan_FSM;

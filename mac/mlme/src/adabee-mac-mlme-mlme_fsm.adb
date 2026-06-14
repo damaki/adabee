@@ -17,10 +17,11 @@ is
       Handle : in out AdaBee.MAC.MLME.Req_SAP.Service_Handle)
    is
    begin
-      case Current_State (FSM) is
-         when Idle | Scan_Active =>
-            Scan_FSM.Notify_SCAN_Req (FSM.Scan_Machine, Handle);
-      end case;
+      Scan_FSM.Notify_SCAN_Req (FSM.Scan_Machine, Handle);
+
+      if Scan_FSM.Current_State (FSM.Scan_Machine) = Scan_Pending then
+         Scan_FSM.Begin_Scan (FSM.Scan_Machine);
+      end if;
    end Notify_SCAN_Req;
 
    -----------------------------------

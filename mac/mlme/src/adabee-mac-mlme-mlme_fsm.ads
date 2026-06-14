@@ -65,7 +65,7 @@ private
    -------------------
 
    function Current_State (FSM : Machine) return State_Kind
-   is (if Scan_FSM.Current_State (FSM.Scan_Machine) /= Idle
+   is (if Scan_FSM.Current_State (FSM.Scan_Machine) = Scan_Active
        then Scan_Active
        else Idle);
 
@@ -80,8 +80,10 @@ private
          when Idle        => False,
          when Scan_Active =>
            (case Scan_FSM.Current_State (FSM.Scan_Machine) is
-              when Idle           => raise Program_Error, --  Unreachable
-              when ED_Scan_Active =>
-                AdaBee.PHY.Current_State in Idle | ED_Scan_Complete));
+              when Idle | Scan_Pending => raise Program_Error, --  Unreachable
+              when Scan_Active         =>
+                (case Scan_FSM.Current_Scan_Type (FSM.Scan_Machine) is
+                   when ED                                          =>
+                     AdaBee.PHY.Current_State in Idle | ED_Scan_Complete)));
 
 end AdaBee.MAC.MLME.MLME_FSM;
