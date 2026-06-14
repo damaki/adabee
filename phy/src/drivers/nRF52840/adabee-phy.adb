@@ -890,6 +890,8 @@ is
 
          Power_On_Radio;
 
+         Driver.Clear_Event (Operation_Complete);
+
       --  The radio is only active while the PHY is in one of these states.
       --  For all other states the radio is disabled.
 
@@ -907,6 +909,8 @@ is
          loop
             exit when RADIO_Periph.STATE.STATE = Disabled;
          end loop;
+
+         Driver.Clear_Event (Operation_Complete);
       end if;
 
       PHY_API_State := Idle;
@@ -1376,6 +1380,7 @@ is
    begin
       if RADIO_Periph.STATE.STATE = Disabled then
          PHY_API_State := Tx_Complete;
+         Driver.Clear_Event (Operation_Complete);
       end if;
    end Finish_Transmit;
 
@@ -1460,6 +1465,7 @@ is
    begin
       if RADIO_Periph.STATE.STATE = Disabled then
          PHY_API_State := CCA_Scan_Complete;
+         Driver.Clear_Event (Operation_Complete);
       end if;
    end Finish_CCA_Scan;
 
@@ -1574,6 +1580,7 @@ is
       if PHY_API_State = Receiving and then RADIO_Periph.STATE.STATE = Disabled
       then
          PHY_API_State := Rx_Complete;
+         Driver.Clear_Event (Operation_Complete);
       end if;
    end Finish_Receive;
 
@@ -1677,8 +1684,6 @@ is
    begin
       PHY_API_State := ED_Scan_Active;
 
-      Clear_Event (Operation_Complete);
-
       Apply_PHY_Config;
 
       --  Clear any previous ED events
@@ -1710,6 +1715,7 @@ is
    begin
       if RADIO_Periph.EVENTS_EDEND.EVENTS_EDEND /= 0 then
          PHY_API_State := ED_Scan_Complete;
+         Driver.Clear_Event (Operation_Complete);
       end if;
    end Finish_ED_Scan;
 
@@ -1896,8 +1902,6 @@ is
 
       RADIO_Periph.INTENSET := (DISABLED => Set, others => <>);
 
-      Clear_Event (Operation_Complete);
-
       --  Configure timestamp capture on FRAMESTART
 
       Enable_PPI
@@ -1971,8 +1975,6 @@ is
          others     => <>);
 
       RADIO_Periph.INTENSET := (FRAMESTART => Set, END_k => Set, others => <>);
-
-      Clear_Event (Operation_Complete);
 
       Driver.Clear_Receive_Data;
 
@@ -2093,8 +2095,6 @@ is
          others     => <>);
 
       RADIO_Periph.INTENSET := (DISABLED => Set, others => <>);
-
-      Clear_Event (Operation_Complete);
    end Prepare_CCA_Scan;
 
    -----------------------------
