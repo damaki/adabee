@@ -15,7 +15,7 @@ with Adabee_Mlme_Config;
 
 package AdaBee.MAC.MLME.Req_SAP is new
   LibSAP.Synchronous_Provider_Service_Access_Point
-    (Request_Kind_Type        => MLME_Request_Kind,
+    (Request_Kind_Type        => MLME_Compound_Request_Kind,
      Request_Type             => MLME_Request_Type,
      Confirm_Type             => MLME_Confirm_Type,
      Queue_Capacity           =>

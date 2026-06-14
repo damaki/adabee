@@ -349,9 +349,6 @@ is
       end case;
    end record;
 
-   function Request_Kind (Request : MLME_Request_Type) return MLME_Request_Kind
-   is (Request.Kind);
-
    function Requires_Confirm (Request : MLME_Request_Type) return Boolean
    is (case Request.Kind is
          when MLME_SCAN_Req  => True,
@@ -361,10 +358,6 @@ is
 
    function Request_Requires_Cleanup
      (Request : MLME_Request_Type with Unreferenced) return Boolean
-   is (False);
-
-   function Request_Kind_Requires_Cleanup
-     (Kind : MLME_Request_Kind with Unreferenced) return Boolean
    is (False);
 
    function Valid_Request
@@ -416,5 +409,61 @@ is
            and then Is_Valid_GET_Cfm (Request.GET, Confirm.GET),
 
          when MLME_RESET_Req => Confirm.Kind = MLME_RESET_Cfm);
+
+   -------------------------
+   --  MLME Request Kinds --
+   -------------------------
+
+   --  LibSAP allows proving that the kind of request is preserved throughout
+   --  the transaction lifecycle.
+   --
+   --  This is useful for the user to be able to prove that the key aspects of
+   --  the original request have not been changed when they get the confirm
+   --  primitive back. For example, if they sent a MLME-SCAN.request, then they
+   --  will get a MLME-SCAN.request back (and not, say, a MLME-SET.request).
+   --
+   --  For some kinds of requests it is also desirable to prove that some key
+   --  fields of the request are also preserved. For example, in the case of
+   --  the MLME-SCAN.request it is useful to prove that the Scan_Type field
+   --  is also preserved.
+   --
+   --  MLME_Compound_Request_Kind is defined for this purpose. This type
+   --  should be as small as reasonably practicable since it is copied in a
+   --  few places within LibSAP. This may change in the future when ghost
+   --  fields are supported in GNATprove.
+
+   type MLME_Compound_Request_Kind
+     (Kind : MLME_Request_Kind := MLME_Request_Kind'First)
+   is record
+      case Kind is
+         when MLME_SCAN_Req =>
+            Scan_Type : Scan_Type_Kind := Scan_Type_Kind'First;
+
+         when MLME_GET_Req | MLME_SET_Req =>
+            PIB_Attribute : PIB_Attribute_Kind := PIB_Attribute_Kind'First;
+
+         when others =>
+            null;
+      end case;
+   end record with Size => 16;
+
+   function Request_Kind
+     (Request : MLME_Request_Type) return MLME_Compound_Request_Kind
+   is (case Request.Kind is
+         when MLME_SCAN_Req  =>
+           (Kind => MLME_SCAN_Req, Scan_Type => Request.SCAN.Scan_Type),
+
+         when MLME_SET_Req   =>
+           (Kind => MLME_SET_Req, PIB_Attribute => Request.SET.PIB_Attribute),
+
+         when MLME_GET_Req   =>
+           (Kind => MLME_GET_Req, PIB_Attribute => Request.GET.PIB_Attribute),
+
+         when MLME_RESET_Req => (Kind => MLME_RESET_Req))
+   with Post => Request_Kind'Result.Kind = Request.Kind;
+
+   function Request_Kind_Requires_Cleanup
+     (Kind : MLME_Compound_Request_Kind with Unreferenced) return Boolean
+   is (False);
 
 end AdaBee.MAC.MLME;
