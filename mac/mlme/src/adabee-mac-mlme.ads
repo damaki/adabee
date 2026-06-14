@@ -3,6 +3,9 @@
 --
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
+pragma Profile (Jorvik);
+pragma Partition_Elaboration_Policy (Sequential);
+
 with AdaBee.PHY;
 with AdaBee.PHY_Constants;
 

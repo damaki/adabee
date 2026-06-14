@@ -3,8 +3,6 @@
 --
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
-pragma Profile (Jorvik);
-pragma Partition_Elaboration_Policy (Sequential);
 pragma SPARK_Mode (On);
 
 with System;
@@ -12,6 +10,7 @@ with System;
 with LibSAP.Synchronous_Provider_Service_Access_Point;
 
 with AdaBee.MAC.MLME.Task_Control;
+with AdaBee.MAC.MLME.SAP_Events;
 with Adabee_Mlme_Config;
 
 package AdaBee.MAC.MLME.Req_SAP is new
@@ -29,4 +28,6 @@ package AdaBee.MAC.MLME.Req_SAP is new
      Valid_Request            => Valid_Request,
      Valid_Confirm            => Valid_Confirm,
      Notify_Request_Pending   => AdaBee.MAC.MLME.Task_Control.Poke_MLME_Task,
+     Notify_Confirm_Pending   =>
+       AdaBee.MAC.MLME.SAP_Events.Notify_Confirm_Pending,
      Priority                 => System.Priority'Last);
