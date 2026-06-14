@@ -11,6 +11,7 @@ with System;
 with AdaBee.PHY;
 with AdaBee.MAC.MLME;
 with AdaBee.MAC.MLME.Req_SAP;
+with AdaBee.MAC.MLME.SAP_Events.Wait_For_Confirm;
 
 --  This example demonstrates an Energy Detection (ED) scan on the nRF52840
 --  using the MLME-SCAN service.
@@ -86,21 +87,7 @@ begin
          Ada.Text_IO.Put_Line ("Sent MLME-SAP.request");
          Ada.Text_IO.Put_Line ("Waiting for MLME-SAP.confirm...");
 
-         --  Wait (poll) until the MLME-SAP has completed the scan and sent
-         --  the MLME-SCAN.confirm primitive.
-
-         loop
-            pragma Loop_Invariant (MLME_SAP.Is_Null (Req_Handle));
-            pragma Loop_Invariant (MLME_SAP.Is_Null (Cfm_Handle));
-            pragma Loop_Invariant (not MLME_SAP.Is_Null (Cfm_Promise));
-
-            pragma
-              Loop_Invariant
-                (MLME_SAP.Request_Kind (Cfm_Promise) = MLME_SCAN_Req);
-
-            MLME_SAP.Try_Get_Confirm (Cfm_Handle, Cfm_Promise);
-            exit when not MLME_SAP.Is_Null (Cfm_Handle);
-         end loop;
+         AdaBee.MAC.MLME.SAP_Events.Wait_For_Confirm (Cfm_Handle, Cfm_Promise);
 
          --  Read and print the MLME-SCAN.confirm results
 
