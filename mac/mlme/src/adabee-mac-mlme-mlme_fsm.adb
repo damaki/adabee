@@ -45,7 +45,6 @@ is
         Pre  => Is_RESET_Req (Request) and then not Confirm'Constrained,
         Post => Valid_Confirm (Request, Confirm)
       is
-         pragma Unreferenced (Request);
       begin
          Confirm := (Kind => MLME_RESET_Cfm, RESET => (Status => Success));
       end Write_RESET_Cfm;

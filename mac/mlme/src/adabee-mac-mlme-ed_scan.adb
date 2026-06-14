@@ -164,16 +164,8 @@ is
       with
         Pre  =>
           Is_Valid_ED_SCAN_Req (Request) and then not Confirm'Constrained,
-        Post => Postcondition (Request, Confirm);
-
-      -----------------------
-      -- Write_ED_SCAN_Cfm --
-      -----------------------
-
-      procedure Write_ED_SCAN_Cfm
-        (Request : MLME_Request_Type; Confirm : out MLME_Confirm_Type)
+        Post => Postcondition (Request, Confirm)
       is
-         pragma Unreferenced (Request);
       begin
          Confirm :=
            (Kind => MLME_SCAN_Cfm,
@@ -214,17 +206,8 @@ is
         (Request : MLME_Request_Type; Confirm : in out MLME_Confirm_Type)
       with
         Pre  => Invariant (Request, Confirm),
-        Post => Invariant (Request, Confirm);
-
-      ------------------------
-      -- Update_ED_SCAN_Cfm --
-      ------------------------
-
-      procedure Update_ED_SCAN_Cfm
-        (Request : MLME_Request_Type; Confirm : in out MLME_Confirm_Type)
+        Post => Invariant (Request, Confirm)
       is
-         pragma Unreferenced (Request);
-
          Max_ED : AdaBee.PHY.ED_Range;
       begin
          AdaBee.PHY.Get_ED_Scan_Result (Max_ED);
