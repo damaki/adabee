@@ -110,19 +110,17 @@ begin
             Ada.Text_IO.Put ("    Status:    ");
             Ada.Text_IO.Put_Line (SCAN_Cfm.all.SCAN.Status'Image);
 
-            if SCAN_Cfm.all.SCAN.Scan_Type = ED then
-               Ada.Text_IO.Put_Line ("    Energy_Detect_List: ");
+            Ada.Text_IO.Put_Line ("    Energy_Detect_List: ");
 
-               for Ch in AdaBee.PHY.RF_Channel_Number loop
-                  if SCAN_Req.all.SCAN.Scan_Channels (Ch) then
-                     Ada.Text_IO.Put ("       ");
-                     Ada.Text_IO.Put (Ch'Image);
-                     Ada.Text_IO.Put (" =>");
-                     Ada.Text_IO.Put_Line
-                       (SCAN_Cfm.all.SCAN.Energy_Detect_List (Ch)'Image);
-                  end if;
-               end loop;
-            end if;
+            for Ch in AdaBee.PHY.RF_Channel_Number loop
+               if SCAN_Req.all.SCAN.Scan_Channels (Ch) then
+                  Ada.Text_IO.Put ("       ");
+                  Ada.Text_IO.Put (Ch'Image);
+                  Ada.Text_IO.Put (" =>");
+                  Ada.Text_IO.Put_Line
+                    (SCAN_Cfm.all.SCAN.Energy_Detect_List (Ch)'Image);
+               end if;
+            end loop;
          end;
 
          --  Complete the MLME-SAP transaction
