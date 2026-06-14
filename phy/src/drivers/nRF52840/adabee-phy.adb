@@ -1589,7 +1589,7 @@ is
    ---------------------
 
    function Packet_Received return Boolean
-   is (if PHY_API_State = Rx_Complete then Driver.Packet_Available else False);
+   is (PHY_API_State = Rx_Complete and then Driver.Packet_Available);
 
    -------------------------
    -- Get_Received_Packet --

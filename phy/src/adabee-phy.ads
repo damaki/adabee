@@ -325,7 +325,6 @@ is
 
    procedure Turn_Off
    with
-     Inline,
      Global  => (In_Out => (Radio_Device, Radio_State), Output => Radio_Clock),
      Depends =>
        (Radio_Device => Radio_Device,
@@ -340,7 +339,6 @@ is
 
    procedure Enter_Sleep
    with
-     Inline,
      Global  => (In_Out => (Radio_Device, Radio_State, Radio_Clock)),
      Depends =>
        (Radio_Device => Radio_Device,
@@ -357,7 +355,6 @@ is
 
    procedure Exit_Sleep
    with
-     Inline,
      Global  => (In_Out => (Radio_Device, Radio_State, Radio_Clock)),
      Depends =>
        (Radio_Device => Radio_Device,
@@ -721,7 +718,6 @@ is
 
    procedure Read_Clock (Now : out Radio_Clock_Time_Range)
    with
-     Inline,
      Global  => (Input => (Radio_Clock, Radio_State)),
      Depends => (Now => (Radio_Clock, Radio_State)),
      Post    => (if Current_State = Off then Now = 0.0);
@@ -735,7 +731,6 @@ is
    procedure Set_Alarm
      (Alarm : Alarm_Number; Trigger_At : AdaBee.Time_Units.Time)
    with
-     Inline,
      Global  =>
        (In_Out => (Radio_Clock, Radio_Events), Proof_In => Radio_State),
      Depends =>
@@ -752,7 +747,6 @@ is
 
    procedure Cancel_Alarm (Alarm : Alarm_Number)
    with
-     Inline,
      Global  => (In_Out => Radio_Clock),
      Depends => (Radio_Clock => (Radio_Clock, Alarm));
    --  Cancel a previously set alarm
