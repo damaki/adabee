@@ -18,7 +18,7 @@ private package AdaBee.MAC.MLME.MLME_FSM
   with Elaborate_Body, SPARK_Mode
 is
 
-   type State_Kind is (Idle, Scan_Active);
+   type State_Kind is (Idle, Exiting_Sleep, Scan_Active);
 
    type Machine is limited private;
 
@@ -26,10 +26,10 @@ is
    with Global => null;
 
    function Valid_PHY_Active_State (FSM : Machine) return Boolean
-   with Global => (Input => AdaBee.PHY.Radio_State);
+   with Ghost, Global => (Input => AdaBee.PHY.Radio_State);
 
    function Valid_PHY_Operation_Complete_State (FSM : Machine) return Boolean
-   with Global => (Input => AdaBee.PHY.Radio_State);
+   with Ghost, Global => (Input => AdaBee.PHY.Radio_State);
 
    procedure Notify_SCAN_Req
      (FSM    : in out Machine;
@@ -57,33 +57,39 @@ private
    use all type AdaBee.PHY.State_Kind;
 
    type Machine is limited record
+      State        : State_Kind := Idle;
       Scan_Machine : Scan_FSM.Machine;
-   end record;
+   end record
+   with
+     Type_Invariant =>
+       (case State is
+          when Idle          => Scan_FSM.Current_State (Scan_Machine) = Idle,
+
+          when Exiting_Sleep =>
+            Scan_FSM.Current_State (Scan_Machine) = Scan_Pending,
+
+          when Scan_Active   =>
+            Scan_FSM.Current_State (Scan_Machine) = Scan_Active);
 
    -------------------
    -- Current_State --
    -------------------
 
    function Current_State (FSM : Machine) return State_Kind
-   is (if Scan_FSM.Current_State (FSM.Scan_Machine) = Scan_Active
-       then Scan_Active
-       else Idle);
+   is (FSM.State);
 
    function Valid_PHY_Active_State (FSM : Machine) return Boolean
    is (case Current_State (FSM) is
-         when Idle        => AdaBee.PHY.Current_State = Off,
-         when Scan_Active =>
-           AdaBee.PHY.Current_State in Exiting_Sleep | ED_Scan_Active);
+         when Idle          => AdaBee.PHY.Current_State = Off,
+         when Exiting_Sleep => AdaBee.PHY.Current_State = Exiting_Sleep,
+         when Scan_Active   => AdaBee.PHY.Current_State in ED_Scan_Active);
 
    function Valid_PHY_Operation_Complete_State (FSM : Machine) return Boolean
    is (case Current_State (FSM) is
-         when Idle        => False,
-         when Scan_Active =>
-           (case Scan_FSM.Current_State (FSM.Scan_Machine) is
-              when Idle | Scan_Pending => raise Program_Error, --  Unreachable
-              when Scan_Active         =>
-                (case Scan_FSM.Current_Scan_Type (FSM.Scan_Machine) is
-                   when ED                                          =>
-                     AdaBee.PHY.Current_State in Idle | ED_Scan_Complete)));
+         when Idle          => False,
+         when Exiting_Sleep => AdaBee.PHY.Current_State = Idle,
+         when Scan_Active   =>
+           (case Scan_FSM.Current_Scan_Type (FSM.Scan_Machine) is
+              when ED => AdaBee.PHY.Current_State = ED_Scan_Complete));
 
 end AdaBee.MAC.MLME.MLME_FSM;

@@ -54,8 +54,7 @@ is
      Inline,
      Pre  =>
        Is_Valid_ED_SCAN_Req_And_Cfm (Handle)
-       and then
-         AdaBee.PHY.Current_State in Off | Sleeping | Exiting_Sleep | Idle,
+       and then AdaBee.PHY.Current_State = Idle,
      Post =>
        (if not Req_SAP.Is_Null (Handle) then Is_Valid (Scan, Handle))
 
@@ -66,8 +65,6 @@ is
           begin
             (if Req_SAP.Is_Null (Handle)
              then AdaBee.PHY.Current_State = Old_PHY_State
-             elsif Old_PHY_State /= Idle
-             then AdaBee.PHY.Current_State = Exiting_Sleep
              else AdaBee.PHY.Current_State = ED_Scan_Active));
    --  Searches for the next channel to scan, and initiates the scan on the PHY
    --  if one is found.
@@ -107,26 +104,16 @@ is
      (Scan   : in out Scan_State;
       Handle : in out AdaBee.MAC.MLME.Req_SAP.Service_Handle) is
    begin
-      case AdaBee.PHY.Current_State is
-         when Idle             =>
-            --  The PHY has exited sleep mode, so start the first scan.
-            Start_ED_Scan_On_Current_Channel (Scan, Handle);
+      Save_ED_Scan_Result (Scan, Handle);
 
-         when ED_Scan_Complete =>
-            Save_ED_Scan_Result (Scan, Handle);
+      AdaBee.PHY.Go_Idle;
 
-            AdaBee.PHY.Go_Idle;
-
-            if Scan.Current_Channel < AdaBee.PHY.RF_Channel_Number'Last then
-               Scan.Current_Channel := Scan.Current_Channel + 1;
-               Start_ED_Scan_On_Next_Channel (Scan, Handle);
-            else
-               Req_SAP.Send_Confirm (Handle);
-            end if;
-
-         when others           =>
-            pragma Assert (False); --  Unreachable
-      end case;
+      if Scan.Current_Channel < AdaBee.PHY.RF_Channel_Number'Last then
+         Scan.Current_Channel := Scan.Current_Channel + 1;
+         Start_ED_Scan_On_Next_Channel (Scan, Handle);
+      else
+         Req_SAP.Send_Confirm (Handle);
+      end if;
    end Notify_PHY_Operation_Complete;
 
    ----------------------------
@@ -284,24 +271,7 @@ is
 
          else
             Scan.Current_Channel := Next_Channel;
-
-            case AdaBee.PHY.Current_State is
-               when Off           =>
-                  AdaBee.PHY.Turn_On;
-                  AdaBee.PHY.Exit_Sleep;
-
-               when Sleeping      =>
-                  AdaBee.PHY.Exit_Sleep;
-
-               when Exiting_Sleep =>
-                  null;
-
-               when Idle          =>
-                  Start_ED_Scan_On_Current_Channel (Scan, Handle);
-
-               when others        =>
-                  pragma Assert (False); --  Unreachable
-            end case;
+            Start_ED_Scan_On_Current_Channel (Scan, Handle);
          end if;
       end if;
    end Start_ED_Scan_On_Next_Channel;

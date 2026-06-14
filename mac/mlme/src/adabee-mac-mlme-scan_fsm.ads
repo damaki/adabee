@@ -99,8 +99,7 @@ is
    with
      Pre  =>
        Current_State (FSM) = Scan_Pending
-       and then
-         AdaBee.PHY.Current_State in Off | Sleeping | Exiting_Sleep | Idle,
+       and then AdaBee.PHY.Current_State = Idle,
      Post =>
        (declare
           Old_PHY_State : constant AdaBee.PHY.State_Kind :=
@@ -110,8 +109,6 @@ is
           and then
             (if Current_State (FSM) = Idle
              then AdaBee.PHY.Current_State = Old_PHY_State
-             elsif Old_PHY_State in Off | Sleeping | Exiting_Sleep
-             then AdaBee.PHY.Current_State = Exiting_Sleep
              else AdaBee.PHY.Current_State = ED_Scan_Active));
 
    procedure Notify_PHY_Operation_Complete (FSM : in out Machine)
@@ -121,7 +118,7 @@ is
        Current_State (FSM) = Scan_Active
        and then
          (case Current_Scan_Type (FSM) is
-            when ED => AdaBee.PHY.Current_State in Idle | ED_Scan_Complete),
+            when ED => AdaBee.PHY.Current_State = ED_Scan_Complete),
 
      Post              =>
        (case Current_State (FSM) is
@@ -201,7 +198,6 @@ private
          when Idle | Scan_Pending => True,
          when Scan_Active         =>
            (case Current_Scan_Type (FSM) is
-              when ED =>
-                AdaBee.PHY.Current_State in Exiting_Sleep | ED_Scan_Active));
+              when ED => AdaBee.PHY.Current_State = ED_Scan_Active));
 
 end AdaBee.MAC.MLME.Scan_FSM;

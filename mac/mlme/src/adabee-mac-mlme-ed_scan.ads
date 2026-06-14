@@ -58,12 +58,12 @@ is
      (Scan    : Scan_State;
       Request : MLME_Request_Type;
       Confirm : MLME_Confirm_Type) return Boolean
-   with Global => null;
+   with Ghost, Global => null;
 
    function Is_Valid
      (Scan : Scan_State; Handle : AdaBee.MAC.MLME.Req_SAP.Service_Handle)
       return Boolean
-   with Global => null;
+   with Ghost, Global => null;
 
    procedure Begin_ED_Scan
      (Scan   : out Scan_State;
@@ -72,7 +72,7 @@ is
      Pre  =>
        Is_Valid_ED_SCAN_Req (Handle)
        and then not Req_SAP.Confirm_Written (Handle)
-       and then PHY.Current_State in Off | Sleeping | Exiting_Sleep | Idle,
+       and then PHY.Current_State = Idle,
      Post =>
        (declare
           Old_PHY_State : constant AdaBee.PHY.State_Kind :=
@@ -81,10 +81,7 @@ is
           (if not Req_SAP.Is_Null (Handle)
            then
              Is_Valid (Scan, Handle)
-             and then
-               (if Old_PHY_State in Off | Sleeping | Exiting_Sleep
-                then AdaBee.PHY.Current_State = Exiting_Sleep
-                else AdaBee.PHY.Current_State = ED_Scan_Active)
+             and then AdaBee.PHY.Current_State = ED_Scan_Active
            else PHY.Current_State = Old_PHY_State));
    --  Begins a new ED scan for the MLME-SCAN.request given in `Handle`.
    --
@@ -98,7 +95,7 @@ is
      Always_Terminates => False,
      Pre               =>
        Is_Valid (Scan, Handle)
-       and then AdaBee.PHY.Current_State in Idle | ED_Scan_Complete,
+       and then AdaBee.PHY.Current_State = ED_Scan_Complete,
      Post              =>
        (if not Req_SAP.Is_Null (Handle)
         then
