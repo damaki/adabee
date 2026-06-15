@@ -11,7 +11,7 @@ private with AdaBee.PHY;
 --  This package stores the MAC PIB attributes and handles MLME-SET and
 --  MLME-GET requests.
 
-private package AdaBee.MAC.MLME.PIB
+package AdaBee.MAC.MLME.PIB
   with Elaborate_Body, SPARK_Mode
 is
 
