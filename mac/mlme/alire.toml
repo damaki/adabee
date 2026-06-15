@@ -41,12 +41,11 @@ release.runtime_checks = "None"
 [[depends-on]]
 adabee_mac_frames = "*"
 adabee_phy = "*"
-libsap = "~0.2.0"
+libsap = "~0.3.0"
 
 [[pins]]
 adabee_mac_frames = { path="../frames" }
 adabee_phy = { path="../../phy" }
-libsap = { path="../../../libsap" }
 
 [configuration.variables]
 MLME_SCAN_Cfm_Max_PAN_Descriptors = { type = "Integer", first = 1, default = 8 }
