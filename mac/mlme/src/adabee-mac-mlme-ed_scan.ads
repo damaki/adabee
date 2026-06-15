@@ -72,11 +72,12 @@ is
      (Scan   : out Scan_State;
       Handle : in out AdaBee.MAC.MLME.SAP.Requests.Service_Handle)
    with
-     Pre  =>
+     Always_Terminates => False,
+     Pre               =>
        Is_Valid_ED_SCAN_Req (Handle)
        and then not SAP.Requests.Confirm_Written (Handle)
        and then PHY.Current_State = Idle,
-     Post =>
+     Post              =>
        (declare
           Old_PHY_State : constant AdaBee.PHY.State_Kind :=
             AdaBee.PHY.Current_State'Old;

@@ -72,11 +72,12 @@ is
      (FSM    : in out Machine;
       Handle : in out AdaBee.MAC.MLME.SAP.Requests.Service_Handle)
    with
-     Pre  =>
+     Always_Terminates => False,
+     Pre               =>
        Is_SCAN_Req (Handle)
        and then not SAP.Requests.Confirm_Written (Handle)
        and then Valid_PHY_Active_State (FSM),
-     Post =>
+     Post              =>
        (declare
           Old_State : constant State_Kind := Current_State (FSM)'Old;
         begin
@@ -98,10 +99,11 @@ is
 
    procedure Begin_Scan (FSM : in out Machine)
    with
-     Pre  =>
+     Always_Terminates => False,
+     Pre               =>
        Current_State (FSM) = Scan_Pending
        and then AdaBee.PHY.Current_State = Idle,
-     Post =>
+     Post              =>
        (declare
           Old_PHY_State : constant AdaBee.PHY.State_Kind :=
             AdaBee.PHY.Current_State'Old;

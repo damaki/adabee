@@ -40,13 +40,14 @@ is
      (FSM    : in out Machine;
       Handle : in out AdaBee.MAC.MLME.SAP.Requests.Service_Handle)
    with
-     Pre  =>
+     Always_Terminates => False,
+     Pre               =>
        Valid_PHY_Active_State (FSM)
        and then not SAP.Requests.Is_Null (Handle)
        and then
          SAP.Requests.Request_Reference (Handle).all.Kind = MLME_SCAN_Req
        and then not SAP.Requests.Confirm_Written (Handle),
-     Post =>
+     Post              =>
        Valid_PHY_Active_State (FSM) and then SAP.Requests.Is_Null (Handle);
    --  Processes an MLME-SCAN.request primitive.
 

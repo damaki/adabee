@@ -42,20 +42,22 @@ is
 
    procedure SET_Request (Handle : in out SAP.Requests.Service_Handle)
    with
-     Pre  =>
+     Always_Terminates => False,
+     Pre               =>
        not SAP.Requests.Is_Null (Handle)
        and then SAP.Requests.Request_Reference (Handle).all.Kind = MLME_SET_Req
        and then not SAP.Requests.Confirm_Written (Handle),
-     Post => SAP.Requests.Is_Null (Handle);
+     Post              => SAP.Requests.Is_Null (Handle);
    --  Handle a MLME-SET.request and issue the MLME-SET.confirm
 
    procedure GET_Request (Handle : in out SAP.Requests.Service_Handle)
    with
-     Pre  =>
+     Always_Terminates => False,
+     Pre               =>
        not SAP.Requests.Is_Null (Handle)
        and then SAP.Requests.Request_Reference (Handle).all.Kind = MLME_GET_Req
        and then not SAP.Requests.Confirm_Written (Handle),
-     Post => SAP.Requests.Is_Null (Handle);
+     Post              => SAP.Requests.Is_Null (Handle);
    --  Handle a MLME-GET.request and issue the MLME-GET.confirm
 
 private

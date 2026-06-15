@@ -57,10 +57,11 @@ is
       Handle : in out AdaBee.MAC.MLME.SAP.Requests.Service_Handle)
    with
      Inline,
-     Pre  =>
+     Always_Terminates => False,
+     Pre               =>
        Is_Valid_ED_SCAN_Req_And_Cfm (Handle)
        and then AdaBee.PHY.Current_State = Idle,
-     Post =>
+     Post              =>
        (if not SAP.Requests.Is_Null (Handle) then Is_Valid (Scan, Handle))
 
        and then

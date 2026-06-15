@@ -14,11 +14,12 @@ is
      (Handle : in out AdaBee.MAC.MLME.SAP.Requests.Service_Handle;
       Reason : Status_Code)
    with
-     Pre  =>
+     Always_Terminates => False,
+     Pre               =>
        Is_SCAN_Req (Handle)
        and then not SAP.Requests.Confirm_Written (Handle)
        and then Reason /= Success,
-     Post => SAP.Requests.Is_Null (Handle);
+     Post              => SAP.Requests.Is_Null (Handle);
 
    ---------------------
    -- Notify_SCAN_Req --
