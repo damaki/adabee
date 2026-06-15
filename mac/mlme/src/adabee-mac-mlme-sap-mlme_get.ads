@@ -4,7 +4,7 @@
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
 
-procedure AdaBee.MAC.MLME.MLME_GET
+procedure AdaBee.MAC.MLME.SAP.MLME_GET
   (Request : MLME_GET_Req_Type; Confirm : out MLME_GET_Cfm_Type)
 with
   SPARK_Mode,

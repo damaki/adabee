@@ -4,21 +4,21 @@
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
 
-with AdaBee.MAC.MLME.Req_SAP;
-with AdaBee.MAC.MLME.SAP_Events.Wait_For_Confirm;
+with AdaBee.MAC.MLME.SAP.Requests;
+with AdaBee.MAC.MLME.SAP.Wait_For_Confirm;
 
-procedure AdaBee.MAC.MLME.MLME_GET
+procedure AdaBee.MAC.MLME.SAP.MLME_GET
   (Request : MLME_GET_Req_Type; Confirm : out MLME_GET_Cfm_Type)
 with SPARK_Mode
 is
-   Req_Handle  : Req_SAP.Request_Handle;
-   Cfm_Promise : Req_SAP.Confirm_Promise;
-   Cfm_Handle  : Req_SAP.Confirm_Handle;
+   Req_Handle  : Requests.Request_Handle;
+   Cfm_Promise : Requests.Confirm_Promise;
+   Cfm_Handle  : Requests.Confirm_Handle;
 begin
 
-   Req_SAP.Try_Allocate_Request (Req_Handle);
+   Requests.Try_Allocate_Request (Req_Handle);
 
-   if Req_SAP.Is_Null (Req_Handle) then
+   if Requests.Is_Null (Req_Handle) then
       Confirm :=
         (PIB_Attribute => Confirm.PIB_Attribute,
          Status        => Transaction_Overflow);
@@ -39,19 +39,20 @@ begin
          end Build_GET_Req;
 
          procedure Build_GET_Req is new
-           Req_SAP.Initialize_Request
+           Requests.Initialize_Request
              (Initialize    => Build_GET_Req,
               Postcondition => Is_GET_Req);
 
       begin
          Build_GET_Req (Req_Handle);
-         Req_SAP.Send_Request (Req_Handle, Cfm_Promise);
-         AdaBee.MAC.MLME.SAP_Events.Wait_For_Confirm (Cfm_Handle, Cfm_Promise);
-         Confirm := Req_SAP.Confirm_Reference (Cfm_Handle).all.GET;
+         Requests.Send_Request (Req_Handle, Cfm_Promise);
+         AdaBee.MAC.MLME.SAP.Wait_For_Confirm (Cfm_Handle, Cfm_Promise);
+         Confirm := Requests.Confirm_Reference (Cfm_Handle).all.GET;
+         Requests.Release (Cfm_Handle);
       end;
    end if;
 
    pragma Unreferenced (Req_Handle);
    pragma Unreferenced (Cfm_Promise);
    pragma Unreferenced (Cfm_Handle);
-end AdaBee.MAC.MLME.MLME_GET;
+end AdaBee.MAC.MLME.SAP.MLME_GET;

@@ -3,8 +3,9 @@
 --
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
-with AdaBee.MAC.MLME.Req_SAP;
+with AdaBee.MAC.MLME.SAP.Requests;
 with AdaBee.MAC.MLME.PIB;
+with AdaBee.PHY;
 
 private with AdaBee.MAC.MLME.Scan_FSM;
 
@@ -19,6 +20,7 @@ private package AdaBee.MAC.MLME.MLME_FSM
   with Elaborate_Body, SPARK_Mode
 is
 
+   use all type AdaBee.MAC.MLME.SAP.MLME_Request_Kind;
    use type AdaBee.MAC.MLME.PIB.PIB_Attributes;
 
    type State_Kind is (Idle, Exiting_Sleep, Scan_Active);
@@ -36,36 +38,39 @@ is
 
    procedure Notify_SCAN_Req
      (FSM    : in out Machine;
-      Handle : in out AdaBee.MAC.MLME.Req_SAP.Service_Handle)
+      Handle : in out AdaBee.MAC.MLME.SAP.Requests.Service_Handle)
    with
      Pre  =>
        Valid_PHY_Active_State (FSM)
-       and then not Req_SAP.Is_Null (Handle)
-       and then Req_SAP.Request_Reference (Handle).all.Kind = MLME_SCAN_Req
-       and then not Req_SAP.Confirm_Written (Handle),
-     Post => Valid_PHY_Active_State (FSM) and then Req_SAP.Is_Null (Handle);
+       and then not SAP.Requests.Is_Null (Handle)
+       and then
+         SAP.Requests.Request_Reference (Handle).all.Kind = MLME_SCAN_Req
+       and then not SAP.Requests.Confirm_Written (Handle),
+     Post =>
+       Valid_PHY_Active_State (FSM) and then SAP.Requests.Is_Null (Handle);
    --  Processes an MLME-SCAN.request primitive.
 
    procedure Notify_RESET_Req
      (FSM    : in out Machine;
-      Handle : in out AdaBee.MAC.MLME.Req_SAP.Service_Handle)
+      Handle : in out AdaBee.MAC.MLME.SAP.Requests.Service_Handle)
    with
      Always_Terminates => False,
      Pre               =>
        Valid_PHY_Active_State (FSM)
-       and then not Req_SAP.Is_Null (Handle)
-       and then Req_SAP.Request_Reference (Handle).all.Kind = MLME_RESET_Req
-       and then not Req_SAP.Confirm_Written (Handle),
+       and then not SAP.Requests.Is_Null (Handle)
+       and then
+         SAP.Requests.Request_Reference (Handle).all.Kind = MLME_RESET_Req
+       and then not SAP.Requests.Confirm_Written (Handle),
      Post              =>
        Valid_PHY_Active_State (FSM)
        and then Current_State (FSM) = Idle
-       and then Req_SAP.Is_Null (Handle),
+       and then SAP.Requests.Is_Null (Handle),
      Contract_Cases    =>
-       (Req_SAP.Request_Reference (Handle).all.RESET.Set_Default_PIB = True  =>
-          AdaBee.MAC.MLME.PIB.DB = AdaBee.MAC.MLME.PIB.Default_PIB,
+       (SAP.Requests.Request_Reference (Handle).all.RESET.Set_Default_PIB
+        = True  => AdaBee.MAC.MLME.PIB.DB = AdaBee.MAC.MLME.PIB.Default_PIB,
 
-        Req_SAP.Request_Reference (Handle).all.RESET.Set_Default_PIB = False =>
-          AdaBee.MAC.MLME.PIB.DB = AdaBee.MAC.MLME.PIB.DB'Old);
+        SAP.Requests.Request_Reference (Handle).all.RESET.Set_Default_PIB
+        = False => AdaBee.MAC.MLME.PIB.DB = AdaBee.MAC.MLME.PIB.DB'Old);
    --  Processes an MLME-RESET.request primitive.
 
    procedure Notify_PHY_Operation_Complete (FSM : in out Machine)
@@ -78,6 +83,7 @@ is
 
 private
 
+   use all type AdaBee.MAC.MLME.SAP.Scan_Type_Kind;
    use all type AdaBee.MAC.MLME.Scan_FSM.State_Kind;
    use all type AdaBee.PHY.State_Kind;
 

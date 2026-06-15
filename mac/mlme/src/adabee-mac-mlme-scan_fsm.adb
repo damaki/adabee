@@ -8,15 +8,17 @@ package body AdaBee.MAC.MLME.Scan_FSM
   with SPARK_Mode
 is
 
+   use all type AdaBee.MAC.MLME.SAP.MLME_Confirm_Kind;
+
    procedure Reject_SCAN_Req
-     (Handle : in out AdaBee.MAC.MLME.Req_SAP.Service_Handle;
+     (Handle : in out AdaBee.MAC.MLME.SAP.Requests.Service_Handle;
       Reason : Status_Code)
    with
      Pre  =>
        Is_SCAN_Req (Handle)
-       and then not Req_SAP.Confirm_Written (Handle)
+       and then not SAP.Requests.Confirm_Written (Handle)
        and then Reason /= Success,
-     Post => Req_SAP.Is_Null (Handle);
+     Post => SAP.Requests.Is_Null (Handle);
 
    ---------------------
    -- Notify_SCAN_Req --
@@ -24,16 +26,16 @@ is
 
    procedure Notify_SCAN_Req
      (FSM    : in out Machine;
-      Handle : in out AdaBee.MAC.MLME.Req_SAP.Service_Handle)
+      Handle : in out AdaBee.MAC.MLME.SAP.Requests.Service_Handle)
    is
 
       function Is_Supported_SCAN_Req
-        (Request : MLME_Request_Type) return Boolean
+        (Request : SAP.MLME_Request_Type) return Boolean
       is (Request.Kind = MLME_SCAN_Req
           and then Request.SCAN.Scan_Type in Supported_Scan_Types);
 
       procedure Move_Handle is new
-        Req_SAP.Move_Service_Handle_With_Property
+        SAP.Requests.Move_Service_Handle_With_Property
           (Request_Property => Is_Supported_SCAN_Req);
 
    begin
@@ -44,7 +46,7 @@ is
       if Current_State (FSM) /= Idle then
          Reject_SCAN_Req (Handle, Transaction_Overflow);
 
-      elsif Req_SAP.Request_Reference (Handle).all.SCAN.Scan_Type
+      elsif SAP.Requests.Request_Reference (Handle).all.SCAN.Scan_Type
             not in Supported_Scan_Types
       then
          Reject_SCAN_Req (Handle, Unsupported_Feature);
@@ -72,10 +74,10 @@ is
    procedure Cancel_Scan (FSM : in out Machine) is
 
       procedure Write_Cancelled_Confirm
-        (Request : MLME_Request_Type; Confirm : out MLME_Confirm_Type)
+        (Request : SAP.MLME_Request_Type; Confirm : out SAP.MLME_Confirm_Type)
       with
         Pre  => Is_SCAN_Req (Request) and then not Confirm'Constrained,
-        Post => Valid_Confirm (Request, Confirm)
+        Post => SAP.Valid_Confirm (Request, Confirm)
       is
       begin
          case Request.SCAN.Scan_Type is
@@ -128,10 +130,10 @@ is
       end Write_Cancelled_Confirm;
 
       procedure Write_Cancelled_Confirm is new
-        Req_SAP.Initialize_Confirm
+        SAP.Requests.Initialize_Confirm
           (Initialize    => Write_Cancelled_Confirm,
            Precondition  => Is_SCAN_Req,
-           Postcondition => Valid_Confirm);
+           Postcondition => SAP.Valid_Confirm);
 
    begin
       case Current_State (FSM) is
@@ -140,7 +142,7 @@ is
 
          when Scan_Pending =>
             Write_Cancelled_Confirm (FSM.Handle);
-            Req_SAP.Send_Confirm (FSM.Handle);
+            SAP.Requests.Send_Confirm (FSM.Handle);
 
          when Scan_Active  =>
             case Current_Scan_Type (FSM) is
@@ -165,21 +167,22 @@ is
    ---------------------
 
    procedure Reject_SCAN_Req
-     (Handle : in out AdaBee.MAC.MLME.Req_SAP.Service_Handle;
+     (Handle : in out AdaBee.MAC.MLME.SAP.Requests.Service_Handle;
       Reason : Status_Code)
    is
       procedure Write_SCAN_Cfm
-        (Request : MLME_Request_Type; Confirm : out MLME_Confirm_Type)
+        (Request : SAP.MLME_Request_Type; Confirm : out SAP.MLME_Confirm_Type)
       with
         Pre  => Is_SCAN_Req (Request) and then not Confirm'Constrained,
-        Post => Valid_Confirm (Request, Confirm);
+        Post => SAP.Valid_Confirm (Request, Confirm);
 
       --------------------
       -- Write_SCAN_Cfm --
       --------------------
 
       procedure Write_SCAN_Cfm
-        (Request : MLME_Request_Type; Confirm : out MLME_Confirm_Type) is
+        (Request : SAP.MLME_Request_Type; Confirm : out SAP.MLME_Confirm_Type)
+      is
       begin
          case Request.SCAN.Scan_Type is
             when ED              =>
@@ -231,14 +234,14 @@ is
       end Write_SCAN_Cfm;
 
       procedure Write_SCAN_Cfm is new
-        Req_SAP.Initialize_Confirm
+        SAP.Requests.Initialize_Confirm
           (Initialize    => Write_SCAN_Cfm,
            Precondition  => Is_SCAN_Req,
-           Postcondition => Valid_Confirm);
+           Postcondition => SAP.Valid_Confirm);
 
    begin
       Write_SCAN_Cfm (Handle);
-      Req_SAP.Send_Confirm (Handle);
+      SAP.Requests.Send_Confirm (Handle);
    end Reject_SCAN_Req;
 
 end AdaBee.MAC.MLME.Scan_FSM;

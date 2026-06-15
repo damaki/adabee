@@ -4,7 +4,7 @@
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
 with AdaBee.MAC.MLME.MLME_FSM;
-with AdaBee.MAC.MLME.Req_SAP;
+with AdaBee.MAC.MLME.SAP.Requests;
 with AdaBee.MAC.MLME.PIB;
 
 package body AdaBee.MAC.MLME.Task_Control
@@ -35,12 +35,13 @@ is
    --  flag in the PHY.
 
    task body MLME_Task is
+      use all type AdaBee.MAC.MLME.SAP.MLME_Request_Kind;
       use all type AdaBee.PHY.State_Kind;
       use all type AdaBee.PHY.Event_Kind;
 
       MLME_Machine : MLME_FSM.Machine;
       PHY_Events   : AdaBee.PHY.Event_Flags_Array;
-      Handle       : AdaBee.MAC.MLME.Req_SAP.Service_Handle;
+      Handle       : AdaBee.MAC.MLME.SAP.Requests.Service_Handle;
 
       Is_Operation_Complete_Event_Set : Boolean;
 
@@ -86,7 +87,7 @@ is
          pragma
            Loop_Invariant (MLME_FSM.Valid_PHY_Active_State (MLME_Machine));
 
-         pragma Loop_Invariant (Req_SAP.Is_Null (Handle));
+         pragma Loop_Invariant (SAP.Requests.Is_Null (Handle));
 
          --  Block until an event is signalled
 
@@ -102,7 +103,7 @@ is
                    MLME_FSM.Valid_PHY_Operation_Complete_State (MLME_Machine)
                  else MLME_FSM.Valid_PHY_Active_State (MLME_Machine));
 
-            pragma Loop_Invariant (Req_SAP.Is_Null (Handle));
+            pragma Loop_Invariant (SAP.Requests.Is_Null (Handle));
 
             --  The Operation_Complete event is the highest priority and takes
             --  precedence over anything else to ensure that critical on-air
@@ -132,10 +133,10 @@ is
 
                   PHY_Events (User_Event) := False;
 
-                  Req_SAP.Try_Get_Next_Request (Handle);
+                  SAP.Requests.Try_Get_Next_Request (Handle);
 
-                  if not Req_SAP.Is_Null (Handle) then
-                     case Req_SAP.Request_Reference (Handle).Kind is
+                  if not SAP.Requests.Is_Null (Handle) then
+                     case SAP.Requests.Request_Reference (Handle).Kind is
                         when MLME_SCAN_Req =>
                            AdaBee.MAC.MLME.MLME_FSM.Notify_SCAN_Req
                              (MLME_Machine, Handle);

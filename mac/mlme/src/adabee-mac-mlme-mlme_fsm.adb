@@ -14,7 +14,7 @@ is
 
    procedure Notify_SCAN_Req
      (FSM    : in out Machine;
-      Handle : in out AdaBee.MAC.MLME.Req_SAP.Service_Handle) is
+      Handle : in out AdaBee.MAC.MLME.SAP.Requests.Service_Handle) is
    begin
       Scan_FSM.Notify_SCAN_Req (FSM.Scan_Machine, Handle);
 
@@ -33,27 +33,27 @@ is
 
    procedure Notify_RESET_Req
      (FSM    : in out Machine;
-      Handle : in out AdaBee.MAC.MLME.Req_SAP.Service_Handle)
+      Handle : in out AdaBee.MAC.MLME.SAP.Requests.Service_Handle)
    is
-      function Is_RESET_Req (Request : MLME_Request_Type) return Boolean
+      function Is_RESET_Req (Request : SAP.MLME_Request_Type) return Boolean
       is (Request.Kind = MLME_RESET_Req)
       with Ghost;
 
       procedure Write_RESET_Cfm
-        (Request : MLME_Request_Type; Confirm : out MLME_Confirm_Type)
+        (Request : SAP.MLME_Request_Type; Confirm : out SAP.MLME_Confirm_Type)
       with
         Pre  => Is_RESET_Req (Request) and then not Confirm'Constrained,
-        Post => Valid_Confirm (Request, Confirm)
+        Post => SAP.Valid_Confirm (Request, Confirm)
       is
       begin
-         Confirm := (Kind => MLME_RESET_Cfm, RESET => (Status => Success));
+         Confirm := (Kind => SAP.MLME_RESET_Cfm, RESET => (Status => Success));
       end Write_RESET_Cfm;
 
       procedure Write_RESET_Cfm is new
-        Req_SAP.Initialize_Confirm
+        SAP.Requests.Initialize_Confirm
           (Initialize    => Write_RESET_Cfm,
            Precondition  => Is_RESET_Req,
-           Postcondition => Valid_Confirm);
+           Postcondition => SAP.Valid_Confirm);
 
    begin
       case FSM.State is
@@ -77,12 +77,12 @@ is
 
       FSM.State := Idle;
 
-      if Req_SAP.Request_Reference (Handle).all.RESET.Set_Default_PIB then
+      if SAP.Requests.Request_Reference (Handle).all.RESET.Set_Default_PIB then
          AdaBee.MAC.MLME.PIB.Reset;
       end if;
 
       Write_RESET_Cfm (Handle);
-      Req_SAP.Send_Confirm (Handle);
+      SAP.Requests.Send_Confirm (Handle);
    end Notify_RESET_Req;
 
    -----------------------------------

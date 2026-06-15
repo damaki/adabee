@@ -4,7 +4,7 @@
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
 
-procedure AdaBee.MAC.MLME.MLME_SET
+procedure AdaBee.MAC.MLME.SAP.MLME_SET
   (Request : MLME_SET_Req_Type; Status : out Status_Code)
 with SPARK_Mode, Always_Terminates => False;
 --  Write a MAC PIB attribute.

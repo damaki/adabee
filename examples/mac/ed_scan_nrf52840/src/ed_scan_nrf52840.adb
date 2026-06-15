@@ -10,8 +10,8 @@ with System;
 
 with AdaBee.PHY;
 with AdaBee.MAC.MLME;
-with AdaBee.MAC.MLME.Req_SAP;
-with AdaBee.MAC.MLME.SAP_Events.Wait_For_Confirm;
+with AdaBee.MAC.MLME.SAP.Requests;
+with AdaBee.MAC.MLME.SAP.Wait_For_Confirm;
 
 --  This example demonstrates an Energy Detection (ED) scan on the nRF52840
 --  using the MLME-SCAN service.
@@ -23,13 +23,13 @@ with AdaBee.MAC.MLME.SAP_Events.Wait_For_Confirm;
 --   4. Print the contents of the MLME-SCAN.confirm primitive via Ada.Text_IO
 
 procedure ED_Scan_nRF52840 with Priority => System.Priority'First is
-   use all type AdaBee.MAC.MLME.MLME_Request_Kind;
-   use all type AdaBee.MAC.MLME.Scan_Type_Kind;
+   use all type AdaBee.MAC.MLME.SAP.MLME_Request_Kind;
+   use all type AdaBee.MAC.MLME.SAP.Scan_Type_Kind;
 
-   package MLME_SAP renames AdaBee.MAC.MLME.Req_SAP;
+   package MLME_SAP renames AdaBee.MAC.MLME.SAP.Requests;
 
    function Is_ED_Scan_Req
-     (Request : AdaBee.MAC.MLME.MLME_Request_Type) return Boolean
+     (Request : AdaBee.MAC.MLME.SAP.MLME_Request_Type) return Boolean
    is (Request.Kind = MLME_SCAN_Req and then Request.SCAN.Scan_Type = ED);
 
    Req_Handle  : MLME_SAP.Request_Handle;
@@ -57,7 +57,7 @@ begin
 
          declare
             procedure Build_MLME_SCAN_Req
-              (Request : out AdaBee.MAC.MLME.MLME_Request_Type)
+              (Request : out AdaBee.MAC.MLME.SAP.MLME_Request_Type)
             with
               Pre  => not Request'Constrained,
               Post => Is_ED_Scan_Req (Request)
@@ -87,19 +87,19 @@ begin
          Ada.Text_IO.Put_Line ("Sent MLME-SAP.request");
          Ada.Text_IO.Put_Line ("Waiting for MLME-SAP.confirm...");
 
-         AdaBee.MAC.MLME.SAP_Events.Wait_For_Confirm (Cfm_Handle, Cfm_Promise);
+         AdaBee.MAC.MLME.SAP.Wait_For_Confirm (Cfm_Handle, Cfm_Promise);
 
          --  Read and print the MLME-SCAN.confirm results
 
          declare
             SCAN_Req :
               constant not null access constant
-                AdaBee.MAC.MLME.MLME_Request_Type :=
+                AdaBee.MAC.MLME.SAP.MLME_Request_Type :=
                 MLME_SAP.Request_Reference (Cfm_Handle);
 
             SCAN_Cfm :
               constant not null access constant
-                AdaBee.MAC.MLME.MLME_Confirm_Type :=
+                AdaBee.MAC.MLME.SAP.MLME_Confirm_Type :=
                 MLME_SAP.Confirm_Reference (Cfm_Handle);
          begin
             Ada.Text_IO.Put_Line ("Received MLME-SCAN.confirm:");

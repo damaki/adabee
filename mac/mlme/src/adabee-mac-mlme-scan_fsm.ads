@@ -3,7 +3,7 @@
 --
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
-with AdaBee.MAC.MLME.Req_SAP;
+with AdaBee.MAC.MLME.SAP.Requests;
 with AdaBee.PHY;
 
 private with AdaBee.MAC.MLME.ED_Scan;
@@ -27,10 +27,11 @@ private package AdaBee.MAC.MLME.Scan_FSM
   with Elaborate_Body, SPARK_Mode
 is
 
+   use all type AdaBee.MAC.MLME.SAP.Scan_Type_Kind;
    use all type AdaBee.PHY.State_Kind;
 
    function Is_SCAN_Req
-     (Handle : AdaBee.MAC.MLME.Req_SAP.Service_Handle) return Boolean
+     (Handle : AdaBee.MAC.MLME.SAP.Requests.Service_Handle) return Boolean
    with Global => null;
    --  Returns True if `Handle` is a non-null handle that contains an
    --  MLME-SCAN.request primitive.
@@ -42,7 +43,7 @@ is
    type State_Kind is (Idle, Scan_Pending, Scan_Active);
    --  The set of types for the state machine
 
-   subtype Supported_Scan_Types is Scan_Type_Kind
+   subtype Supported_Scan_Types is AdaBee.MAC.MLME.SAP.Scan_Type_Kind
    with Static_Predicate => Supported_Scan_Types in ED;
    --  The set of scan types that are supported in this implementation
 
@@ -69,17 +70,17 @@ is
 
    procedure Notify_SCAN_Req
      (FSM    : in out Machine;
-      Handle : in out AdaBee.MAC.MLME.Req_SAP.Service_Handle)
+      Handle : in out AdaBee.MAC.MLME.SAP.Requests.Service_Handle)
    with
      Pre  =>
        Is_SCAN_Req (Handle)
-       and then not Req_SAP.Confirm_Written (Handle)
+       and then not SAP.Requests.Confirm_Written (Handle)
        and then Valid_PHY_Active_State (FSM),
      Post =>
        (declare
           Old_State : constant State_Kind := Current_State (FSM)'Old;
         begin
-          Req_SAP.Is_Null (Handle)
+          SAP.Requests.Is_Null (Handle)
           and then Valid_PHY_Active_State (FSM)
           and then
             (if Old_State = Idle
@@ -144,43 +145,45 @@ is
 
 private
 
+   use all type AdaBee.MAC.MLME.SAP.MLME_Request_Kind;
+
    -----------------
    -- Is_SCAN_Req --
    -----------------
 
-   function Is_SCAN_Req (Request : MLME_Request_Type) return Boolean
+   function Is_SCAN_Req (Request : SAP.MLME_Request_Type) return Boolean
    is (Request.Kind = MLME_SCAN_Req);
 
    function Is_SCAN_Req
-     (Handle : AdaBee.MAC.MLME.Req_SAP.Service_Handle) return Boolean
-   is (not Req_SAP.Is_Null (Handle)
-       and then Is_SCAN_Req (Req_SAP.Request_Reference (Handle).all));
+     (Handle : AdaBee.MAC.MLME.SAP.Requests.Service_Handle) return Boolean
+   is (not SAP.Requests.Is_Null (Handle)
+       and then Is_SCAN_Req (SAP.Requests.Request_Reference (Handle).all));
 
    -------------
    -- Machine --
    -------------
 
    type Machine is limited record
-      Handle  : AdaBee.MAC.MLME.Req_SAP.Service_Handle;
+      Handle  : AdaBee.MAC.MLME.SAP.Requests.Service_Handle;
       ED_Scan : AdaBee.MAC.MLME.ED_Scan.Scan_State;
       Pending : Boolean := False;
    end record
    with
      Type_Invariant =>
-       (if not Req_SAP.Is_Null (Handle)
+       (if not SAP.Requests.Is_Null (Handle)
         then
           --  The Handle is always an MLME-SCAN.request with one of the
           --  supported scan types.
-          Req_SAP.Request_Reference (Handle).all.Kind = MLME_SCAN_Req
+          SAP.Requests.Request_Reference (Handle).all.Kind = MLME_SCAN_Req
           and then
-            Req_SAP.Request_Reference (Handle).all.SCAN.Scan_Type
+            SAP.Requests.Request_Reference (Handle).all.SCAN.Scan_Type
             in Supported_Scan_Types
 
           --  The confirm primitive has not been written yet while the scan
           --  is pending.
           and then
             (if Pending
-             then not Req_SAP.Confirm_Written (Handle)
+             then not SAP.Requests.Confirm_Written (Handle)
              else AdaBee.MAC.MLME.ED_Scan.Is_Valid (ED_Scan, Handle)));
 
    -------------------
@@ -188,7 +191,7 @@ private
    -------------------
 
    function Current_State (FSM : Machine) return State_Kind
-   is (if Req_SAP.Is_Null (FSM.Handle)
+   is (if SAP.Requests.Is_Null (FSM.Handle)
        then Idle
 
        elsif FSM.Pending
@@ -201,7 +204,7 @@ private
    -----------------------
 
    function Current_Scan_Type (FSM : Machine) return Supported_Scan_Types
-   is (Req_SAP.Request_Reference (FSM.Handle).all.SCAN.Scan_Type);
+   is (SAP.Requests.Request_Reference (FSM.Handle).all.SCAN.Scan_Type);
 
    ----------------------------
    -- Valid_PHY_Active_State --

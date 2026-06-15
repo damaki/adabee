@@ -3,9 +3,13 @@
 --
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
+
 package body AdaBee.MAC.MLME.PIB
   with SPARK_Mode
 is
+
+   use all type AdaBee.MAC.MLME.SAP.MLME_Confirm_Kind;
+   use all type AdaBee.MAC.MLME.SAP.PIB_Attribute_Kind;
 
    -----------
    -- Reset --
@@ -22,19 +26,20 @@ is
    -- SET_Request --
    -----------------
 
-   procedure SET_Request (Handle : in out Req_SAP.Service_Handle) is
+   procedure SET_Request (Handle : in out SAP.Requests.Service_Handle) is
 
-      function Is_SET_Request (Request : MLME_Request_Type) return Boolean
+      function Is_SET_Request (Request : SAP.MLME_Request_Type) return Boolean
       is (Request.Kind = MLME_SET_Req);
 
       procedure Process_Request
-        (Request : MLME_Request_Type; Confirm : out MLME_Confirm_Type)
+        (Request : SAP.MLME_Request_Type; Confirm : out SAP.MLME_Confirm_Type)
       with
         Pre  => Request.Kind = MLME_SET_Req and then not Confirm'Constrained,
-        Post => Valid_Confirm (Request, Confirm);
+        Post => SAP.Valid_Confirm (Request, Confirm);
 
       procedure Process_Request
-        (Request : MLME_Request_Type; Confirm : out MLME_Confirm_Type) is
+        (Request : SAP.MLME_Request_Type; Confirm : out SAP.MLME_Confirm_Type)
+      is
       begin
          case Request.SET.PIB_Attribute is
             when MAC_Auto_Request         =>
@@ -70,7 +75,7 @@ is
             when PHY_CCA_Mode             =>
                AdaBee.PHY.Set_CCA_Mode (Request.SET.CCA_Mode);
 
-            when Read_Only_PIB_Attributes =>
+            when SAP.Read_Only_PIB_Attributes =>
                Confirm :=
                  (Kind => MLME_SET_Cfm,
                   SET  =>
@@ -86,33 +91,33 @@ is
       end Process_Request;
 
       procedure Process_Request is new
-        Req_SAP.Initialize_Confirm
+        SAP.Requests.Initialize_Confirm
           (Initialize    => Process_Request,
            Precondition  => Is_SET_Request,
-           Postcondition => Valid_Confirm);
+           Postcondition => SAP.Valid_Confirm);
 
    begin
       Process_Request (Handle);
-      Req_SAP.Send_Confirm (Handle);
+      SAP.Requests.Send_Confirm (Handle);
    end SET_Request;
 
    -----------------
    -- GET_Request --
    -----------------
 
-   procedure GET_Request (Handle : in out Req_SAP.Service_Handle) is
+   procedure GET_Request (Handle : in out SAP.Requests.Service_Handle) is
 
-      function Is_GET_Request (Request : MLME_Request_Type) return Boolean
+      function Is_GET_Request (Request : SAP.MLME_Request_Type) return Boolean
       is (Request.Kind = MLME_GET_Req);
 
       procedure Process_Request
-        (Request : MLME_Request_Type; Confirm : out MLME_Confirm_Type)
+        (Request : SAP.MLME_Request_Type; Confirm : out SAP.MLME_Confirm_Type)
       with
         Pre  => Request.Kind = MLME_GET_Req and then not Confirm'Constrained,
-        Post => Valid_Confirm (Request, Confirm);
+        Post => SAP.Valid_Confirm (Request, Confirm);
 
       procedure Process_Request
-        (Request : MLME_Request_Type; Confirm : out MLME_Confirm_Type)
+        (Request : SAP.MLME_Request_Type; Confirm : out SAP.MLME_Confirm_Type)
       is
          CCA_Mode : AdaBee.PHY.CCA_Mode_Kind;
       begin
@@ -218,14 +223,14 @@ is
       end Process_Request;
 
       procedure Process_Request is new
-        Req_SAP.Initialize_Confirm
+        SAP.Requests.Initialize_Confirm
           (Initialize    => Process_Request,
            Precondition  => Is_GET_Request,
-           Postcondition => Valid_Confirm);
+           Postcondition => SAP.Valid_Confirm);
 
    begin
       Process_Request (Handle);
-      Req_SAP.Send_Confirm (Handle);
+      SAP.Requests.Send_Confirm (Handle);
    end GET_Request;
 
 end AdaBee.MAC.MLME.PIB;

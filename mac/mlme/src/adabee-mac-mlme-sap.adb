@@ -3,7 +3,7 @@
 --
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
-package body AdaBee.MAC.MLME.SAP_Events
+package body AdaBee.MAC.MLME.SAP
   with SPARK_Mode, Refined_State => (Confirm_Monitors => Monitors)
 is
 
@@ -51,4 +51,4 @@ is
 
    end Monitor;
 
-end AdaBee.MAC.MLME.SAP_Events;
+end AdaBee.MAC.MLME.SAP;

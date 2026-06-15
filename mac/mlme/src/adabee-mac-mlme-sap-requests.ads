@@ -10,10 +10,9 @@ with System;
 with LibSAP.Synchronous_Provider_Service_Access_Point;
 
 with AdaBee.MAC.MLME.Task_Control;
-with AdaBee.MAC.MLME.SAP_Events;
 with Adabee_Mlme_Config;
 
-package AdaBee.MAC.MLME.Req_SAP is new
+package AdaBee.MAC.MLME.SAP.Requests is new
   LibSAP.Synchronous_Provider_Service_Access_Point
     (Request_Kind_Type        => MLME_Compound_Request_Kind,
      Request_Type             => MLME_Request_Type,
@@ -28,6 +27,5 @@ package AdaBee.MAC.MLME.Req_SAP is new
      Valid_Request            => Valid_Request,
      Valid_Confirm            => Valid_Confirm,
      Notify_Request_Pending   => AdaBee.MAC.MLME.Task_Control.Poke_MLME_Task,
-     Notify_Confirm_Pending   =>
-       AdaBee.MAC.MLME.SAP_Events.Notify_Confirm_Pending,
+     Notify_Confirm_Pending   => Notify_Confirm_Pending,
      Priority                 => System.Priority'Last);
