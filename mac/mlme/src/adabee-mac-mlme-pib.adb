@@ -74,14 +74,6 @@ is
 
             when PHY_CCA_Mode             =>
                AdaBee.PHY.Set_CCA_Mode (Request.SET.CCA_Mode);
-
-            when SAP.Read_Only_PIB_Attributes =>
-               Confirm :=
-                 (Kind => MLME_SET_Cfm,
-                  SET  =>
-                    (PIB_Attribute => Request.SET.PIB_Attribute,
-                     Status        => Read_Only));
-               return;
          end case;
 
          Confirm :=

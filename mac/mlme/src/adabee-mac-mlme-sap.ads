@@ -168,13 +168,18 @@ is
    with Static_Predicate => Read_Only_PIB_Attributes in MAC_Extended_Address;
    --  Set of MAC PIB attributes that are read-only
 
+   subtype Writable_PIB_Attributes is PIB_Attribute_Kind
+   with
+     Static_Predicate =>
+       Writable_PIB_Attributes not in Read_Only_PIB_Attributes;
+
    subtype MAC_Min_BE_Range is Natural range 0 .. 8;
    subtype MAC_Max_BE_Range is Natural range 3 .. 8;
    subtype MAC_Max_CSMA_Backoffs_Range is Natural range 0 .. 5;
    subtype MAC_Max_Frame_Retries_Range is Natural range 0 .. 7;
 
    type MLME_SET_Req_Type
-     (PIB_Attribute : PIB_Attribute_Kind := PIB_Attribute_Kind'First)
+     (PIB_Attribute : Writable_PIB_Attributes := MAC_Auto_Request)
    is record
       case PIB_Attribute is
          when MAC_Auto_Request =>
@@ -194,9 +199,6 @@ is
 
          when MAC_Short_Address =>
             Short_Address : Frames.Headers.Short_Address_Field := 0;
-
-         when MAC_Extended_Address =>
-            Extended_Address : Frames.Headers.Extended_Address_Field := 0;
 
          when MAC_Max_Frame_Retries =>
             Max_Frame_Retries : MAC_Max_Frame_Retries_Range := 0;
