@@ -4,7 +4,10 @@
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
 with Ada.Interrupts.Names;
+with Ada.Unchecked_Conversion;
 with System;
+
+with Adabee_Phy_Config;
 
 with NRF52840;       use NRF52840;
 with NRF52840.EGU;   use NRF52840.EGU;
@@ -865,11 +868,43 @@ is
    -------------------
 
    function Get_Device_ID return Bits_64 is
+      use Interfaces;
+
+      Nordic_Semi_OUI : constant Bits_24 := 16#F4CE36#;
+
+      Vendor_OUI : constant Bits_24 :=
+        (if Adabee_Phy_Config.Vendor_OUI >= 0
+         then Adabee_Phy_Config.Vendor_OUI
+         else Nordic_Semi_OUI);
+
+      type EUI64_Type is record
+         Vendor_Part    : Bits_24;
+         Device_Part_Lo : Bits_32;
+         Device_Part_Hi : Bits_8;
+      end record
+      with
+        Size                 => 64,
+        Bit_Order            => System.Low_Order_First,
+        Scalar_Storage_Order => System.Low_Order_First;
+
+      for EUI64_Type use
+        record
+          Vendor_Part    at 0 range 0 .. 23;
+          Device_Part_Lo at 0 range 24 .. 55;
+          Device_Part_Hi at 0 range 56 .. 63;
+        end record;
+
+      function To_Bits_64 is new
+        Ada.Unchecked_Conversion (Source => EUI64_Type, Target => Bits_64);
+
    begin
       --  Use DEVICEID instead of DEVICEADDR, since DEVICEADDR is only 48-bit
       return
-        Interfaces.Shift_Left (Bits_64 (FICR_Periph.DEVICEID_1), 32)
-        or Bits_64 (FICR_Periph.DEVICEID_0);
+        To_Bits_64
+          (EUI64_Type'
+             (Vendor_Part    => Vendor_OUI,
+              Device_Part_Lo => Bits_32 (FICR_Periph.DEVICEID_0),
+              Device_Part_Hi => Bits_8 (FICR_Periph.DEVICEID_1 and 16#FF#)));
    end Get_Device_ID;
 
    -------------------

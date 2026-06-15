@@ -45,3 +45,4 @@ adabee_common = { path='../common' }
 
 [configuration.variables]
 Driver = {type = "Enum", values = ["stub", "nRF52840"], default = "stub"}
+Vendor_OUI = { type = "Integer", first = -1, last = 0xFFFFFF, default = -1 }
