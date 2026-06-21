@@ -50,6 +50,9 @@ adabee_phy = { path="../../phy" }
 [configuration.variables]
 MLME_SCAN_Cfm_Max_PAN_Descriptors = { type = "Integer", first = 1, default = 8 }
 MLME_Request_Queue_Capacity = { type = "Integer", first = 1, default = 2 }
+MCPS_Request_Queue_Capacity = { type = "Integer", first = 1, default = 2 }
+MCPS_Indication_Queue_Capacity = { type = "Integer", first = 1, default = 2 }
+MCPS_Max_MSDU_Length = { type = "Integer", first = 1, last = 124, default = 124 }
 
 [configuration.values]
 libsap.Tasking_Supported = true
