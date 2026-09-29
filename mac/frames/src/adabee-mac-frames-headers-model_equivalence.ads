@@ -30,7 +30,7 @@ is
    with
      Pre  => Encoder_Model.Frame_Control_Equal (MHR, Frame),
      Post =>
-       (case MHR.Frame_Type is
+       (case Frame_Type_Field (MHR.Frame_Type) is
           when Multipurpose        =>
 
             --  The destination PAN ID is present in MHR if and only if the
@@ -86,7 +86,10 @@ is
                  MHR.Source_PAN_ID.Present
                  and then MHR.Destination_PAN_ID.Present
 
-               else not MHR.Source_PAN_ID.Present));
+               else not MHR.Source_PAN_ID.Present),
+
+          --  Unreachable
+          when others              => raise Program_Error);
    --  Assuming a Frame buffer's Frame Control field is equal to the contents
    --  of a MAC_Header record, prove that the presence of the source and
    --  destination PAN ID fields is the same between the two models.

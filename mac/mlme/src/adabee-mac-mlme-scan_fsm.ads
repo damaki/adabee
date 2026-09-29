@@ -134,8 +134,9 @@ is
      Pre               =>
        Current_State (FSM) = Scan_Active
        and then
-         (case Current_Scan_Type (FSM) is
-            when ED => AdaBee.PHY.Current_State = ED_Scan_Complete),
+         (case SAP.Scan_Type_Kind (Current_Scan_Type (FSM)) is
+            when ED     => AdaBee.PHY.Current_State = ED_Scan_Complete,
+            when others => raise Program_Error),
 
      Post              =>
        (case Current_State (FSM) is
