@@ -8,6 +8,7 @@ with Interfaces;
 package AdaBee
   with Pure, SPARK_Mode, Always_Terminates
 is
+   use type Interfaces.Unsigned_8;
 
    type Bit is mod 2 ** 1 with Size => 1;
 
@@ -85,5 +86,17 @@ is
    type Byte_Array is array (Positive range <>) of Bits_8;
 
    type Parameterless_Procedure is access procedure;
+
+   function Is_All_Zeroes (Buffer : Byte_Array) return Boolean
+   with
+     Post => (Static => Is_All_Zeroes'Result = (for all B of Buffer => B = 0));
+   --  Checks whether a buffer contains all zeroes in constant time.
+   --
+   --  The execution time of this function is dependent only on the length of
+   --  the buffer, not its contents.
+
+   procedure Sanitize (Buffer : out Byte_Array)
+   with No_Inline, Global => null, Post => Is_All_Zeroes (Buffer);
+   --  Sanitize the contents of a byte array by setting them to all zeroes.
 
 end AdaBee;
