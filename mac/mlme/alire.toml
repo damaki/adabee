@@ -48,11 +48,59 @@ adabee_mac_frames = { path="../frames" }
 adabee_phy = { path="../../phy" }
 
 [configuration.variables]
+
+# Configures the maximum number of PAN ID descriptors stored in an
+# MLME-SCAN.confirm primitive. Higher values result in higher RAM usage, but
+# allows more PANs to be returned from a scan.
 MLME_SCAN_Cfm_Max_PAN_Descriptors = { type = "Integer", first = 1, default = 8 }
+
+# Configures the maximum number of concurrent transactions in the MLME-SAP.
+# Higher values result in higher RAM usage.
 MLME_Request_Queue_Capacity = { type = "Integer", first = 1, default = 2 }
+
+# Configures the maximum number of MSDUs that can be queued for transmission
+# in the MCPS-SAP, i.e. the maximum number of MCPS-DATA.request primitives.
+# Higher values result in higher RAM usage.
 MCPS_Request_Queue_Capacity = { type = "Integer", first = 1, default = 2 }
+
+# Configures the maximum number of received MSDUs that can be held in the
+# MCPS-SAP, i.e. the maximum number of MCPS-DATA.indication primitives.
+# Higher values result in higher RAM usage.
 MCPS_Indication_Queue_Capacity = { type = "Integer", first = 1, default = 2 }
+
+# Configures the maximum MSDU buffer size in MCPS-DATA primitives.
+# Higher values result in higher RAM usage.
 MCPS_Max_MSDU_Length = { type = "Integer", first = 1, last = 124, default = 124 }
 
+# Configures the maximum length of the secKeyIeUsageDescriptorList field in
+# each secKeyUsageDescriptor.
+# Setting this to zero will disable the incoming IE key usage policy checking
+# procedure defined in IEEE 802.15.4-2024 Section 9.2.9, resulting in IEs always
+# being allowed.
+# Higher values result in higher RAM usage.
+Sec_Max_IE_Usage_Descriptors = { type = "Integer", first = 0, last = 63, default = 1 }
+
+# Configures the maximum length of the secIeSecurityLevelDescriptorList field in
+# each secSeccurityLevelDescriptor.
+# Setting this to zero will disable the incoming IE security level checking
+# procedure defined in IEEE 802.15.4-2024 Section 9.2.8, resulting in IEs always
+# being allowed.
+# Higher values result in higher RAM usage.
+Sec_Max_IE_Security_Level_Descriptors = { type = "Integer", first = 0, last = 63, default = 1 }
+
+# Configures the maximum length of the secKeyDeviceFrameCounterList in a
+# secKeyDescriptor. This determines the maximum number of devices whose frame
+# counters can be tracked for each key.
+# Anti-replay protection for incoming frames will not be
+# Higher values result in higher RAM usage.
+Sec_Max_Key_Device_Frame_Counter_Descriptors = { type = "Integer", first = 0, default = 0 }
+
+# Configures the maximum length of the secKeyIdLookupList MAC PIB attribute.
+Sec_Key_ID_Lookup_List_Max_Length = { type = "Integer", first = 0, default = 1 }
+
 [configuration.values]
+# The MLME uses the tasking SAPs from LibSAP
 libsap.Tasking_Supported = true
+
+[[pins]]
+libsap = { path = "../../../libsap" }

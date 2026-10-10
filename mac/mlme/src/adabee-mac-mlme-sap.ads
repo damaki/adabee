@@ -5,9 +5,11 @@
 --
 with AdaBee.PHY;
 with AdaBee.PHY_Constants;
+with AdaBee.Crypto;
 
 with AdaBee.MAC.Frames.Headers;
 with AdaBee.MAC.Frames.Beacons;
+with AdaBee.MAC.MLME.Security_Types;
 
 with AdaBee.Time_Units;
 with Adabee_Mlme_Config;
@@ -34,6 +36,8 @@ package AdaBee.MAC.MLME.SAP
           (Async_Writers, Effective_Reads, Async_Readers, Effective_Writes)),
     Initializes    => Confirm_Monitors
 is
+
+   use all type AdaBee.Crypto.Algorithm_Kind;
 
    --------------------
    -- PAN Descriptor --
@@ -160,6 +164,9 @@ is
       MAC_Security_Enabled,
       MAC_Short_Address,
 
+      --  Security-related MAC PIB attributes
+      Sec_Key_ID_Lookup_List,
+
       --  PHY PIB attributes
       PHY_CCA_Mode);
    --  Set of supported MAC PIB attributes
@@ -177,6 +184,19 @@ is
    subtype MAC_Max_BE_Range is Natural range 3 .. 8;
    subtype MAC_Max_CSMA_Backoffs_Range is Natural range 0 .. 5;
    subtype MAC_Max_Frame_Retries_Range is Natural range 0 .. 7;
+
+   --  Ensure that the range of Sec_Key_ID_Lookup_List_Index has at least one
+   --  value in its range to ensure it can always be initialized with a valid
+   --  value. This is necessary for the case where the security key ID lookup
+   --  list is disabled in the MLME configuration.
+
+   Sec_Key_ID_Lookup_List_Index_Last : constant :=
+     (if Adabee_Mlme_Config.Sec_Key_ID_Lookup_List_Max_Length > 0
+      then Adabee_Mlme_Config.Sec_Key_ID_Lookup_List_Max_Length
+      else 1);
+
+   type Sec_Key_ID_Lookup_List_Index is
+     range 1 .. Sec_Key_ID_Lookup_List_Index_Last;
 
    type MLME_SET_Req_Type
      (PIB_Attribute : Writable_PIB_Attributes := MAC_Auto_Request)
@@ -215,6 +235,13 @@ is
          when PHY_CCA_Mode =>
             CCA_Mode : AdaBee.PHY.CCA_Mode_Kind := AdaBee.PHY.ALOHA;
 
+         when Sec_Key_ID_Lookup_List =>
+            Key_Index : Sec_Key_ID_Lookup_List_Index :=
+              Sec_Key_ID_Lookup_List_Index'First;
+
+            Key_Descriptor :
+              AdaBee.MAC.MLME.Security_Types.Key_ID_Lookup_Descriptor :=
+                (others => <>);
       end case;
    end record;
 
@@ -239,8 +266,16 @@ is
 
    --  Ref. IEEE 802.15.4-2024 Section 8.2.5.2
 
-   type MLME_GET_Req_Type is record
-      PIB_Attribute : PIB_Attribute_Kind := PIB_Attribute_Kind'First;
+   type MLME_GET_Req_Type
+     (PIB_Attribute : PIB_Attribute_Kind := PIB_Attribute_Kind'First)
+   is record
+      case PIB_Attribute is
+         when Sec_Key_ID_Lookup_List =>
+            Key_Index : Sec_Key_ID_Lookup_List_Index := 1;
+
+         when others =>
+            null;
+      end case;
    end record;
 
    ----------------------
@@ -295,12 +330,22 @@ is
                when PHY_CCA_Mode =>
                   CCA_Mode : AdaBee.PHY.CCA_Mode_Kind := AdaBee.PHY.ALOHA;
 
+               when Sec_Key_ID_Lookup_List =>
+                  Key_Descriptor :
+                    AdaBee.MAC.MLME.Security_Types.Key_ID_Lookup_Descriptor :=
+                      (others => <>);
+
             end case;
 
          when others =>
             null;
       end case;
-   end record;
+   end record
+   with
+     Predicate =>
+       --  The raw key is never returned by the MLME
+       (if Status = Success and then PIB_Attribute = Sec_Key_ID_Lookup_List
+        then not Key_Descriptor.Key_Item.Key.Contains_Key_Data);
 
    function Is_Valid_GET_Cfm
      (Request : MLME_GET_Req_Type; Confirm : MLME_GET_Cfm_Type) return Boolean
@@ -363,8 +408,23 @@ is
          when MLME_RESET_Req => True);
 
    function Request_Requires_Cleanup
-     (Request : MLME_Request_Type with Unreferenced) return Boolean
-   is (False);
+     (Request : MLME_Request_Type) return Boolean
+   is (
+
+       --  If an MLME-SET.request contains a raw key, then the key needs to be
+       --  sanitized from memory (i.e. set to all zeroes) before the
+       --  transaction is completed.
+       Request.Kind = MLME_SET_Req
+       and then Request.SET.PIB_Attribute = Sec_Key_ID_Lookup_List
+       and then Request.SET.Key_Descriptor.Key_Item.Key.Contains_Key_Data
+       and then
+         (case Request.SET.Key_Descriptor.Key_Item.Key.AEAD_Algorithm is
+            when AES_128_CCM_Star | AES_128_CCM =>
+              not Is_All_Zeroes
+                    (Request.SET.Key_Descriptor.Key_Item.Key.Key_128),
+            when AES_256_CCM                    =>
+              not Is_All_Zeroes
+                    (Request.SET.Key_Descriptor.Key_Item.Key.Key_256)));
 
    function Valid_Request
      (Request : MLME_Request_Type with Unreferenced) return Boolean
@@ -470,8 +530,13 @@ is
    with Post => Request_Kind'Result.Kind = Request.Kind;
 
    function Request_Kind_Requires_Cleanup
-     (Kind : MLME_Compound_Request_Kind with Unreferenced) return Boolean
-   is (False);
+     (Kind : MLME_Compound_Request_Kind) return Boolean
+   is (
+       --  MLME-SET requests that write the secKeyIdLookupList attribute might
+       --  need sanitizing (in the case where it contains a plaintext
+       --  encryption key).
+       Kind.Kind = MLME_SET_Req
+       and then Kind.PIB_Attribute = Sec_Key_ID_Lookup_List);
 
    ----------------------------
    -- Transaction Management --
