@@ -15,11 +15,15 @@ private with AdaBee.PHY;
 --  This package stores the MAC PIB attributes and handles MLME-SET and
 --  MLME-GET requests.
 
-package AdaBee.MAC.MLME.PIB
+private package AdaBee.MAC.MLME.PIB
   with Elaborate_Body, SPARK_Mode
 is
 
    use all type AdaBee.MAC.MLME.SAP.MLME_Request_Kind;
+
+   ---------------
+   -- PIB Types --
+   ---------------
 
    type Key_ID_Lookup_Descriptor_Array is
      array (SAP.Sec_Key_ID_Lookup_List_Index range <>)
@@ -54,11 +58,22 @@ is
        (for all K of Sec_Key_ID_Lookup_List =>
           not K.Key_Item.Key.Contains_Key_Data);
 
+   ------------------
+   -- PIB Instance --
+   ------------------
+
    Default_PIB : constant PIB_Attributes := (others => <>);
 
-   DB : PIB_Attributes := (others => <>);
+   DB : PIB_Attributes := (others => <>)
+   with Part_Of => PIB_Attributes_Data;
+   --  Stores the PIB attributes data
 
    function MAC_Extended_Address return Frames.Headers.Extended_Address_Field;
+   --  Read the macExtendedAddress attribute
+
+   --------------------
+   -- PIB Operations --
+   --------------------
 
    procedure Reset
    with Post => DB = Default_PIB;
@@ -85,6 +100,10 @@ is
    --  Handle a MLME-GET.request and issue the MLME-GET.confirm
 
 private
+
+   --------------------------
+   -- MAC_Extended_Address --
+   --------------------------
 
    function MAC_Extended_Address return Frames.Headers.Extended_Address_Field
    is (Frames.Headers.Extended_Address_Field (AdaBee.PHY.Get_Device_ID));
