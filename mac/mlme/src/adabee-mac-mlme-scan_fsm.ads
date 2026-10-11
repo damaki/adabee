@@ -150,6 +150,11 @@ private
 
    use all type AdaBee.MAC.MLME.SAP.MLME_Request_Kind;
 
+   function Is_Supported_Scan_Type
+     (Scan_Type : AdaBee.MAC.MLME.SAP.Scan_Type_Kind) return Boolean
+   is (Scan_Type in Supported_Scan_Types)
+   with Ghost;
+
    -----------------
    -- Is_SCAN_Req --
    -----------------
@@ -179,8 +184,8 @@ private
           --  supported scan types.
           SAP.Requests.Request_Reference (Handle).all.Kind = MLME_SCAN_Req
           and then
-            SAP.Requests.Request_Reference (Handle).all.SCAN.Scan_Type
-            in Supported_Scan_Types
+            Is_Supported_Scan_Type
+              (SAP.Requests.Request_Reference (Handle).all.SCAN.Scan_Type)
 
           --  The confirm primitive has not been written yet while the scan
           --  is pending.

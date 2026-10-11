@@ -11,6 +11,23 @@ package body AdaBee.MAC.MLME.Task_Control
   with SPARK_Mode
 is
 
+   use all type AdaBee.PHY.State_Kind;
+
+   procedure Turn_Off_PHY
+   with
+     Inline,
+     Always_Terminates => False,
+     Global            =>
+       (In_Out =>
+          (AdaBee.PHY.Radio_Device,
+           AdaBee.PHY.Radio_Events,
+           AdaBee.PHY.Radio_Clock,
+           AdaBee.PHY.Radio_State)),
+     Post              => AdaBee.PHY.Current_State = Off;
+   --  Move the PHY into the Off state.
+   --
+   --  This cancels any radio operation that is currently in progress.
+
    --------------------
    -- Poke_MLME_Task --
    --------------------
@@ -36,8 +53,10 @@ is
 
    task body MLME_Task is
       use all type AdaBee.MAC.MLME.SAP.MLME_Request_Kind;
-      use all type AdaBee.PHY.State_Kind;
       use all type AdaBee.PHY.Event_Kind;
+
+      Any_Event_Filter : constant AdaBee.PHY.Event_Flags_Array :=
+        [others => True];
 
       MLME_Machine : MLME_FSM.Machine;
       PHY_Events   : AdaBee.PHY.Event_Flags_Array;
@@ -52,38 +71,11 @@ is
       --  but there's no way to prove that on entry to this task. We instead
       --  ensure that the PHY is turned off for whatever state it starts in.
 
-      case AdaBee.PHY.Current_State is
-         when Off               =>
-            null;
-
-         when Sleeping          =>
-            AdaBee.PHY.Turn_Off;
-
-         when Exiting_Sleep     =>
-            AdaBee.PHY.Wait_For_Event (AdaBee.PHY.Operation_Complete);
-            AdaBee.PHY.Enter_Sleep;
-            AdaBee.PHY.Turn_Off;
-
-         when Idle              =>
-            AdaBee.PHY.Enter_Sleep;
-            AdaBee.PHY.Turn_Off;
-
-         when Transmitting
-            | Tx_Complete
-            | Receiving
-            | Rx_Complete
-            | ED_Scan_Active
-            | ED_Scan_Complete
-            | CCA_Scan_Active
-            | CCA_Scan_Complete =>
-            AdaBee.PHY.Go_Idle;
-            AdaBee.PHY.Enter_Sleep;
-            AdaBee.PHY.Turn_Off;
-      end case;
+      Turn_Off_PHY;
 
       --  Process PHY events and SAP requests
 
-      loop
+      Task_Loop : loop
          pragma
            Loop_Invariant (MLME_FSM.Valid_PHY_Active_State (MLME_Machine));
 
@@ -91,11 +83,12 @@ is
 
          --  Block until an event is signalled
 
-         AdaBee.PHY.Wait_For_Events (PHY_Events);
+         AdaBee.PHY.Wait_For_Events
+           (Events => PHY_Events, Filter => Any_Event_Filter);
 
          --  Keep processing events until there is nothing left to do
 
-         loop
+         Event_Processing_Loop : loop
             pragma
               Loop_Invariant
                 (if PHY_Events (Operation_Complete)
@@ -137,7 +130,7 @@ is
 
                   if not SAP.Requests.Is_Null (Handle) then
                      case SAP.Requests.Request_Reference (Handle).Kind is
-                        when MLME_SCAN_Req =>
+                        when MLME_SCAN_Req  =>
                            AdaBee.MAC.MLME.MLME_FSM.Notify_SCAN_Req
                              (MLME_Machine, Handle);
 
@@ -145,19 +138,55 @@ is
                            AdaBee.MAC.MLME.MLME_FSM.Notify_RESET_Req
                              (MLME_Machine, Handle);
 
-                        when MLME_SET_Req  =>
+                        when MLME_SET_Req   =>
                            AdaBee.MAC.MLME.PIB.SET_Request (Handle);
 
-                        when MLME_GET_Req  =>
+                        when MLME_GET_Req   =>
                            AdaBee.MAC.MLME.PIB.GET_Request (Handle);
                      end case;
                   else
-                     exit;
+                     exit Event_Processing_Loop;
                   end if;
                end if;
             end if;
-         end loop;
-      end loop;
+         end loop Event_Processing_Loop;
+      end loop Task_Loop;
    end MLME_Task;
+
+   ------------------
+   -- Turn_Off_PHY --
+   ------------------
+
+   procedure Turn_Off_PHY is
+   begin
+      case AdaBee.PHY.Current_State is
+         when Off               =>
+            null;
+
+         when Sleeping          =>
+            AdaBee.PHY.Turn_Off;
+
+         when Exiting_Sleep     =>
+            AdaBee.PHY.Wait_For_Event (AdaBee.PHY.Operation_Complete);
+            AdaBee.PHY.Enter_Sleep;
+            AdaBee.PHY.Turn_Off;
+
+         when Idle              =>
+            AdaBee.PHY.Enter_Sleep;
+            AdaBee.PHY.Turn_Off;
+
+         when Transmitting
+            | Tx_Complete
+            | Receiving
+            | Rx_Complete
+            | ED_Scan_Active
+            | ED_Scan_Complete
+            | CCA_Scan_Active
+            | CCA_Scan_Complete =>
+            AdaBee.PHY.Go_Idle;
+            AdaBee.PHY.Enter_Sleep;
+            AdaBee.PHY.Turn_Off;
+      end case;
+   end Turn_Off_PHY;
 
 end AdaBee.MAC.MLME.Task_Control;

@@ -26,15 +26,20 @@ is
    type State_Kind is (Idle, Exiting_Sleep, Scan_Active);
 
    type Machine is limited private;
+   --  Holds the current state of the MLME state machine
 
    function Current_State (FSM : Machine) return State_Kind
    with Global => null;
+   --  Get the current state of the MLME state machine
 
    function Valid_PHY_Active_State (FSM : Machine) return Boolean
    with Ghost, Global => (Input => AdaBee.PHY.Radio_State);
+   --  Check that the PHY is in the correct state expected by the MLME FSM
 
    function Valid_PHY_Operation_Complete_State (FSM : Machine) return Boolean
    with Ghost, Global => (Input => AdaBee.PHY.Radio_State);
+   --  Check that the PHY is in the expected state after an Operation_Complete
+   --  event.
 
    procedure Notify_SCAN_Req
      (FSM    : in out Machine;
@@ -110,11 +115,19 @@ private
    function Current_State (FSM : Machine) return State_Kind
    is (FSM.State);
 
+   ----------------------------
+   -- Valid_PHY_Active_State --
+   ----------------------------
+
    function Valid_PHY_Active_State (FSM : Machine) return Boolean
    is (case Current_State (FSM) is
          when Idle          => AdaBee.PHY.Current_State = Off,
          when Exiting_Sleep => AdaBee.PHY.Current_State = Exiting_Sleep,
          when Scan_Active   => AdaBee.PHY.Current_State in ED_Scan_Active);
+
+   ----------------------------------------
+   -- Valid_PHY_Operation_Complete_State --
+   ----------------------------------------
 
    function Valid_PHY_Operation_Complete_State (FSM : Machine) return Boolean
    is (case Current_State (FSM) is

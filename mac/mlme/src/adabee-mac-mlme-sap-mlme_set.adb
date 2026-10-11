@@ -76,9 +76,7 @@ begin
               Pre  => Is_SET_Req (Request, Confirm),
               Post => Is_Cleaned (Request, Confirm)
             is
-               pragma Unreferenced (Confirm);
             begin
-
                --  Clear any plaintext keys that were transferred when writing
                --  to the secKeyIdLookupList PIB attribute.
 
