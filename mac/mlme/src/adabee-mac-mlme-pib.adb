@@ -133,6 +133,9 @@ is
 
                pragma Warnings (GNATprove, On);
 
+            when Sec_Frame_Counter      =>
+               DB.Sec_Frame_Counter := Request.SET.Frame_Counter;
+
          end case;
       end Process_Request;
 
@@ -283,6 +286,14 @@ is
                        (PIB_Attribute => Sec_Key_ID_Lookup_List,
                         Status        => Not_Supported));
                end if;
+
+            when Sec_Frame_Counter      =>
+               Confirm :=
+                 (Kind => MLME_GET_Cfm,
+                  GET  =>
+                    (PIB_Attribute => Sec_Frame_Counter,
+                     Status        => Success,
+                     Frame_Counter => DB.Sec_Frame_Counter));
 
          end case;
       end Process_Request;

@@ -49,6 +49,9 @@ is
         Key_ID_Lookup_Descriptor_Array
           (1 .. Adabee_Mlme_Config.Sec_Key_ID_Lookup_List_Max_Length) :=
           [others => <>];
+
+      Sec_Frame_Counter :
+        AdaBee.MAC.MLME.Security_Types.Frame_Counter_Number := 0;
    end record
    with
      Ghost_Predicate =>

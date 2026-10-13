@@ -166,6 +166,7 @@ is
 
       --  Security-related MAC PIB attributes
       Sec_Key_ID_Lookup_List,
+      Sec_Frame_Counter,
 
       --  PHY PIB attributes
       PHY_CCA_Mode);
@@ -242,6 +243,10 @@ is
             Key_Descriptor :
               AdaBee.MAC.MLME.Security_Types.Key_ID_Lookup_Descriptor :=
                 (others => <>);
+
+         when Sec_Frame_Counter =>
+            Frame_Counter :
+              AdaBee.MAC.MLME.Security_Types.Frame_Counter_Number := 0;
       end case;
    end record;
 
@@ -334,6 +339,10 @@ is
                   Key_Descriptor :
                     AdaBee.MAC.MLME.Security_Types.Key_ID_Lookup_Descriptor :=
                       (others => <>);
+
+               when Sec_Frame_Counter =>
+                  Frame_Counter :
+                    AdaBee.MAC.MLME.Security_Types.Frame_Counter_Number := 0;
 
             end case;
 
