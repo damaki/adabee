@@ -29,6 +29,7 @@ is
 
    use all type AdaBee.MAC.Frames.Headers.Address_Mode_Field;
    use all type AdaBee.MAC.Frames.Headers.Frame_Type_Field;
+   use all type AdaBee.MAC.Frames.Headers.Security_Level_Field;
    use all type AdaBee.Crypto.Algorithm_Kind;
 
    type Frame_Counter_Number is range 0 .. 2 ** 32 - 1 with Size => 32;
@@ -320,5 +321,25 @@ is
           (1 .. IE_Security_Level_Descriptor_Count'Last) := [others => <>];
    end record;
    --  secSecurityLevelDescriptor
+
+   ---------------------------------
+   -- SecurityParameterDescriptor --
+   ---------------------------------
+
+   --  Ref. IEEE 802.15.4-2024 Table 8-2
+
+   type Security_Parameter_Descriptor
+     (Security_Level : AdaBee.MAC.Frames.Headers.Security_Level_Field := None)
+   is record
+      case Security_Level is
+         when None =>
+            null;
+
+         when others =>
+            Key_ID : AdaBee.MAC.Frames.Headers.Variant_Key_ID :=
+              (others => <>);
+      end case;
+   end record
+   with Predicate => Security_Level /= Reserved;
 
 end AdaBee.MAC.MLME.Security_Types;

@@ -20,6 +20,7 @@ private package AdaBee.MAC.MLME.PIB
 is
 
    use all type AdaBee.MAC.MLME.SAP.MLME_Request_Kind;
+   use all type AdaBee.MAC.Frames.Headers.Security_Level_Field;
 
    ---------------
    -- PIB Types --
@@ -61,6 +62,10 @@ is
 
       Sec_Frame_Counter :
         AdaBee.MAC.MLME.Security_Types.Frame_Counter_Number := 0;
+
+      Sec_Auto_Request_Security_Params :
+        AdaBee.MAC.MLME.Security_Types.Security_Parameter_Descriptor :=
+          (Security_Level => None);
    end record
    with
      Ghost_Predicate =>
