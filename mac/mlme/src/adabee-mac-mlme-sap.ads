@@ -169,6 +169,7 @@ is
       Sec_Device_List,
       Sec_Frame_Counter,
       Sec_Auto_Request_Security_Level,
+      Sec_Enhanced_Beacon_Security_Params,
 
       --  PHY PIB attributes
       PHY_CCA_Mode);
@@ -265,7 +266,9 @@ is
             Frame_Counter :
               AdaBee.MAC.MLME.Security_Types.Frame_Counter_Number := 0;
 
-         when Sec_Auto_Request_Security_Level =>
+         when Sec_Auto_Request_Security_Level
+            | Sec_Enhanced_Beacon_Security_Params
+         =>
             Security_Params :
               AdaBee.MAC.MLME.Security_Types.Security_Parameter_Descriptor :=
                 (others => <>);
@@ -376,7 +379,9 @@ is
                   Frame_Counter :
                     AdaBee.MAC.MLME.Security_Types.Frame_Counter_Number := 0;
 
-               when Sec_Auto_Request_Security_Level =>
+               when Sec_Auto_Request_Security_Level
+                  | Sec_Enhanced_Beacon_Security_Params
+               =>
                   Security_Params :
                     AdaBee
                       .MAC
