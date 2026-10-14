@@ -17,6 +17,9 @@ is
    Sec_Key_ID_Lookup_List_Enabled : constant Boolean :=
      Adabee_Mlme_Config.Sec_Key_ID_Lookup_List_Max_Length > 0;
 
+   Sec_Device_List_Enabled : constant Boolean :=
+     Adabee_Mlme_Config.Sec_Device_List_Max_Length > 0;
+
    procedure Install_Key_And_Set_Descriptor
      (Source : Security_Types.Key_ID_Lookup_Descriptor;
       Target : in out Security_Types.Key_ID_Lookup_Descriptor;
@@ -127,6 +130,31 @@ is
                      Target =>
                        DB.Sec_Key_ID_Lookup_List (Request.SET.Key_Index),
                      Status => Confirm.SET.Status);
+               else
+                  Confirm.SET.Status := Not_Supported;
+               end if;
+
+               pragma Warnings (GNATprove, On);
+
+            when Sec_Device_List        =>
+
+               pragma
+                 Warnings
+                   (GNATprove,
+                    Off,
+                    "statement has no effect",
+                    Reason => "Conditionally compiled code");
+
+               pragma
+                 Warnings
+                   (GNATprove,
+                    Off,
+                    "this statement is never reached",
+                    Reason => "Conditionally compiled code");
+
+               if Sec_Device_List_Enabled then
+                  DB.Sec_Device_List (Request.SET.Device_Index) :=
+                    Request.SET.Device_Descriptor;
                else
                   Confirm.SET.Status := Not_Supported;
                end if;
@@ -284,6 +312,23 @@ is
                     (Kind => MLME_GET_Cfm,
                      GET  =>
                        (PIB_Attribute => Sec_Key_ID_Lookup_List,
+                        Status        => Not_Supported));
+               end if;
+
+            when Sec_Device_List        =>
+               if Sec_Device_List_Enabled then
+                  Confirm :=
+                    (Kind => MLME_GET_Cfm,
+                     GET  =>
+                       (PIB_Attribute     => Sec_Device_List,
+                        Status            => Success,
+                        Device_Descriptor =>
+                          PIB.DB.Sec_Device_List (Request.GET.Device_Index)));
+               else
+                  Confirm :=
+                    (Kind => MLME_GET_Cfm,
+                     GET  =>
+                       (PIB_Attribute => Sec_Device_List,
                         Status        => Not_Supported));
                end if;
 

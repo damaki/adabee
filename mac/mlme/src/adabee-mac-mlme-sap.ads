@@ -166,6 +166,7 @@ is
 
       --  Security-related MAC PIB attributes
       Sec_Key_ID_Lookup_List,
+      Sec_Device_List,
       Sec_Frame_Counter,
 
       --  PHY PIB attributes
@@ -196,8 +197,15 @@ is
       then Adabee_Mlme_Config.Sec_Key_ID_Lookup_List_Max_Length
       else 1);
 
+   Sec_Device_List_Index_Last : constant :=
+     (if Adabee_Mlme_Config.Sec_Device_List_Max_Length > 0
+      then Adabee_Mlme_Config.Sec_Device_List_Max_Length
+      else 1);
+
    type Sec_Key_ID_Lookup_List_Index is
      range 1 .. Sec_Key_ID_Lookup_List_Index_Last;
+
+   type Sec_Device_List_Index is range 1 .. Sec_Device_List_Index_Last;
 
    type MLME_SET_Req_Type
      (PIB_Attribute : Writable_PIB_Attributes := MAC_Auto_Request)
@@ -244,6 +252,14 @@ is
               AdaBee.MAC.MLME.Security_Types.Key_ID_Lookup_Descriptor :=
                 (others => <>);
 
+         when Sec_Device_List =>
+            Device_Index : Sec_Device_List_Index :=
+              Sec_Device_List_Index'First;
+
+            Device_Descriptor :
+              AdaBee.MAC.MLME.Security_Types.Device_Descriptor :=
+                (others => <>);
+
          when Sec_Frame_Counter =>
             Frame_Counter :
               AdaBee.MAC.MLME.Security_Types.Frame_Counter_Number := 0;
@@ -276,7 +292,12 @@ is
    is record
       case PIB_Attribute is
          when Sec_Key_ID_Lookup_List =>
-            Key_Index : Sec_Key_ID_Lookup_List_Index := 1;
+            Key_Index : Sec_Key_ID_Lookup_List_Index :=
+              Sec_Key_ID_Lookup_List_Index'First;
+
+         when Sec_Device_List =>
+            Device_Index : Sec_Device_List_Index :=
+              Sec_Device_List_Index'First;
 
          when others =>
             null;
@@ -338,6 +359,11 @@ is
                when Sec_Key_ID_Lookup_List =>
                   Key_Descriptor :
                     AdaBee.MAC.MLME.Security_Types.Key_ID_Lookup_Descriptor :=
+                      (others => <>);
+
+               when Sec_Device_List =>
+                  Device_Descriptor :
+                    AdaBee.MAC.MLME.Security_Types.Device_Descriptor :=
                       (others => <>);
 
                when Sec_Frame_Counter =>
