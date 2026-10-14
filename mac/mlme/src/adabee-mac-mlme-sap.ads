@@ -163,6 +163,8 @@ is
       MAC_Rx_On_When_Idle,
       MAC_Security_Enabled,
       MAC_Short_Address,
+      MAC_Coord_Extended_Address,
+      MAC_Coord_Short_Address,
 
       --  Security-related MAC PIB attributes
       Sec_Key_ID_Lookup_List,
@@ -229,8 +231,11 @@ is
          when MAC_Max_CSMA_Backoffs =>
             Max_CSMA_Backoffs : MAC_Max_CSMA_Backoffs_Range := 0;
 
-         when MAC_Short_Address =>
+         when MAC_Short_Address | MAC_Coord_Short_Address =>
             Short_Address : Frames.Headers.Short_Address_Field := 0;
+
+         when MAC_Coord_Extended_Address =>
+            Extended_Address : Frames.Headers.Extended_Address_Field := 0;
 
          when MAC_Max_Frame_Retries =>
             Max_Frame_Retries : MAC_Max_Frame_Retries_Range := 0;
@@ -345,10 +350,10 @@ is
                when MAC_Max_CSMA_Backoffs =>
                   Max_CSMA_Backoffs : MAC_Max_CSMA_Backoffs_Range := 0;
 
-               when MAC_Short_Address =>
+               when MAC_Short_Address | MAC_Coord_Short_Address =>
                   Short_Address : Frames.Headers.Short_Address_Field := 0;
 
-               when MAC_Extended_Address =>
+               when MAC_Extended_Address | MAC_Coord_Extended_Address =>
                   Extended_Address : Frames.Headers.Extended_Address_Field :=
                     0;
 

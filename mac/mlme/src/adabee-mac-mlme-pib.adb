@@ -105,6 +105,12 @@ is
             when MAC_Security_Enabled                =>
                DB.MAC_Security_Enabled := Request.SET.Security_Enabled;
 
+            when MAC_Coord_Extended_Address          =>
+               DB.MAC_Coord_Extended_Address := Request.SET.Extended_Address;
+
+            when MAC_Coord_Short_Address             =>
+               DB.MAC_Coord_Short_Address := Request.SET.Short_Address;
+
             when PHY_CCA_Mode                        =>
                AdaBee.PHY.Set_CCA_Mode (Request.SET.CCA_Mode);
 
@@ -297,6 +303,22 @@ is
                     (PIB_Attribute    => MAC_Security_Enabled,
                      Status           => Success,
                      Security_Enabled => DB.MAC_Security_Enabled));
+
+            when MAC_Coord_Extended_Address          =>
+               Confirm :=
+                 (Kind => MLME_GET_Cfm,
+                  GET  =>
+                    (PIB_Attribute    => MAC_Coord_Extended_Address,
+                     Status           => Success,
+                     Extended_Address => DB.MAC_Coord_Extended_Address));
+
+            when MAC_Coord_Short_Address             =>
+               Confirm :=
+                 (Kind => MLME_GET_Cfm,
+                  GET  =>
+                    (PIB_Attribute => MAC_Coord_Short_Address,
+                     Status        => Success,
+                     Short_Address => DB.MAC_Coord_Short_Address));
 
             when PHY_CCA_Mode                        =>
                CCA_Mode := AdaBee.PHY.Get_CCA_Mode;

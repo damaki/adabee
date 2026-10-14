@@ -35,16 +35,20 @@ is
      of AdaBee.MAC.MLME.Security_Types.Device_Descriptor;
 
    type PIB_Attributes is record
-      MAC_PAN_ID            : Frames.Headers.PAN_ID_Field := 16#FFFF#;
-      MAC_Short_Address     : Frames.Headers.Short_Address_Field := 16#FFFF#;
-      MAC_DSN               : Bits_8 := 0;
-      MAC_Max_BE            : SAP.MAC_Max_BE_Range := 5;
-      MAC_Max_CSMA_Backoffs : SAP.MAC_Max_CSMA_Backoffs_Range := 4;
-      MAC_Max_Frame_Retries : SAP.MAC_Max_Frame_Retries_Range := 3;
-      MAC_Min_BE            : SAP.MAC_Min_BE_Range := 3;
-      MAC_Rx_On_When_Idle   : Boolean := False;
-      MAC_Auto_Request      : Boolean := True;
-      MAC_Security_Enabled  : Boolean := False;
+      MAC_PAN_ID                 : Frames.Headers.PAN_ID_Field := 16#FFFF#;
+      MAC_Short_Address          : Frames.Headers.Short_Address_Field :=
+        16#FFFF#;
+      MAC_DSN                    : Bits_8 := 0;
+      MAC_Max_BE                 : SAP.MAC_Max_BE_Range := 5;
+      MAC_Max_CSMA_Backoffs      : SAP.MAC_Max_CSMA_Backoffs_Range := 4;
+      MAC_Max_Frame_Retries      : SAP.MAC_Max_Frame_Retries_Range := 3;
+      MAC_Min_BE                 : SAP.MAC_Min_BE_Range := 3;
+      MAC_Rx_On_When_Idle        : Boolean := False;
+      MAC_Auto_Request           : Boolean := True;
+      MAC_Security_Enabled       : Boolean := False;
+      MAC_Coord_Extended_Address : Frames.Headers.Extended_Address_Field := 0;
+      MAC_Coord_Short_Address    : Frames.Headers.Short_Address_Field :=
+        16#FFFF#;
 
       --  Security-related MAC PIB attributes.
       --
