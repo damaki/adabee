@@ -164,7 +164,7 @@ is
             when Sec_Frame_Counter                  =>
                DB.Sec_Frame_Counter := Request.SET.Frame_Counter;
 
-            when Sec_Auto_Request_Security_Level    =>
+            when Sec_Auto_Request_Security_Params    =>
                DB.Sec_Auto_Request_Security_Params :=
                  Request.SET.Security_Params;
 
@@ -348,11 +348,11 @@ is
                      Status        => Success,
                      Frame_Counter => DB.Sec_Frame_Counter));
 
-            when Sec_Auto_Request_Security_Level    =>
+            when Sec_Auto_Request_Security_Params    =>
                Confirm :=
                  (Kind => MLME_GET_Cfm,
                   GET  =>
-                    (PIB_Attribute   => Sec_Auto_Request_Security_Level,
+                    (PIB_Attribute   => Sec_Auto_Request_Security_Params,
                      Status          => Success,
                      Security_Params => DB.Sec_Auto_Request_Security_Params));
 
