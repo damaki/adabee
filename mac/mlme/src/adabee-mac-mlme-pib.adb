@@ -75,40 +75,40 @@ is
               (PIB_Attribute => Request.SET.PIB_Attribute, Status => Success));
 
          case Request.SET.PIB_Attribute is
-            when MAC_Auto_Request                   =>
+            when MAC_Auto_Request                    =>
                DB.MAC_Auto_Request := Request.SET.Auto_Request;
 
-            when MAC_DSN                            =>
+            when MAC_DSN                             =>
                DB.MAC_DSN := Request.SET.DSN;
 
-            when MAC_Min_BE                         =>
+            when MAC_Min_BE                          =>
                DB.MAC_Min_BE := Request.SET.Min_BE;
 
-            when MAC_Max_BE                         =>
+            when MAC_Max_BE                          =>
                DB.MAC_Max_BE := Request.SET.Max_BE;
 
-            when MAC_Max_CSMA_Backoffs              =>
+            when MAC_Max_CSMA_Backoffs               =>
                DB.MAC_Max_CSMA_Backoffs := Request.SET.Max_CSMA_Backoffs;
 
-            when MAC_Short_Address                  =>
+            when MAC_Short_Address                   =>
                DB.MAC_Short_Address := Request.SET.Short_Address;
 
-            when MAC_Max_Frame_Retries              =>
+            when MAC_Max_Frame_Retries               =>
                DB.MAC_Max_Frame_Retries := Request.SET.Max_Frame_Retries;
 
-            when MAC_PAN_ID                         =>
+            when MAC_PAN_ID                          =>
                DB.MAC_PAN_ID := Request.SET.PAN_ID;
 
-            when MAC_Rx_On_When_Idle                =>
+            when MAC_Rx_On_When_Idle                 =>
                DB.MAC_Rx_On_When_Idle := Request.SET.Rx_On_When_Idle;
 
-            when MAC_Security_Enabled               =>
+            when MAC_Security_Enabled                =>
                DB.MAC_Security_Enabled := Request.SET.Security_Enabled;
 
-            when PHY_CCA_Mode                       =>
+            when PHY_CCA_Mode                        =>
                AdaBee.PHY.Set_CCA_Mode (Request.SET.CCA_Mode);
 
-            when Sec_Key_ID_Lookup_List             =>
+            when Sec_Key_ID_Lookup_List              =>
 
                pragma
                  Warnings
@@ -136,7 +136,7 @@ is
 
                pragma Warnings (GNATprove, On);
 
-            when Sec_Device_List                    =>
+            when Sec_Device_List                     =>
 
                pragma
                  Warnings
@@ -161,7 +161,7 @@ is
 
                pragma Warnings (GNATprove, On);
 
-            when Sec_Frame_Counter                  =>
+            when Sec_Frame_Counter                   =>
                DB.Sec_Frame_Counter := Request.SET.Frame_Counter;
 
             when Sec_Auto_Request_Security_Params    =>
@@ -171,6 +171,9 @@ is
             when Sec_Enhanced_Beacon_Security_Params =>
                DB.Sec_Enhanced_Beacon_Security_Params :=
                  Request.SET.Security_Params;
+
+            when Sec_Beacon_Security_Params          =>
+               DB.Sec_Beacon_Security_Params := Request.SET.Security_Params;
 
          end case;
       end Process_Request;
@@ -207,7 +210,7 @@ is
          CCA_Mode : AdaBee.PHY.CCA_Mode_Kind;
       begin
          case Request.GET.PIB_Attribute is
-            when MAC_Auto_Request                   =>
+            when MAC_Auto_Request                    =>
                Confirm :=
                  (Kind => MLME_GET_Cfm,
                   GET  =>
@@ -215,7 +218,7 @@ is
                      Status        => Success,
                      Auto_Request  => DB.MAC_Auto_Request));
 
-            when MAC_DSN                            =>
+            when MAC_DSN                             =>
                Confirm :=
                  (Kind => MLME_GET_Cfm,
                   GET  =>
@@ -223,7 +226,7 @@ is
                      Status        => Success,
                      DSN           => DB.MAC_DSN));
 
-            when MAC_Min_BE                         =>
+            when MAC_Min_BE                          =>
                Confirm :=
                  (Kind => MLME_GET_Cfm,
                   GET  =>
@@ -231,7 +234,7 @@ is
                      Status        => Success,
                      Min_BE        => DB.MAC_Min_BE));
 
-            when MAC_Max_BE                         =>
+            when MAC_Max_BE                          =>
                Confirm :=
                  (Kind => MLME_GET_Cfm,
                   GET  =>
@@ -239,7 +242,7 @@ is
                      Status        => Success,
                      Max_BE        => DB.MAC_Max_BE));
 
-            when MAC_Max_CSMA_Backoffs              =>
+            when MAC_Max_CSMA_Backoffs               =>
                Confirm :=
                  (Kind => MLME_GET_Cfm,
                   GET  =>
@@ -247,7 +250,7 @@ is
                      Status            => Success,
                      Max_CSMA_Backoffs => DB.MAC_Max_CSMA_Backoffs));
 
-            when MAC_Short_Address                  =>
+            when MAC_Short_Address                   =>
                Confirm :=
                  (Kind => MLME_GET_Cfm,
                   GET  =>
@@ -255,7 +258,7 @@ is
                      Status        => Success,
                      Short_Address => DB.MAC_Short_Address));
 
-            when MAC_Extended_Address               =>
+            when MAC_Extended_Address                =>
                Confirm :=
                  (Kind => MLME_GET_Cfm,
                   GET  =>
@@ -263,7 +266,7 @@ is
                      Status           => Success,
                      Extended_Address => MAC_Extended_Address));
 
-            when MAC_Max_Frame_Retries              =>
+            when MAC_Max_Frame_Retries               =>
                Confirm :=
                  (Kind => MLME_GET_Cfm,
                   GET  =>
@@ -271,7 +274,7 @@ is
                      Status            => Success,
                      Max_Frame_Retries => DB.MAC_Max_Frame_Retries));
 
-            when MAC_PAN_ID                         =>
+            when MAC_PAN_ID                          =>
                Confirm :=
                  (Kind => MLME_GET_Cfm,
                   GET  =>
@@ -279,7 +282,7 @@ is
                      Status        => Success,
                      PAN_ID        => DB.MAC_PAN_ID));
 
-            when MAC_Rx_On_When_Idle                =>
+            when MAC_Rx_On_When_Idle                 =>
                Confirm :=
                  (Kind => MLME_GET_Cfm,
                   GET  =>
@@ -287,7 +290,7 @@ is
                      Status          => Success,
                      Rx_On_When_Idle => DB.MAC_Rx_On_When_Idle));
 
-            when MAC_Security_Enabled               =>
+            when MAC_Security_Enabled                =>
                Confirm :=
                  (Kind => MLME_GET_Cfm,
                   GET  =>
@@ -295,7 +298,7 @@ is
                      Status           => Success,
                      Security_Enabled => DB.MAC_Security_Enabled));
 
-            when PHY_CCA_Mode                       =>
+            when PHY_CCA_Mode                        =>
                CCA_Mode := AdaBee.PHY.Get_CCA_Mode;
 
                Confirm :=
@@ -305,7 +308,7 @@ is
                      Status        => Success,
                      CCA_Mode      => CCA_Mode));
 
-            when Sec_Key_ID_Lookup_List             =>
+            when Sec_Key_ID_Lookup_List              =>
                if Sec_Key_ID_Lookup_List_Enabled then
                   Confirm :=
                     (Kind => MLME_GET_Cfm,
@@ -323,7 +326,7 @@ is
                         Status        => Not_Supported));
                end if;
 
-            when Sec_Device_List                    =>
+            when Sec_Device_List                     =>
                if Sec_Device_List_Enabled then
                   Confirm :=
                     (Kind => MLME_GET_Cfm,
@@ -340,7 +343,7 @@ is
                         Status        => Not_Supported));
                end if;
 
-            when Sec_Frame_Counter                  =>
+            when Sec_Frame_Counter                   =>
                Confirm :=
                  (Kind => MLME_GET_Cfm,
                   GET  =>
@@ -364,6 +367,14 @@ is
                      Status          => Success,
                      Security_Params =>
                        DB.Sec_Enhanced_Beacon_Security_Params));
+
+            when Sec_Beacon_Security_Params          =>
+               Confirm :=
+                 (Kind => MLME_GET_Cfm,
+                  GET  =>
+                    (PIB_Attribute   => Sec_Beacon_Security_Params,
+                     Status          => Success,
+                     Security_Params => DB.Sec_Beacon_Security_Params));
 
          end case;
       end Process_Request;

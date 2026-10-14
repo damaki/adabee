@@ -170,6 +170,7 @@ is
       Sec_Frame_Counter,
       Sec_Auto_Request_Security_Params,
       Sec_Enhanced_Beacon_Security_Params,
+      Sec_Beacon_Security_Params,
 
       --  PHY PIB attributes
       PHY_CCA_Mode);
@@ -268,6 +269,7 @@ is
 
          when Sec_Auto_Request_Security_Params
             | Sec_Enhanced_Beacon_Security_Params
+            | Sec_Beacon_Security_Params
          =>
             Security_Params :
               AdaBee.MAC.MLME.Security_Types.Security_Parameter_Descriptor :=
@@ -381,6 +383,7 @@ is
 
                when Sec_Auto_Request_Security_Params
                   | Sec_Enhanced_Beacon_Security_Params
+                  | Sec_Beacon_Security_Params
                =>
                   Security_Params :
                     AdaBee

@@ -70,6 +70,10 @@ is
       Sec_Enhanced_Beacon_Security_Params :
         AdaBee.MAC.MLME.Security_Types.Security_Parameter_Descriptor :=
           (Security_Level => None);
+
+      Sec_Beacon_Security_Params :
+        AdaBee.MAC.MLME.Security_Types.Security_Parameter_Descriptor :=
+          (Security_Level => None);
    end record
    with
      Ghost_Predicate =>
