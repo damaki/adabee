@@ -98,6 +98,9 @@ Sec_Max_Key_Device_Frame_Counter_Descriptors = { type = "Integer", first = 0, de
 # Configures the maximum length of the secKeyIdLookupList MAC PIB attribute.
 Sec_Key_ID_Lookup_List_Max_Length = { type = "Integer", first = 0, default = 1 }
 
+# Configures the maximum length of the secDeviceList MAC PIB attribute.
+Sec_Device_List_Max_Length = { type = "Integer", first = 0, default = 1 }
+
 [configuration.values]
 # The MLME uses the tasking SAPs from LibSAP
 libsap.Tasking_Supported = true
