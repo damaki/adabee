@@ -71,10 +71,10 @@ begin
 
             procedure Sanitize_Transaction
               (Request : in out MLME_Request_Type;
-               Confirm : in out MLME_Confirm_Type)
+               Confirm : in out MLME_Confirm_Type with Unreferenced)
             with
-              Pre  => Is_SET_Req (Request, Confirm),
-              Post => Is_Cleaned (Request, Confirm)
+              Pre  => Request.Kind = MLME_SET_Req,
+              Post => not Request_Requires_Cleanup (Request)
             is
             begin
                --  Clear any plaintext keys that were transferred when writing
