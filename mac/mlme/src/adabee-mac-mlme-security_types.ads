@@ -84,20 +84,21 @@ is
    Key_IE_Usage_Descriptor_List_Max_Bit_Size : constant :=
      Adabee_Mlme_Config.Sec_Max_IE_Usage_Descriptors * 16;
 
-   --  To reduce memory usage, multiple MAC commands (secKeyusageCommandId)
+   --  To reduce memory usage, multiple MAC commands (secKeyUsageCommandId)
    --  are packed into the same secKeyUsageDescriptor. This allows a single
    --  secKeyUsageDescriptor to be used in cases where multiple MAC commands
    --  share the same secKeyIeUsageDescriptorList. Likewise for the frame type.
    --
    --  Supporting all 256 possible MAC command values as a packed Boolean array
-   --  would require 32 bytes, but this is further reduced to 6 bytes by
+   --  would require 32 bytes, but this is further reduced to 8 bytes by
    --  limiting the range of allowed values for the MAC command to the values
-   --  defined in Table 7-11 of IEEE 802.15.4-2024, where commands above 0x2a
-   --  are reserved.
+   --  defined in Table 7-11 of IEEE 802.15.4-2024, and additional commands
+   --  defined in the IEEE Std 805.15 ANA database (January 2026), which
+   --  define MAC commands up to 0x34.
 
    type MAC_Command_Boolean_Array is
-     array (Interfaces.Unsigned_8 range 16#01# .. 16#2A#) of Boolean
-   with Pack, Size => 42;
+     array (Interfaces.Unsigned_8 range 16#01# .. 16#3A#) of Boolean
+   with Pack, Size => 58;
 
    type Frame_Type_Boolean_Array is
      array (AdaBee.MAC.Frames.Headers.Frame_Type_Field) of Boolean
@@ -113,20 +114,20 @@ is
       Key_Usage_Frame_Types : Frame_Type_Boolean_Array := [others => False];
       Key_Usage_Command_IDs : MAC_Command_Boolean_Array := [others => False];
    end record
-   with Size => 56 + (Adabee_Mlme_Config.Sec_Max_IE_Usage_Descriptors * 16);
+   with Size => 72 + (Adabee_Mlme_Config.Sec_Max_IE_Usage_Descriptors * 16);
    --  secKeyUsageDescriptor
 
    for Key_Usage_Descriptor use
      record
        Key_IE_Usage_Descriptor_List_Length at 0 range 0 .. 5;
-       Key_Usage_Command_IDs               at 0 range 6 .. 47;
+       Key_Usage_Command_IDs               at 0 range 6 .. 63;
 
        Key_IE_Usage_Descriptor_List at 0
-         range 48 .. 48 + Key_IE_Usage_Descriptor_List_Max_Bit_Size - 1;
+         range 64 .. 64 + Key_IE_Usage_Descriptor_List_Max_Bit_Size - 1;
 
        Key_Usage_Frame_Types at 0
-         range 48 + Key_IE_Usage_Descriptor_List_Max_Bit_Size
-               .. 48 + Key_IE_Usage_Descriptor_List_Max_Bit_Size + 7;
+         range 64 + Key_IE_Usage_Descriptor_List_Max_Bit_Size
+               .. 64 + Key_IE_Usage_Descriptor_List_Max_Bit_Size + 7;
      end record;
 
    ----------------------------------------
