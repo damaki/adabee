@@ -289,6 +289,118 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
       end if;
    end Shift_And_Transform_IE;
 
+   ---------------
+   -- Append_IE --
+   ---------------
+
+   procedure Append_IE
+     (Buffer : in out Byte_Array; Length : in out Natural; IE : Byte_Array)
+   is
+      use type IE_Positions_Model.Positions_Array;
+
+      IE_List_Old : constant Byte_Array :=
+        Buffer (Buffer'First .. Buffer'First + (Length - 1))
+      with Ghost;
+
+      Length_Old : constant Natural := Length;
+
+   begin
+      Buffer
+        (Buffer'First + Length .. Buffer'First + Length + (IE'Length - 1)) :=
+        IE;
+
+      Length := Length + IE'Length;
+
+      pragma
+        Assert
+          (Valid_IE
+             (Buffer (Buffer'First .. Buffer'First + (Length - 1)),
+              Buffer'First + Length_Old));
+
+      pragma
+        Assert
+          (IE_Header
+             (Buffer (Buffer'First .. Buffer'First + (Length - 1)),
+              Buffer'First + Length_Old)
+           = IE_Header (IE, IE'First));
+
+      if Length > IE'Length then
+         declare
+            F : constant Positive := Buffer'First;
+            L : constant Positive := Buffer'First + (Length - 1);
+
+            Positions_Old : constant IE_Positions_Model.Positions_Array :=
+              IE_Positions_Model.IE_Positions (IE_List_Old)
+            with Ghost;
+
+            Positions : constant IE_Positions_Model.Positions_Array :=
+              Positions_Old & [Buffer'First + Length_Old]
+            with Ghost;
+
+         begin
+            IE_Positions_Model.Lemma_Positions_IE_List_Length
+              (IE_List_Old, Positions_Old);
+
+            IE_Positions_Model.Lemma_IEs_Preserved
+              (A         => IE_List_Old,
+               B         => Buffer (F .. L),
+               Positions => Positions_Old);
+
+            IE_Positions_Model.Lemma_Last_IE_Header
+              (IE_List_Old, Positions_Old);
+
+            pragma Assert (Is_Last_IE (Buffer (F .. L), F + Length_Old));
+            pragma
+              Assert (IE_Length (Buffer (F .. L), F + Length_Old) = IE'Length);
+
+            pragma
+              Assert
+                (IE_Positions_Model.Valid_Positions
+                   (Buffer (F .. L), Positions));
+
+            IE_Positions_Model.Lemma_Valid_IE_List
+              (Buffer (F .. L), Positions);
+
+            pragma
+              Assert (Length = Positions (Positions'Last) - F + IE'Length);
+
+            IE_Positions_Model.Lemma_IE_List_Length
+              (Buffer    => Buffer (F .. L),
+               Positions => Positions,
+               Length    => Length);
+
+            IE_Positions_Model.Lemma_Last_IE_Header
+              (Buffer (F .. L), Positions);
+         end;
+
+      else
+         pragma
+           Assert
+             (Valid_IE
+                (Buffer (Buffer'First .. Buffer'First + (Length - 1)),
+                 Buffer'First));
+
+         pragma
+           Assert
+             (Is_Last_IE
+                (Buffer (Buffer'First .. Buffer'First + (Length - 1)),
+                 Buffer'First));
+
+         IE_Positions_Model.Lemma_Valid_IE_List
+           (Buffer    => Buffer (Buffer'First .. Buffer'First + (Length - 1)),
+            Positions => [Buffer'First]);
+
+         IE_Positions_Model.Lemma_IE_List_Length
+           (Buffer    => Buffer (Buffer'First .. Buffer'First + (Length - 1)),
+            Positions => [Buffer'First],
+            Length    => Length);
+
+         IE_Positions_Model.Lemma_Last_IE_Header
+           (Buffer    => Buffer (Buffer'First .. Buffer'First + (Length - 1)),
+            Positions => [Buffer'First]);
+      end if;
+   end Append_IE;
+
    ----------------------
    -- Validate_IE_List --
    ----------------------

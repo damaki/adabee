@@ -386,6 +386,69 @@ is
    --  @param Last_IE The index of the last IE in the IE list. This is valid
    --    only when Result = Success.
 
+   ------------------------
+   -- IE List Generation --
+   ------------------------
+
+   procedure Append_IE
+     (Buffer : in out Byte_Array; Length : in out Natural; IE : Byte_Array)
+   with
+     Inline,
+     Relaxed_Initialization => Buffer,
+     Pre                    =>
+
+       --  Length must not exceed the Buffer's length
+       Length <= Buffer'Length
+
+       and then
+         Buffer (Buffer'First .. Buffer'First + (Length - 1))'Initialized
+       and then
+         (if Length > 0
+          then
+            --  A valid IE list must be present in the first Length bytes
+            IE_Model.Valid_IE_List
+              (Buffer (Buffer'First .. Buffer'First + (Length - 1)))
+
+            --  Length must denote the length of the IE list
+            and then
+              Length
+              = IE_Model.IE_List_Length
+                  (Buffer (Buffer'First .. Buffer'First + (Length - 1)))
+
+            --  The last IE must not be a termination IE
+            and then
+              not Is_Termination_IE
+                    (IE_Model.Last_IE_Header_Field
+                       (Buffer (Buffer'First .. Buffer'First + (Length - 1)))))
+
+       --  The IE buffer must contain a valid IE and is sized exactly for that
+       --  IE.
+       and then IE'Length > 0
+       and then Valid_IE (IE, IE'First)
+       and then IE'Length = IE_Length (IE, IE'First)
+
+       --  There must be enough free space in Buffer to store the IE
+       and then Buffer'Length - Length >= IE_Length (IE, IE'First),
+
+     Post                   =>
+       (declare
+          BF    : constant Positive := Buffer'First;
+          L     : constant Natural := Length;
+          L_Old : constant Natural := Length'Old;
+        begin
+          Length = Length'Old + IE_Length (IE, IE'First)
+          and then Buffer (BF .. BF + (L - 1))'Initialized
+          and then
+            Buffer (BF .. BF + (L_Old - 1))
+            = Buffer'Old (BF .. BF + (L_Old - 1))
+          and then IE_Model.Valid_IE_List (Buffer (BF .. BF + (L - 1)))
+          and then
+            Length = IE_Model.IE_List_Length (Buffer (BF .. BF + (L - 1)))
+          and then
+            IE_Model.Last_IE_Header_Field (Buffer (BF .. BF + (L - 1)))
+            = IE_Header (IE, IE'First));
+   --  Append an IE to a valid (or empty) IE list.
+
    -----------------------
    -- IE List Filtering --
    -----------------------
