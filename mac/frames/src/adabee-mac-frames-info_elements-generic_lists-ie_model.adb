@@ -82,8 +82,6 @@ package body IE_Model is
    procedure Lemma_Contains_Preserved
      (Buffer : Byte_Array; Slice : Byte_Array; Header : Header_Field)
    is
-      use type Interfaces.Unsigned_8;
-
       Positions : constant IE_Positions_Model.Positions_Array :=
         IE_Positions_Model.IE_Positions (Buffer);
 
@@ -186,5 +184,19 @@ package body IE_Model is
            - Buffer'First
            + IE_Length (Buffer, Positions (Positions'Last)));
    end Lemma_IE_List_Length_Preserved;
+
+   ----------------------
+   -- Lemma_Next_Valid --
+   ----------------------
+
+   procedure Lemma_Valid_List_Slice (Buffer : Byte_Array; From, Pos : Positive)
+   is
+   begin
+      pragma Assert (Valid_IE (Buffer (From .. Buffer'Last), Pos));
+
+      if not Is_Last_IE (Buffer, Pos) then
+         Lemma_Valid_List_Slice (Buffer, From, Next_IE_Position (Buffer, Pos));
+      end if;
+   end Lemma_Valid_List_Slice;
 
 end IE_Model;

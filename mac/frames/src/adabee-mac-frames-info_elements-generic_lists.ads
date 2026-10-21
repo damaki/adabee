@@ -64,6 +64,7 @@ is
    function IE_Header (Buffer : Byte_Array; Pos : Positive) return Header_Field
    is (From_Bytes (Buffer (Pos .. Pos + 1)))
    with Pre => Pos in Buffer'Range and then Pos < Buffer'Last;
+   --  Convert from Bytes to a Header_Field type
 
    function Content_Length
      (Buffer : Byte_Array; Pos : Positive) return Length_Type
@@ -74,15 +75,15 @@ is
    function IE_Length (Buffer : Byte_Array; Pos : Positive) return Natural
    is (Natural (Content_Length (Buffer, Pos)) + 2)
    with Pre => Pos in Buffer'Range and then Pos < Buffer'Last;
-   --  Get the total length of an information element in bytes, including the
-   --  header and content fields.
+   --  Get the total length (in bytes) of an information element, including
+   --  both the header and content fields.
 
    function Valid_IE (Buffer : Byte_Array; Pos : Positive) return Boolean
    is (Pos < Buffer'Last
        and then IE_Length (Buffer, Pos) <= (Buffer'Last - Pos) + 1)
    with Pre => Pos in Buffer'Range;
    --  Check whether an information element at position Pos fits within the
-   --  bounds of the Buffer. This returns False if the IE's reported length
+   --  bounds of the Buffer. This returns False when the IE's reported length
    --  exceeds the bounds of the Buffer.
 
    ------------------
@@ -96,8 +97,8 @@ is
    --  Returns True if the IE at position Pos in Buffer is the last IE in the
    --  IE list.
    --
-   --  The last IE is one that is either a termination IE, or is the last
-   --  IE in the buffer.
+   --  The last IE is one that is either a termination IE, or is an IE that
+   --  ends at the end of the buffer.
    --
    --  @param Buffer The Buffer containing an IE list.
    --  @param Pos The position in Buffer of the IE to check.
@@ -188,6 +189,23 @@ is
         Post => IE_List_Length'Result in 2 .. Buffer'Length;
       --  Calculates the length of a valid IE list, in bytes, starting
       --  with the IE at the beginning of Buffer.
+
+      -------------------
+      -- IE List Count --
+      -------------------
+
+      function IE_Count (Buffer : Byte_Array; Pos : Positive) return Positive
+      is (if Is_Last_IE (Buffer, Pos)
+          then 1
+          else 1 + IE_Count (Buffer, Next_IE_Position (Buffer, Pos)))
+      with
+        Pre                =>
+          Pos in Buffer'Range and then Valid_IE_List (Buffer, Pos),
+        Post               =>
+          IE_Count'Result <= IE_List_Length (Buffer, Pos) / 2,
+        Subprogram_Variant => (Increases => Pos);
+      --  Count the number of IEs in the list starting at the IE at index Pos
+      --  in Buffer.
 
       ------------------
       -- Reachability --
@@ -315,6 +333,20 @@ is
           and then Slice = Buffer (Slice'Range),
         Post => IE_List_Length (Slice) = IE_List_Length (Buffer);
 
+      procedure Lemma_Valid_List_Slice
+        (Buffer : Byte_Array; From, Pos : Positive)
+      with
+        Pre                =>
+          From in Buffer'Range
+          and then Pos in Buffer'Range
+          and then From <= Pos
+          and then Valid_IE_List (Buffer, Pos),
+        Post               =>
+          Valid_IE_List (Buffer (From .. Buffer'Last), Pos),
+        Subprogram_Variant => (Increases => Pos);
+      --  Given a valid IE list, prove that Valid_IE_List holds for a slice
+      --  of Buffer that starts at the next IE.
+
    end IE_Model;
 
    ---------------------
@@ -353,6 +385,54 @@ is
    --    if the IE list is not well formed.
    --  @param Last_IE The index of the last IE in the IE list. This is valid
    --    only when Result = Success.
+
+   -----------------------
+   -- IE List Filtering --
+   -----------------------
+
+   function Always_True (IE : Byte_Array with Unreferenced) return Boolean
+   is (True);
+
+   generic
+      with
+        function Filter (IE : Byte_Array) return Boolean
+        with Pre => Valid_IE (IE, IE'First);
+
+      with
+        procedure Transform (IE : in out Byte_Array) is null
+        with
+          Pre  => Valid_IE (IE, IE'First),
+          Post =>
+            Valid_IE (IE, IE'First)
+            and then
+              Is_Termination_IE (IE_Header (IE, IE'First))
+              = Is_Termination_IE (IE_Header (IE'Old, IE'First));
+      --  Optional procedure to modify an IE. This may shorten the IE length,
+      --  but it cannot lengthen it.
+   procedure Filter_And_Transform_IE_List
+     (Buffer : in out Byte_Array; Length : out Natural)
+   with
+     Pre  =>
+       Buffer'Last < Natural'Last
+       and then IE_Model.Valid_IE_List (Buffer)
+       and then Buffer'Length = IE_Model.IE_List_Length (Buffer),
+     Post =>
+       (if Length > 0
+        then
+          IE_Model.Valid_IE_List
+            (Buffer (Buffer'First .. Buffer'First + (Length - 1)))
+          and then
+            Length
+            = IE_Model.IE_List_Length
+                (Buffer (Buffer'First .. Buffer'First + (Length - 1))));
+   --  Filter elements from an IE list, and apply a transformation to each IE.
+   --
+   --  This modifies the IE list to remove IEs that don't pass the Filter,
+   --  and applies an optional transformation to each IE.
+   --
+   --  The transformation may shorten the IE content, but cannot lengthen it.
+   --  The transformation also cannot change a non-termination IE into a
+   --  termination IE or vice versa.
 
    ------------------------
    -- IE Positions Model --
@@ -430,7 +510,12 @@ is
       function IE_Positions (Buffer : Byte_Array) return Positions_Array
       with
         Pre  => IE_Model.Valid_IE_List (Buffer),
-        Post => Valid_Positions (Buffer, IE_Positions'Result);
+        Post =>
+          IE_Positions'Result'First = 1
+          and then Valid_Positions (Buffer, IE_Positions'Result)
+          and then
+            IE_Positions'Result'Length
+            = IE_Model.IE_Count (Buffer, Buffer'First);
       --  Return the positions of all IEs in an IE list.
 
       ------------
@@ -526,6 +611,89 @@ is
         Post =>
           IE_Header (Buffer, Positions (Positions'Last))
           = IE_Model.Last_IE_Header_Field (Buffer);
+
+      procedure Lemma_Positions_Monotonic
+        (Buffer : Byte_Array; Positions : Positions_Array)
+      with
+        Pre                =>
+          --  Each index in Positions must denote a valid IE in Buffer
+          (for all P of Positions =>
+             P in Buffer'Range and then Valid_IE (Buffer, P))
+
+          --  Only the last position can denote the last IE in the list
+          and then
+            (for all I in Positions'Range =>
+               (if Is_Last_IE (Buffer, Positions (I)) then I = Positions'Last))
+
+          --  Each position references the next IE of the one before
+          and then
+            (for all I in Positions'Range =>
+               (if I > Positions'First
+                then
+                  Positions (I)
+                  = Next_IE_Position (Buffer, Positions (I - 1)))),
+        Post               =>
+          (for all I in Positions'Range =>
+             (for all J in Positions'Range =>
+                (I < J) = (Positions (I) < Positions (J)))),
+        Subprogram_Variant => (Decreases => Positions'Length);
+
+      procedure Lemma_IEs_Preserved
+        (A, B : Byte_Array; Positions : Positions_Array)
+      with
+        Pre                =>
+          Positions'Length > 0
+
+          --  Each index in Positions must denote a valid IE in A
+          and then
+            (for all P of Positions => P in A'Range and then Valid_IE (A, P))
+
+          --  B'First must be at or before the start of the first IE
+          and then B'First <= Positions (Positions'First)
+
+          --  B'Last must be at or after the last byte of the last IE
+          and then
+            B'Last
+            >= Positions (Positions'Last)
+               + (IE_Length (A, Positions (Positions'Last)) - 1)
+
+          --  The last IE must be at the last position
+          and then
+            (for all I in Positions'Range =>
+               (if Is_Last_IE (A, Positions (I)) then I = Positions'Last))
+
+          --  Each position references the next IE of the one before
+          and then
+            (for all I in Positions'Range =>
+               (if I > Positions'First
+                then Positions (I) = Next_IE_Position (A, Positions (I - 1))))
+
+          --  The slice of B is equal to A for the range in A that contains the
+          --  IE list.
+          and then
+            (declare
+               F : constant Positive := Positions (Positions'First);
+               L : constant Positive :=
+                 Positions (Positions'Last)
+                 + (IE_Length (A, Positions (Positions'Last)) - 1);
+             begin
+               A (F .. L) = B (F .. L)),
+        Post               =>
+          --  IEs are still valid in B, and have the same IE header
+          (for all P of Positions =>
+             P in B'Range
+             and then Valid_IE (B, P)
+             and then IE_Header (B, P) = IE_Header (A, P))
+
+          --  Each position references the next IE of the one before
+          and then
+            (for all I in Positions'Range =>
+               (if I > Positions'First
+                then Positions (I) = Next_IE_Position (B, Positions (I - 1)))),
+        Subprogram_Variant => (Decreases => Positions'Length);
+      --  Given a buffer A for which Positions denotes a valid sequence of IEs,
+      --  and a buffer B that is equal to A for the slice that encapsulates the
+      --  IEs, prove that the IE sequence is preserved.
 
    end IE_Positions_Model;
 
