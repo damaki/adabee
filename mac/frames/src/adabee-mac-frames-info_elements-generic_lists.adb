@@ -311,94 +311,37 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
 
       Length := Length + IE'Length;
 
-      pragma
-        Assert
-          (Valid_IE
-             (Buffer (Buffer'First .. Buffer'First + (Length - 1)),
-              Buffer'First + Length_Old));
+      declare
+         IE_List : constant Byte_Array :=
+           Buffer (Buffer'First .. Buffer'First + (Length - 1))
+         with Ghost;
+      begin
 
-      pragma
-        Assert
-          (IE_Header
-             (Buffer (Buffer'First .. Buffer'First + (Length - 1)),
-              Buffer'First + Length_Old)
-           = IE_Header (IE, IE'First));
-
-      if Length > IE'Length then
-         declare
-            F : constant Positive := Buffer'First;
-            L : constant Positive := Buffer'First + (Length - 1);
-
-            Positions_Old : constant IE_Positions_Model.Positions_Array :=
-              IE_Positions_Model.IE_Positions (IE_List_Old)
-            with Ghost;
-
-            Positions : constant IE_Positions_Model.Positions_Array :=
-              Positions_Old & [Buffer'First + Length_Old]
-            with Ghost;
-
-         begin
-            IE_Positions_Model.Lemma_Positions_IE_List_Length
-              (IE_List_Old, Positions_Old);
-
-            IE_Positions_Model.Lemma_IEs_Preserved
-              (A         => IE_List_Old,
-               B         => Buffer (F .. L),
-               Positions => Positions_Old);
-
-            IE_Positions_Model.Lemma_Last_IE_Header
-              (IE_List_Old, Positions_Old);
-
-            pragma Assert (Is_Last_IE (Buffer (F .. L), F + Length_Old));
-            pragma
-              Assert (IE_Length (Buffer (F .. L), F + Length_Old) = IE'Length);
-
-            pragma
-              Assert
-                (IE_Positions_Model.Valid_Positions
-                   (Buffer (F .. L), Positions));
-
-            IE_Positions_Model.Lemma_Valid_IE_List
-              (Buffer (F .. L), Positions);
-
-            pragma
-              Assert (Length = Positions (Positions'Last) - F + IE'Length);
-
-            IE_Positions_Model.Lemma_IE_List_Length
-              (Buffer    => Buffer (F .. L),
-               Positions => Positions,
-               Length    => Length);
-
-            IE_Positions_Model.Lemma_Last_IE_Header
-              (Buffer (F .. L), Positions);
-         end;
-
-      else
-         pragma
-           Assert
-             (Valid_IE
-                (Buffer (Buffer'First .. Buffer'First + (Length - 1)),
-                 Buffer'First));
+         pragma Assert (Valid_IE (IE_List, Buffer'First + Length_Old));
 
          pragma
            Assert
-             (Is_Last_IE
-                (Buffer (Buffer'First .. Buffer'First + (Length - 1)),
-                 Buffer'First));
+             (IE_Header (IE_List, Buffer'First + Length_Old)
+              = IE_Header (IE, IE'First));
 
-         IE_Positions_Model.Lemma_Valid_IE_List
-           (Buffer    => Buffer (Buffer'First .. Buffer'First + (Length - 1)),
-            Positions => [Buffer'First]);
+         if Length > IE'Length then
+            IE_Model.Lemma_Valid_IE_List_Preserved
+              (IE_List_Old,
+               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
 
-         IE_Positions_Model.Lemma_IE_List_Length
-           (Buffer    => Buffer (Buffer'First .. Buffer'First + (Length - 1)),
-            Positions => [Buffer'First],
-            Length    => Length);
+            IE_Model.Lemma_IE_List_Length_Preserved
+              (IE_List_Old,
+               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
 
-         IE_Positions_Model.Lemma_Last_IE_Header
-           (Buffer    => Buffer (Buffer'First .. Buffer'First + (Length - 1)),
-            Positions => [Buffer'First]);
-      end if;
+            IE_Model.Lemma_Last_IE_Header_Field_Preserved
+              (IE_List_Old,
+               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
+         end if;
+
+         IE_Model.Lemma_IE_List_Extend
+           (Buffer => IE_List, L1 => Length_Old, L2 => Length);
+      end;
+
    end Append_IE;
 
    ----------------------

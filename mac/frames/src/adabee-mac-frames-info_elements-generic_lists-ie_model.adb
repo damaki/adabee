@@ -185,6 +185,29 @@ package body IE_Model is
            + IE_Length (Buffer, Positions (Positions'Last)));
    end Lemma_IE_List_Length_Preserved;
 
+   ------------------------------------------
+   -- Lemma_Last_IE_Header_Field_Preserved --
+   ------------------------------------------
+
+   procedure Lemma_Last_IE_Header_Field_Preserved
+     (Buffer : Byte_Array; Slice : Byte_Array)
+   is
+      Positions : constant IE_Positions_Model.Positions_Array :=
+        IE_Positions_Model.IE_Positions (Buffer);
+   begin
+      Lemma_Valid_IE_List_Preserved (Buffer, Slice);
+
+      IE_Positions_Model.Lemma_Last_IE_Header (Buffer, Positions);
+      IE_Positions_Model.Lemma_Positions_IE_List_Length (Buffer, Positions);
+      IE_Positions_Model.Lemma_IEs_Preserved (Buffer, Slice, Positions);
+      IE_Positions_Model.Lemma_Last_IE_Header (Slice, Positions);
+
+      pragma
+        Assert
+          (IE_Header (Slice, Positions (Positions'Last))
+           = IE_Header (Slice, Positions (Positions'Last)));
+   end Lemma_Last_IE_Header_Field_Preserved;
+
    ----------------------
    -- Lemma_Next_Valid --
    ----------------------
@@ -198,5 +221,73 @@ package body IE_Model is
          Lemma_Valid_List_Slice (Buffer, From, Next_IE_Position (Buffer, Pos));
       end if;
    end Lemma_Valid_List_Slice;
+
+   --------------------------
+   -- Lemma_IE_List_Extend --
+   --------------------------
+
+   procedure Lemma_IE_List_Extend (Buffer : Byte_Array; L1, L2 : Natural) is
+      use type IE_Positions_Model.Positions_Array;
+
+      BF  : constant Positive := Buffer'First;
+      BL1 : constant Natural := Buffer'First + (L1 - 1);
+      BL2 : constant Natural := Buffer'First + (L2 - 1);
+   begin
+      if L1 > 0 then
+         declare
+            Positions_Old : constant IE_Positions_Model.Positions_Array :=
+              IE_Positions_Model.IE_Positions (Buffer (BF .. BL1))
+            with Ghost;
+
+            Positions : constant IE_Positions_Model.Positions_Array :=
+              Positions_Old & [BF + L1]
+            with Ghost;
+
+         begin
+            IE_Positions_Model.Lemma_Positions_IE_List_Length
+              (Buffer (BF .. BL1), Positions_Old);
+
+            IE_Positions_Model.Lemma_IEs_Preserved
+              (A         => Buffer (BF .. BL1),
+               B         => Buffer (BF .. BL2),
+               Positions => Positions_Old);
+
+            IE_Positions_Model.Lemma_Last_IE_Header
+              (Buffer (BF .. BL1), Positions_Old);
+
+            pragma Assert (Valid_IE (Buffer (BF .. BL2), BF + L1));
+            pragma Assert (IE_Length (Buffer (BF .. BL2), BF + L1) = L2 - L1);
+            pragma Assert (Is_Last_IE (Buffer (BF .. BL2), BF + L1));
+
+            pragma
+              Assert
+                (IE_Positions_Model.Valid_Positions
+                   (Buffer (BF .. BL2), Positions));
+
+            IE_Positions_Model.Lemma_Valid_IE_List
+              (Buffer (BF .. BL2), Positions);
+
+            IE_Positions_Model.Lemma_IE_List_Length
+              (Buffer    => Buffer (BF .. BL2),
+               Positions => Positions,
+               Length    => L2);
+
+            IE_Positions_Model.Lemma_Last_IE_Header
+              (Buffer (BF .. BL2), Positions);
+         end;
+      else
+         pragma Assert (Valid_IE (Buffer (BF .. BL2), BF));
+         pragma Assert (Is_Last_IE (Buffer (BF .. BL2), BF));
+
+         IE_Positions_Model.Lemma_Valid_IE_List
+           (Buffer => Buffer (BF .. BL2), Positions => [BF]);
+
+         IE_Positions_Model.Lemma_IE_List_Length
+           (Buffer => Buffer (BF .. BL2), Positions => [BF], Length => L2);
+
+         IE_Positions_Model.Lemma_Last_IE_Header
+           (Buffer => Buffer (BF .. BL2), Positions => [BF]);
+      end if;
+   end Lemma_IE_List_Extend;
 
 end IE_Model;

@@ -333,6 +333,16 @@ is
           and then Slice = Buffer (Slice'Range),
         Post => IE_List_Length (Slice) = IE_List_Length (Buffer);
 
+      procedure Lemma_Last_IE_Header_Field_Preserved
+        (Buffer : Byte_Array; Slice : Byte_Array)
+      with
+        Pre  =>
+          Valid_IE_List (Buffer)
+          and then Slice'First = Buffer'First
+          and then Slice'Length in IE_List_Length (Buffer) .. Buffer'Length
+          and then Slice = Buffer (Slice'Range),
+        Post => Last_IE_Header_Field (Slice) = Last_IE_Header_Field (Buffer);
+
       procedure Lemma_Valid_List_Slice
         (Buffer : Byte_Array; From, Pos : Positive)
       with
@@ -346,6 +356,37 @@ is
         Subprogram_Variant => (Increases => Pos);
       --  Given a valid IE list, prove that Valid_IE_List holds for a slice
       --  of Buffer that starts at the next IE.
+
+      procedure Lemma_IE_List_Extend (Buffer : Byte_Array; L1, L2 : Natural)
+      with
+        Pre  =>
+          L2 <= Buffer'Length
+          and then L1 < L2
+          and then Valid_IE (Buffer, Buffer'First + L1)
+          and then L2 - L1 = IE_Length (Buffer, Buffer'First + L1)
+          and then
+            (if L1 > 0
+             then
+               (declare
+                  BF  : constant Positive := Buffer'First;
+                  BL1 : constant Natural := Buffer'First + (L1 - 1);
+                begin
+                  Valid_IE_List (Buffer (BF .. BL1))
+                  and then L1 = IE_List_Length (Buffer (BF .. BL1))
+                  and then
+                    not Is_Termination_IE
+                          (Last_IE_Header_Field (Buffer (BF .. BL1))))),
+        Post =>
+          (declare
+             BF  : constant Positive := Buffer'First;
+             BL1 : constant Natural := Buffer'First + (L1 - 1);
+             BL2 : constant Natural := Buffer'First + (L2 - 1);
+           begin
+             Valid_IE_List (Buffer (BF .. BL2))
+             and then L2 = IE_List_Length (Buffer (BF .. BL2))
+             and then
+               Last_IE_Header_Field (Buffer (BF .. BL2))
+               = IE_Header (Buffer, BF + L1));
 
    end IE_Model;
 
