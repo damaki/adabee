@@ -11,4 +11,6 @@ is
    type IE_Type_Field is (Short, Long) with Size => 1;
    for IE_Type_Field use (Short => 0, Long => 1);
 
+   IE_Header_Length : constant := 2;
+
 end AdaBee.MAC.Frames.Info_Elements;

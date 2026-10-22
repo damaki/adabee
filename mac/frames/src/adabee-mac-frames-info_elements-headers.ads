@@ -147,8 +147,7 @@ is
        CFP_Spec        at 4 range 0 .. 15;
      end record;
 
-   Simplified_Superframe_Spec_Length : constant Natural :=
-     Simplified_Superframe_Specification_Field'Size / 8;
+   Simplified_Superframe_Spec_Length : constant := 6;
 
    function To_Bytes is new
      Ada.Unchecked_Conversion
@@ -159,5 +158,57 @@ is
      Ada.Unchecked_Conversion
        (Source => Byte_Array_6_Aligned_2,
         Target => Simplified_Superframe_Specification_Field);
+
+   Simplified_Superframe_Spec_Header : constant Header_Field :=
+     (Element_ID => Simplified_Superframe_Spec_IE,
+      Length     => Length_Field (Simplified_Superframe_Spec_Length),
+      IE_Type    => Short);
+
+   function Is_Simplified_Superframe_Specification_IE
+     (Header : Header_Field) return Boolean
+   is (Header.Element_ID = Simplified_Superframe_Spec_IE
+       and then Natural (Header.Length) = Simplified_Superframe_Spec_Length);
+   --  Returns True if the specified IE header is a simplified superframe
+   --  specification IE with the correct content length.
+
+   function Always_True
+     (Spec : Simplified_Superframe_Specification_Field with Unreferenced)
+      return Boolean
+   is (True)
+   with Ghost;
+   --  Dummy function needed to instantiate Append_IE_Inplace_With_Context
+
+   procedure Encode_Simplified_Superframe_Specification_IE
+     (Buffer : out Byte_Array;
+      Length : out Natural;
+      Spec   : Simplified_Superframe_Specification_Field)
+   with
+     Inline,
+     Relaxed_Initialization => Buffer,
+     Pre                    =>
+       Buffer'Length >= IE_Header_Length + Simplified_Superframe_Spec_Length,
+     Post                   =>
+       Length = IE_Header_Length + Simplified_Superframe_Spec_Length
+       and then
+         (declare
+            IE : Byte_Array renames
+              Buffer (Buffer'First .. Buffer'First + (Length - 1));
+          begin
+            IE'Initialized
+            and then Lists.Valid_IE (IE, IE'First)
+            and then
+              Is_Simplified_Superframe_Specification_IE
+                (Lists.IE_Header (IE, IE'First)));
+   --  Encodes a simplified superframe specification IE to a byte array.
+
+   procedure Append_Simplified_Superframe_Specification_IE is new
+     Lists.Append_IE_Inplace_With_Context
+       (Maximum_Content_Length => Simplified_Superframe_Spec_Length,
+        Writer_Context         => Simplified_Superframe_Specification_Field,
+        Precondition           => Always_True,
+        IE_Header_Property     => Is_Simplified_Superframe_Specification_IE,
+        Write_IE               =>
+          Encode_Simplified_Superframe_Specification_IE);
+   --  Appends a simplified superframe specification IE to an IE list
 
 end AdaBee.MAC.Frames.Info_Elements.Headers;

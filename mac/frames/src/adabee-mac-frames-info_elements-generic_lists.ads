@@ -5,7 +5,7 @@
 --
 
 --  @summary
---  Utilties for parsing and iterating through Information Element (IE) lists
+--  Utilties and formal models for Information Element (IE) lists
 --
 --  @description
 --  To iterate through an IE list, it is first necessary to parse the list
@@ -280,6 +280,49 @@ is
         Post => Contains (Buffer, Last_IE_Header_Field'Result);
       --  Gets the header field of the last IE in an IE list
 
+      ------------------------
+      -- IE List Properties --
+      ------------------------
+
+      function Is_Terminated
+        (Buffer : Byte_Array; Pos : Positive) return Boolean
+      is (Is_Termination_IE (Last_IE_Header_Field (Buffer, Pos)))
+      with Pre => Pos in Buffer'Range and then Valid_IE_List (Buffer, Pos);
+      --  Returns True if the IE list starting at position Pos in Buffer ends
+      --  with a termination IE.
+
+      function Is_Terminated (Buffer : Byte_Array) return Boolean
+      is (Is_Terminated (Buffer, Buffer'First))
+      with
+        Pre => Buffer'Length > 0 and then Valid_IE_List (Buffer, Buffer'First);
+      --  Returns True if the IE list in Buffer ends with a termination IE.
+
+      function Is_Appendable_IE_List (Buffer : Byte_Array) return Boolean
+      is (Buffer'Length = 0
+          or else
+            (Valid_IE_List (Buffer)
+             and then Buffer'Length = IE_List_Length (Buffer)
+             and then not Is_Terminated (Buffer)));
+      --  Returns True if Buffer contains a valid (possibly empty) IE list
+      --  that does not end in a termination IE.
+      --
+      --  The range of the Buffer should exactly fit the length of the IE list.
+      --  If the IE list is part of a larger buffer, then Buffer should be a
+      --  slice of that buffer.
+
+      function Is_Appendable_IE_List_Relaxed
+        (Buffer : Byte_Array; Length : Natural) return Boolean
+      is (Buffer (Buffer'First .. Buffer'First + (Length - 1))'Initialized
+          and then
+            Is_Appendable_IE_List
+              (Buffer (Buffer'First .. Buffer'First + (Length - 1))))
+      with Relaxed_Initialization => Buffer, Pre => Length <= Buffer'Length;
+      --  Returns True if the first Length bytes in Buffer contains a valid
+      --  (possibly empty) IE list that does not end in a termination IE.
+      --
+      --  Length is the length of the IE list in Buffer. Only the first Length
+      --  bytes in Buffer need to be initialized.
+
       ------------
       -- Lemmas --
       ------------
@@ -387,6 +430,8 @@ is
              and then
                Last_IE_Header_Field (Buffer (BF .. BL2))
                = IE_Header (Buffer, BF + L1));
+      --  Prove that an existing valid, non-terminated IE list (up to L1)
+      --  can be extended into another contiguous IE (up to L2).
 
    end IE_Model;
 
@@ -437,30 +482,8 @@ is
      Inline,
      Relaxed_Initialization => Buffer,
      Pre                    =>
-
-       --  Length must not exceed the Buffer's length
        Length <= Buffer'Length
-
-       and then
-         Buffer (Buffer'First .. Buffer'First + (Length - 1))'Initialized
-       and then
-         (if Length > 0
-          then
-            --  A valid IE list must be present in the first Length bytes
-            IE_Model.Valid_IE_List
-              (Buffer (Buffer'First .. Buffer'First + (Length - 1)))
-
-            --  Length must denote the length of the IE list
-            and then
-              Length
-              = IE_Model.IE_List_Length
-                  (Buffer (Buffer'First .. Buffer'First + (Length - 1)))
-
-            --  The last IE must not be a termination IE
-            and then
-              not Is_Termination_IE
-                    (IE_Model.Last_IE_Header_Field
-                       (Buffer (Buffer'First .. Buffer'First + (Length - 1)))))
+       and then IE_Model.Is_Appendable_IE_List_Relaxed (Buffer, Length)
 
        --  The IE buffer must contain a valid IE and is sized exactly for that
        --  IE.
@@ -473,29 +496,150 @@ is
 
      Post                   =>
        (declare
-          BF    : constant Positive := Buffer'First;
-          L     : constant Natural := Length;
-          L_Old : constant Natural := Length'Old;
+          IE_List_Old : Byte_Array renames
+            Buffer'Old (Buffer'First .. Buffer'First + (Length'Old - 1));
+
+          IE_List : Byte_Array renames
+            Buffer (Buffer'First .. Buffer'First + (Length - 1));
         begin
           Length = Length'Old + IE_Length (IE, IE'First)
-          and then Buffer (BF .. BF + (L - 1))'Initialized
+          and then IE_List'Initialized
+          and then IE_List (IE_List_Old'Range) = IE_List_Old
+          and then IE_Model.Valid_IE_List (IE_List)
+          and then Length = IE_Model.IE_List_Length (IE_List)
           and then
-            Buffer (BF .. BF + (L_Old - 1))
-            = Buffer'Old (BF .. BF + (L_Old - 1))
-          and then IE_Model.Valid_IE_List (Buffer (BF .. BF + (L - 1)))
-          and then
-            Length = IE_Model.IE_List_Length (Buffer (BF .. BF + (L - 1)))
-          and then
-            IE_Model.Last_IE_Header_Field (Buffer (BF .. BF + (L - 1)))
+            IE_Model.Last_IE_Header_Field (IE_List)
             = IE_Header (IE, IE'First));
    --  Append an IE to a valid (or empty) IE list.
+   --
+   --  @param Buffer The byte array containing the IE list to modify.
+   --
+   --  @param Length The length (in bytes) of the IE list in `Buffer`.
+   --    This is updated with the new length after the IE is appended.
+   --
+   --  @param IE Buffer containing the IE to append. This must be a valid IE.
+
+   generic
+      Maximum_Content_Length : Natural;
+      --  The maximum length of the IE's content field that can be written
+      --  by Write_IE.
+
+      with
+        function IE_Header_Property (Header : Header_Field) return Boolean
+        with Ghost;
+      --  Function to express a custom property over an IE header.
+      --
+      --  This is useful to prove that a specific IE type has been added.
+      --  For example, to prove that the new IE is a termination IE (or not).
+
+      with procedure Write_IE (IE : out Byte_Array; Length : out Positive);
+   procedure Append_IE_Inplace
+     (Buffer : in out Byte_Array; Length : in out Natural)
+   with
+     Inline,
+     Relaxed_Initialization => Buffer,
+     Pre                    =>
+       Length <= Buffer'Length
+       and then Buffer'Length - Length >= 2 + Maximum_Content_Length
+       and then IE_Model.Is_Appendable_IE_List_Relaxed (Buffer, Length),
+     Post                   =>
+       (declare
+          IE_List_Old : Byte_Array renames
+            Buffer'Old (Buffer'First .. Buffer'First + (Length'Old - 1));
+
+          IE_List : Byte_Array renames
+            Buffer (Buffer'First .. Buffer'First + (Length - 1));
+        begin
+          Length in Length'Old + 2 .. Length'Old + 2 + Maximum_Content_Length
+          and then IE_List'Initialized
+          and then IE_List (IE_List_Old'Range) = IE_List_Old
+          and then IE_Model.Valid_IE_List (IE_List)
+          and then Length = IE_Model.IE_List_Length (IE_List)
+          and then
+            Length - Length'Old
+            = IE_Header_Length
+              + Natural
+                  (Content_Length (IE_Model.Last_IE_Header_Field (IE_List)))
+          and then
+            IE_Header_Property (IE_Model.Last_IE_Header_Field (IE_List)));
+   --  Append an IE to a valid (or empty) IE list.
+   --
+   --  The new IE is constructed in-place in `Buffer` by calling `Write_IE`.
+   --
+   --  @param Buffer The byte array containing the IE list to modify.
+   --
+   --  @param Length The length (in bytes) of the IE list in `Buffer`.
+   --    This is updated with the new length after the IE is appended.
+
+   generic
+      Maximum_Content_Length : Natural;
+      --  The maximum length of the IE's content field that can be written
+      --  by Write_IE.
+
+      type Writer_Context (<>) is limited private;
+
+      with
+        function Precondition (Ctx : Writer_Context) return Boolean
+        with Ghost;
+
+      with
+        function IE_Header_Property (Header : Header_Field) return Boolean
+        with Ghost;
+      --  Function to express a custom property over an IE header.
+      --
+      --  This is useful to prove that a specific IE type has been added.
+      --  For example, to prove that the new IE is a termination IE (or not).
+
+      with
+        procedure Write_IE
+          (IE : out Byte_Array; Length : out Positive; Ctx : Writer_Context);
+   procedure Append_IE_Inplace_With_Context
+     (Buffer : in out Byte_Array;
+      Length : in out Natural;
+      Ctx    : Writer_Context)
+   with
+     Inline,
+     Relaxed_Initialization => Buffer,
+     Pre                    =>
+       Length <= Buffer'Length
+       and then Buffer'Length - Length >= 2 + Maximum_Content_Length
+       and then IE_Model.Is_Appendable_IE_List_Relaxed (Buffer, Length)
+       and then Precondition (Ctx),
+     Post                   =>
+       (declare
+          IE_List_Old : Byte_Array renames
+            Buffer'Old (Buffer'First .. Buffer'First + (Length'Old - 1));
+
+          IE_List : Byte_Array renames
+            Buffer (Buffer'First .. Buffer'First + (Length - 1));
+        begin
+          Length in Length'Old + 2 .. Length'Old + 2 + Maximum_Content_Length
+          and then IE_List'Initialized
+          and then IE_List (IE_List_Old'Range) = IE_List_Old
+          and then IE_Model.Valid_IE_List (IE_List)
+          and then Length = IE_Model.IE_List_Length (IE_List)
+          and then
+            Length - Length'Old
+            = IE_Header_Length
+              + Natural
+                  (Content_Length (IE_Model.Last_IE_Header_Field (IE_List)))
+          and then
+            IE_Header_Property (IE_Model.Last_IE_Header_Field (IE_List)));
+   --  Append an IE to a valid (or empty) IE list.
+   --
+   --  The new IE is constructed in-place in `Buffer` by calling `Write_IE`.
+   --
+   --  This is the same as `Append_IE_Inplace`, but passes an extra parameter
+   --  to `Write_IE` to allow passing extra context information.
+   --
+   --  @param Buffer The byte array containing the IE list to modify.
+   --
+   --  @param Length The length (in bytes) of the IE list in `Buffer`.
+   --    This is updated with the new length after the IE is appended.
 
    -----------------------
    -- IE List Filtering --
    -----------------------
-
-   function Always_True (IE : Byte_Array with Unreferenced) return Boolean
-   is (True);
 
    generic
       with

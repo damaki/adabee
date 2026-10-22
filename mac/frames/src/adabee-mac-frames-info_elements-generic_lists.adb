@@ -296,8 +296,6 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
    procedure Append_IE
      (Buffer : in out Byte_Array; Length : in out Natural; IE : Byte_Array)
    is
-      use type IE_Positions_Model.Positions_Array;
-
       IE_List_Old : constant Byte_Array :=
         Buffer (Buffer'First .. Buffer'First + (Length - 1))
       with Ghost;
@@ -343,6 +341,121 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
       end;
 
    end Append_IE;
+
+   -----------------------
+   -- Append_IE_Inplace --
+   -----------------------
+
+   procedure Append_IE_Inplace
+     (Buffer : in out Byte_Array; Length : in out Natural)
+   is
+      IE_List_Old : constant Byte_Array :=
+        Buffer (Buffer'First .. Buffer'First + (Length - 1))
+      with Ghost;
+
+      Length_Old : constant Natural := Length;
+
+      New_IE_Length : Positive;
+
+   begin
+      Write_IE (Buffer (Buffer'First + Length .. Buffer'Last), New_IE_Length);
+
+      Length := Length + New_IE_Length;
+
+      declare
+         IE_List : constant Byte_Array :=
+           Buffer (Buffer'First .. Buffer'First + (Length - 1))
+         with Ghost;
+      begin
+
+         pragma Assert (Valid_IE (IE_List, Buffer'First + Length_Old));
+
+         pragma
+           Assert
+             (IE_Header (IE_List, Buffer'First + Length_Old)
+              = IE_Header
+                  (Buffer
+                     (Buffer'First + Length_Old
+                      .. Buffer'First + (Length - 1)),
+                   Buffer'First + Length_Old));
+
+         if Length > New_IE_Length then
+            IE_Model.Lemma_Valid_IE_List_Preserved
+              (IE_List_Old,
+               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
+
+            IE_Model.Lemma_IE_List_Length_Preserved
+              (IE_List_Old,
+               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
+
+            IE_Model.Lemma_Last_IE_Header_Field_Preserved
+              (IE_List_Old,
+               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
+         end if;
+
+         IE_Model.Lemma_IE_List_Extend
+           (Buffer => IE_List, L1 => Length_Old, L2 => Length);
+      end;
+   end Append_IE_Inplace;
+
+   ------------------------------------
+   -- Append_IE_Inplace_With_Context --
+   ------------------------------------
+
+   procedure Append_IE_Inplace_With_Context
+     (Buffer : in out Byte_Array;
+      Length : in out Natural;
+      Ctx    : Writer_Context)
+   is
+      IE_List_Old : constant Byte_Array :=
+        Buffer (Buffer'First .. Buffer'First + (Length - 1))
+      with Ghost;
+
+      Length_Old : constant Natural := Length;
+
+      New_IE_Length : Positive;
+
+   begin
+      Write_IE
+        (Buffer (Buffer'First + Length .. Buffer'Last), New_IE_Length, Ctx);
+
+      Length := Length + New_IE_Length;
+
+      declare
+         IE_List : constant Byte_Array :=
+           Buffer (Buffer'First .. Buffer'First + (Length - 1))
+         with Ghost;
+      begin
+
+         pragma Assert (Valid_IE (IE_List, Buffer'First + Length_Old));
+
+         pragma
+           Assert
+             (IE_Header (IE_List, Buffer'First + Length_Old)
+              = IE_Header
+                  (Buffer
+                     (Buffer'First + Length_Old
+                      .. Buffer'First + (Length - 1)),
+                   Buffer'First + Length_Old));
+
+         if Length > New_IE_Length then
+            IE_Model.Lemma_Valid_IE_List_Preserved
+              (IE_List_Old,
+               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
+
+            IE_Model.Lemma_IE_List_Length_Preserved
+              (IE_List_Old,
+               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
+
+            IE_Model.Lemma_Last_IE_Header_Field_Preserved
+              (IE_List_Old,
+               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
+         end if;
+
+         IE_Model.Lemma_IE_List_Extend
+           (Buffer => IE_List, L1 => Length_Old, L2 => Length);
+      end;
+   end Append_IE_Inplace_With_Context;
 
    ----------------------
    -- Validate_IE_List --
