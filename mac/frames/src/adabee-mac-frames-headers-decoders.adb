@@ -30,7 +30,9 @@ is
    with
      Inline,
      Global  => null,
+     --!format off
      Depends => (Frame_Control => Buffer, Result => Buffer),
+     --!format on
      Pre     =>
        Buffer'Length > 0
        and then
@@ -50,7 +52,9 @@ is
    with
      Inline,
      Global  => null,
+     --!format off
      Depends => (Frame_Control => Buffer, Length => Buffer, Result => Buffer),
+     --!format on
      Pre     =>
        Buffer'Length > 0
        and then To_Frame_Type (Buffer (Buffer'First)) = Multipurpose,
@@ -89,7 +93,9 @@ is
    with
      Inline,
      Global  => null,
+     --!format off
      Depends => (Sequence_Number => (Buffer, Offset), Offset => Offset),
+     --!format on
      Pre     =>
        not Sequence_Number'Constrained
        and then Decoder_Model.Frame_Control_Valid (Buffer)
@@ -107,7 +113,9 @@ is
    with
      Inline,
      Global  => null,
+     --!format off
      Depends => (PAN_ID => (Buffer, Offset), Offset => Offset),
+     --!format on
      Pre     => not PAN_ID'Constrained and then Offset <= Buffer'Length - 2,
      Post    =>
        Offset = Offset'Old + 2
@@ -122,7 +130,9 @@ is
    with
      Inline,
      Global  => null,
+     --!format off
      Depends => (Address => (Buffer, Offset), Offset => Offset),
+     --!format on
      Pre     => not Address'Constrained and then Offset <= Buffer'Length - 8,
      Post    =>
        Offset = Offset'Old + 8
@@ -137,7 +147,9 @@ is
    with
      Inline,
      Global  => null,
+     --!format off
      Depends => (Address => (Buffer, Offset), Offset => Offset),
+     --!format on
      Pre     => not Address'Constrained and then Offset <= Buffer'Length - 2,
      Post    =>
        Offset = Offset'Old + 2
@@ -170,11 +182,13 @@ is
    with
      Inline,
      Global  => null,
+     --!format off
      Depends =>
        (ASH    => (Buffer, Offset),
         Result => (Buffer, Offset),
         Offset => (Buffer, Offset),
         null   => ASH),
+     --!format on
      Pre     =>
        not ASH'Constrained
        and then Offset <= Buffer'Length
@@ -208,10 +222,12 @@ is
    with
      Inline,
      Global  => null,
+     --!format off
      Depends =>
        (SC     => (Buffer, Offset),
         Result => (Buffer, Offset),
         Offset => (Buffer, Offset)),
+     --!format on
      Pre     =>
        Decoder_Model.Frame_Control_Valid (Buffer)
        and then Decoder_Model.Is_Security_Control_Present (Buffer)
@@ -240,10 +256,12 @@ is
    with
      Inline,
      Global  => null,
+     --!format off
      Depends =>
        (FC     => (Buffer, Offset),
         Result => (Buffer, Offset),
         Offset => (Buffer, Offset)),
+     --!format on
      Pre     =>
        not FC'Constrained
        and then Decoder_Model.Security_Control_Valid (Buffer)
@@ -274,9 +292,11 @@ is
      Inline,
      Global  => null,
      Depends =>
+     --!format off
        (Key_ID => (Buffer, Mode, Offset),
         Result => (Buffer, Mode, Offset),
         Offset => (Buffer, Mode, Offset)),
+     --!format on
      Pre     =>
        not Key_ID'Constrained
        and then Decoder_Model.Security_Control_Valid (Buffer)
@@ -461,9 +481,11 @@ is
 
          --  Help prove the postcondition
 
-         Info_Elements.Headers.Lists.IE_Model.Lemma_Valid_IE_List_Preserved
-           (Buffer => Buffer,
-            Slice  => Buffer (Buffer'First .. Header_IE_Last));
+         Info_Elements.Headers.Lemmas.Lemma_Valid_IE_List_Preserved
+           (B1 => Buffer,
+            B2 => Buffer (Buffer'First .. Header_IE_Last),
+            X1 => Buffer'First,
+            X2 => Buffer'First);
       end if;
    end Decode_MHR_Header_IEs;
 
@@ -516,13 +538,17 @@ is
                   Result            => Result);
 
                if Result = Success then
-                  Decoder_Model.Header_IE_Model.Lemma_Valid_IE_List_Preserved
+                  Info_Elements.Headers.Lemmas.Lemma_Valid_IE_List_Preserved
                     (Buffer (Header_IE_First .. Buffer'Last),
-                     Buffer (Header_IE_First .. Header_IE_Last));
+                     Buffer (Header_IE_First .. Header_IE_Last),
+                     Header_IE_First,
+                     Header_IE_First);
 
-                  Decoder_Model.Header_IE_Model.Lemma_IE_List_Length_Preserved
+                  Info_Elements.Headers.Lemmas.Lemma_IE_List_Length_Preserved
                     (Buffer (Header_IE_First .. Buffer'Last),
-                     Buffer (Header_IE_First .. Header_IE_Last));
+                     Buffer (Header_IE_First .. Header_IE_Last),
+                     Header_IE_First,
+                     Header_IE_First);
                end if;
             end if;
 
@@ -562,9 +588,9 @@ is
       end if;
    end Decode_MHR;
 
-   ------------------------------
+   -------------------------------
    -- Decode_General_MAC_Header --
-   ------------------------------
+   -------------------------------
 
    procedure Decode_General_MAC_Header
      (Buffer : Byte_Array;

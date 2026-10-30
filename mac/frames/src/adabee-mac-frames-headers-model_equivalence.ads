@@ -11,7 +11,7 @@ with AdaBee.MAC.Frames.Headers.Encoder_Model;
 --  Proves equivalence between the Encoder_Model and Decoder_Model
 
 package AdaBee.MAC.Frames.Headers.Model_Equivalence
-  with Ghost, Pure, SPARK_Mode, Always_Terminates
+  with Elaborate_Body, Ghost, SPARK_Mode, Always_Terminates
 is
 
    procedure Lemma_Frame_Control_Length_Equal

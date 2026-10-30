@@ -12,5 +12,6 @@ is
    for IE_Type_Field use (Short => 0, Long => 1);
 
    IE_Header_Length : constant := 2;
+   --  Length of an IE header, in bytes
 
 end AdaBee.MAC.Frames.Info_Elements;

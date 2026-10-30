@@ -17,7 +17,7 @@ with AdaBee.MAC.Frames.Info_Elements.Headers;
 --  determining the source address to send an acknowledgement.
 
 package AdaBee.MAC.Frames.Headers.Decoders
-  with Pure, SPARK_Mode, Always_Terminates
+  with Elaborate_Body, SPARK_Mode, Always_Terminates
 is
 
    use type AdaBee.MAC.Frames.Info_Elements.Headers.Element_ID_Field;
@@ -69,10 +69,11 @@ is
      Global => null,
      Post   =>
        (Result = Success)
-       = (Info_Elements.Headers.Lists.IE_Model.Valid_IE_List (Buffer)
+       = (Info_Elements.Headers.Lists.Formal_Model.Valid_IE_List (Buffer)
           and then
             Buffer'Length - FCS_Length
-            >= Info_Elements.Headers.Lists.IE_Model.IE_List_Length (Buffer))
+            >= Info_Elements.Headers.Lists.Formal_Model.IE_List_Length
+                 (Buffer))
 
        and then
          (if Result = Success
@@ -93,7 +94,8 @@ is
             --  Header_IE_Last is the index of the last byte of the IE list
             and then
               (Header_IE_Last - Buffer'First) + 1
-              = Info_Elements.Headers.Lists.IE_Model.IE_List_Length (Buffer)
+              = Info_Elements.Headers.Lists.Formal_Model.IE_List_Length
+                  (Buffer)
 
             --  Has_Payload_IEs is true if and only if a MAC payload is
             --  present and the header IE list is terminated with an HT1 IE.
@@ -101,8 +103,11 @@ is
               Has_Payload_IEs
               = (MAC_Payload_First <= MAC_Payload_Last
                  and then
-                   (Info_Elements.Headers.Lists.IE_Model.Last_IE_Header_Field
-                      (Buffer)
+                   (Info_Elements
+                      .Headers
+                      .Lists
+                      .Formal_Model
+                      .Last_IE_Header (Buffer, Buffer'First)
                       .Element_ID
                     = Info_Elements.Headers.Header_Termination_1_IE)));
    --  Decode the header IE part of the MAC header (MHR).
@@ -170,11 +175,11 @@ is
             and then
               (if MHR.IE_Present = Present
                then
-                 Info_Elements.Headers.Lists.IE_Model.Valid_IE_List
+                 Info_Elements.Headers.Lists.Formal_Model.Valid_IE_List
                    (Buffer (Header_IE_First .. Header_IE_Last))
                  and then
                    (Header_IE_Last - Header_IE_First) + 1
-                   = Info_Elements.Headers.Lists.IE_Model.IE_List_Length
+                   = Info_Elements.Headers.Lists.Formal_Model.IE_List_Length
                        ((Buffer (Header_IE_First .. Header_IE_Last))))
 
             --  If a MAC payload is present, then the range
@@ -197,7 +202,6 @@ is
             --  Has_Payload_IEs is correctly set according to the formal model
             and then
               Has_Payload_IEs = Decoder_Model.Is_Payload_IE_Present (Buffer));
-
    --  Decode the MAC header (MHR) part of a frame.
    --
    --  This decodes all fields of the MHR, from the Frame Control field up to

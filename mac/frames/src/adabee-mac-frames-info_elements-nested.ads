@@ -7,12 +7,13 @@ with Ada.Unchecked_Conversion;
 with System;
 
 with AdaBee.MAC.Frames.Info_Elements.Generic_Lists;
+with AdaBee.MAC.Frames.Info_Elements.Generic_Lists.Lemmas;
 
 --  @summary
 --  Definitions for Nested IEs as defined in IEEE 802.15.4-2024 Section 7.4.4
 
 package AdaBee.MAC.Frames.Info_Elements.Nested
-  with Pure, SPARK_Mode, Always_Terminates
+  with SPARK_Mode, Always_Terminates
 is
 
    -------------------------------------
@@ -278,5 +279,7 @@ is
         From_Bytes        => From_Bytes,
         Content_Length    => Content_Length,
         Is_Termination_IE => Is_Termination_IE);
+
+   package Lemmas is new Lists.Lemmas;
 
 end AdaBee.MAC.Frames.Info_Elements.Nested;

@@ -4,290 +4,14 @@
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
 
+with SPARK.Cut_Operations; use SPARK.Cut_Operations;
+
+with AdaBee.MAC.Frames.Info_Elements.Generic_Lists.Lemmas;
+
 package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
 
-   package body IE_Positions_Model is separate;
-   package body IE_Model is separate;
-
-   generic
-      with procedure Transform (IE : in out Byte_Array);
-   procedure Shift_And_Transform_IE
-     (Buffer        : in out AdaBee.Byte_Array;
-      Source_IE_Pos : in out Positive;
-      Target_Pos    : in out Positive;
-      Is_Last       : Boolean)
-   with
-     Inline,
-     Pre  =>
-       Buffer'Last < Positive'Last
-       and then Target_Pos in Buffer'Range
-       and then Source_IE_Pos in Buffer'Range
-       and then Target_Pos <= Source_IE_Pos
-
-       and then
-         IE_Model.Valid_IE_List
-           (Buffer (Source_IE_Pos .. Buffer'Last), Source_IE_Pos)
-
-       and then
-         Is_Last
-         = Is_Last_IE (Buffer (Source_IE_Pos .. Buffer'Last), Source_IE_Pos)
-
-       and then
-         (if Target_Pos > Buffer'First
-          then
-            IE_Model.Valid_IE_List
-              (Buffer (Buffer'First .. Target_Pos - 1), Buffer'First)
-
-            and then
-              IE_Model.IE_List_Length (Buffer (Buffer'First .. Target_Pos - 1))
-              = Target_Pos - Buffer'First
-
-            and then
-              not Is_Termination_IE
-                    (IE_Model.Last_IE_Header_Field
-                       (Buffer (Buffer'First .. Target_Pos - 1)))),
-     Post =>
-       Target_Pos > Target_Pos'Old
-       and then
-         Target_Pos
-         <= Target_Pos'Old + IE_Length (Buffer'Old, Source_IE_Pos'Old)
-
-       and then
-         Buffer (Buffer'First .. Target_Pos'Old - 1)
-         = Buffer'Old (Buffer'Old'First .. Target_Pos'Old - 1)
-
-       and then
-         IE_Model.Valid_IE_List
-           (Buffer (Buffer'First .. Target_Pos - 1), Buffer'First)
-
-       and then
-         Valid_IE (Buffer (Buffer'First .. Target_Pos - 1), Target_Pos'Old)
-
-       and then
-         IE_Model.IE_List_Length (Buffer (Buffer'First .. Target_Pos - 1))
-         = Target_Pos - Buffer'First
-
-       and then
-         (if not Is_Last
-          then
-            Source_IE_Pos in Buffer'Range
-            and then Target_Pos <= Source_IE_Pos
-            and then
-              Source_IE_Pos
-              = Source_IE_Pos'Old + IE_Length (Buffer'Old, Source_IE_Pos'Old)
-            and then
-              IE_Model.Valid_IE_List
-                (Buffer (Source_IE_Pos .. Buffer'Last), Source_IE_Pos))
-
-       and then
-         (if Is_Termination_IE
-               (IE_Model.Last_IE_Header_Field
-                  (Buffer (Buffer'First .. Target_Pos - 1)))
-          then Is_Last);
-
-   ----------------------------
-   -- Shift_And_Transform_IE --
-   ----------------------------
-
-   procedure Shift_And_Transform_IE
-     (Buffer        : in out Byte_Array;
-      Source_IE_Pos : in out Positive;
-      Target_Pos    : in out Positive;
-      Is_Last       : Boolean)
-   is
-      use type IE_Positions_Model.Positions_Array;
-
-      Empty_Positions : constant IE_Positions_Model.Positions_Array (1 .. 0) :=
-        [others => 1]
-      with Ghost;
-
-      Buffer_Old : constant Byte_Array := Buffer
-      with Ghost;
-
-      Target_Pos_Old : constant Positive := Target_Pos
-      with Ghost;
-
-      Source_IE_Pos_Old : constant Positive := Source_IE_Pos
-      with Ghost;
-
-      Target_Positions : constant IE_Positions_Model.Positions_Array :=
-        (if Target_Pos = Buffer'First
-         then Empty_Positions
-         else
-           IE_Positions_Model.IE_Positions
-             (Buffer (Buffer'First .. Target_Pos - 1)))
-      with Ghost;
-
-      Source_Positions : constant IE_Positions_Model.Positions_Array :=
-        IE_Positions_Model.IE_Positions (Buffer (Source_IE_Pos .. Buffer'Last))
-      with Ghost;
-
-      Source_IE_Length : constant Positive :=
-        IE_Length (Buffer, Source_IE_Pos);
-      Target_IE_Length : Positive;
-
-   begin
-      if Target_Pos /= Source_IE_Pos then
-         Buffer (Target_Pos .. Target_Pos + (Source_IE_Length - 1)) :=
-           Buffer (Source_IE_Pos .. Source_IE_Pos + (Source_IE_Length - 1));
-      end if;
-
-      Transform (Buffer (Target_Pos .. Target_Pos + (Source_IE_Length - 1)));
-
-      if not Is_Last then
-         Source_IE_Pos := Source_IE_Pos + Source_IE_Length;
-      end if;
-
-      Target_IE_Length := IE_Length (Buffer, Target_Pos);
-      Target_Pos := Target_Pos + Target_IE_Length;
-
-      --  Transform can shorten the IE, but it cannot lengthen it
-
-      pragma
-        Assert
-          (IE_Length (Buffer, Target_Pos_Old)
-           <= IE_Length (Buffer_Old, Source_IE_Pos_Old));
-
-      --  Prove that the Target IE list is still a valid IE list
-
-      if Target_Pos - Target_IE_Length /= Buffer'First then
-
-         --  First, establish that all existing IEs in the target IE list are
-         --  unchanged.
-
-         IE_Positions_Model.Lemma_IEs_Preserved
-           (Buffer_Old (Buffer_Old'First .. Target_Pos_Old - 1),
-            Buffer (Buffer'First .. Target_Pos - 1),
-            Target_Positions);
-
-         declare
-            New_Target_Positions :
-              constant IE_Positions_Model.Positions_Array :=
-                Target_Positions & [Target_Pos_Old]
-            with Ghost;
-         begin
-
-            --  Prove that Target_Pos_Old denotes the next byte after the last
-            --  IE.
-
-            IE_Positions_Model.Lemma_Positions_IE_List_Length
-              (Buffer_Old (Buffer_Old'First .. Target_Pos_Old - 1),
-               Target_Positions);
-
-            IE_Positions_Model.Lemma_IE_List_Length
-              (Buffer_Old (Buffer_Old'First .. Target_Pos_Old - 1),
-               Target_Positions,
-               Target_Pos_Old - Buffer'First);
-
-            --  Help prove that the last IE was not a termination IE.
-
-            IE_Positions_Model.Lemma_Last_IE_Header
-              (Buffer_Old (Buffer_Old'First .. Target_Pos_Old - 1),
-               Target_Positions);
-
-            pragma
-              Assert
-                (not Is_Termination_IE
-                       (IE_Header
-                          (Buffer, Target_Positions (Target_Positions'Last))));
-
-            --  Prove that the new IE is placed immediately after the previous
-            --  last IE.
-
-            pragma
-              Assert
-                (New_Target_Positions (New_Target_Positions'Last)
-                 = Next_IE_Position
-                     (Buffer (Buffer'First .. Target_Pos - 1),
-                      New_Target_Positions (New_Target_Positions'Last - 1)));
-
-            --  Help prove that the new IE is valid
-
-            pragma
-              Assert
-                (Valid_IE
-                   (Buffer (Buffer'First .. Target_Pos - 1), Target_Pos_Old));
-
-            --  Now we can establish that we have a valid set of positions
-
-            pragma
-              Assert
-                (IE_Positions_Model.Valid_Positions
-                   (Buffer (Buffer'First .. Target_Pos - 1),
-                    New_Target_Positions));
-
-            --  Finally, we can prove that the IE list is valid
-
-            IE_Positions_Model.Lemma_Valid_IE_List
-              (Buffer (Buffer'First .. Target_Pos - 1), New_Target_Positions);
-
-            --  Next, prove that the Target_Pos - Buffer'First denotes the
-            --  length of the IE list.
-
-            IE_Positions_Model.Lemma_IE_List_Length
-              (Buffer (Buffer'First .. Target_Pos - 1),
-               New_Target_Positions,
-               Target_Pos - Buffer'First);
-
-            --  Next, prove that the termination IE status is preserved during
-            --  the move.
-
-            IE_Positions_Model.Lemma_Last_IE_Header
-              (Buffer (Buffer'First .. Target_Pos - 1), New_Target_Positions);
-
-            pragma
-              Assert
-                (Is_Termination_IE
-                   (IE_Model.Last_IE_Header_Field
-                      (Buffer (Buffer'First .. Target_Pos - 1)))
-                 = Is_Termination_IE
-                     (IE_Header (Buffer_Old, Source_IE_Pos_Old)));
-
-            --  Cut the proof context size
-
-            pragma
-              Assert_And_Cut
-                (IE_Model.Valid_IE_List
-                   (Buffer (Buffer'First .. Target_Pos - 1))
-
-                 and then
-                   Target_Pos - Buffer'First
-                   = IE_Model.IE_List_Length
-                       (Buffer (Buffer'First .. Target_Pos - 1))
-
-                 and then
-                   Valid_IE
-                     (Buffer (Buffer'First .. Target_Pos - 1), Target_Pos_Old)
-
-                 and then
-                   (if Is_Termination_IE
-                         (IE_Model.Last_IE_Header_Field
-                            (Buffer (Buffer'First .. Target_Pos - 1)))
-                    then Is_Last));
-         end;
-      end if;
-
-      --  Prove that the source IE list is still valid, starting from the
-      --  IE after the one that was moved.
-
-      if not Is_Last then
-         declare
-            New_Source_Positions :
-              constant IE_Positions_Model.Positions_Array :=
-                Source_Positions
-                  (Source_Positions'First + 1 .. Source_Positions'Last)
-            with Ghost;
-         begin
-            IE_Positions_Model.Lemma_IEs_Preserved
-              (A         => Buffer_Old (Source_IE_Pos_Old .. Buffer_Old'Last),
-               B         => Buffer (Source_IE_Pos .. Buffer'Last),
-               Positions => New_Source_Positions);
-
-            IE_Positions_Model.Lemma_Valid_IE_List
-              (Buffer (Source_IE_Pos .. Buffer'Last), New_Source_Positions);
-         end;
-      end if;
-   end Shift_And_Transform_IE;
+   package Lemmas_Instance is new Lemmas;
+   use Lemmas_Instance;
 
    ---------------
    -- Append_IE --
@@ -296,12 +20,12 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
    procedure Append_IE
      (Buffer : in out Byte_Array; Length : in out Natural; IE : Byte_Array)
    is
+      Length_Old : constant Natural := Length
+      with Ghost;
+
       IE_List_Old : constant Byte_Array :=
         Buffer (Buffer'First .. Buffer'First + (Length - 1))
       with Ghost;
-
-      Length_Old : constant Natural := Length;
-
    begin
       Buffer
         (Buffer'First + Length .. Buffer'First + Length + (IE'Length - 1)) :=
@@ -309,94 +33,60 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
 
       Length := Length + IE'Length;
 
+      --  Prove the properties needed to prove the postcondition
+
+      pragma
+        Assert
+          (Buffer (Buffer'First .. Buffer'First + (Length - 1))'Initialized);
+
       declare
          IE_List : constant Byte_Array :=
            Buffer (Buffer'First .. Buffer'First + (Length - 1))
          with Ghost;
       begin
+         pragma Assert (IE_List (IE_List_Old'Range) = IE_List_Old);
 
-         pragma Assert (Valid_IE (IE_List, Buffer'First + Length_Old));
-
-         pragma
-           Assert
-             (IE_Header (IE_List, Buffer'First + Length_Old)
-              = IE_Header (IE, IE'First));
+         Lemma_IE_Header_Preserved
+           (IE, IE_List, IE'First, IE_List'First + Length_Old);
 
          if Length > IE'Length then
-            IE_Model.Lemma_Valid_IE_List_Preserved
-              (IE_List_Old,
-               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
 
-            IE_Model.Lemma_IE_List_Length_Preserved
-              (IE_List_Old,
-               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
+            --  Prove that properties on the previous IE list are preserved
+            --  after Buffer was modified.
 
-            IE_Model.Lemma_Last_IE_Header_Field_Preserved
-              (IE_List_Old,
-               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
+            Lemma_IE_List_Preserved
+              (B1 => IE_List_Old,
+               B2 => IE_List (IE_List_Old'Range),
+               X  => IE_List'First);
+
+            --  Prove the preservation of Is_Terminated for IE_List
+
+            pragma
+              Assert
+                (By
+                   (Premise     =>
+                      Last_IE_Header
+                        (IE_List (IE_List_Old'Range), IE_List'First)
+                      = Last_IE_Header (IE_List_Old, IE_List_Old'First),
+                    Consequence =>
+                      not Is_Terminated (IE_List (IE_List_Old'Range))));
+
+            --  Prove that appending the new IE results in a new, valid IE list
+            --  which preserves the positions and ordering of existing IEs.
+
+            Lemma_IE_List_Append
+              (Buffer => IE_List, X => IE_List'First, Length => Length_Old);
+
+            --  Prove that the content of existing IEs are preserved
+
+            Lemma_Reachable_IE_Headers_Preserved_Prefix
+              (B1 => IE_List_Old, B2 => IE_List, X => IE_List'First);
+
+            Lemma_Reachable_IE_Content_Preserved_Prefix
+              (B1 => IE_List_Old, B2 => IE_List, X => IE_List'First);
          end if;
-
-         IE_Model.Lemma_IE_List_Extend
-           (Buffer => IE_List, L1 => Length_Old, L2 => Length);
       end;
-
    end Append_IE;
-
-   -----------------------
-   -- Append_IE_Inplace --
-   -----------------------
-
-   procedure Append_IE_Inplace
-     (Buffer : in out Byte_Array; Length : in out Natural)
-   is
-      IE_List_Old : constant Byte_Array :=
-        Buffer (Buffer'First .. Buffer'First + (Length - 1))
-      with Ghost;
-
-      Length_Old : constant Natural := Length;
-
-      New_IE_Length : Positive;
-
-   begin
-      Write_IE (Buffer (Buffer'First + Length .. Buffer'Last), New_IE_Length);
-
-      Length := Length + New_IE_Length;
-
-      declare
-         IE_List : constant Byte_Array :=
-           Buffer (Buffer'First .. Buffer'First + (Length - 1))
-         with Ghost;
-      begin
-
-         pragma Assert (Valid_IE (IE_List, Buffer'First + Length_Old));
-
-         pragma
-           Assert
-             (IE_Header (IE_List, Buffer'First + Length_Old)
-              = IE_Header
-                  (Buffer
-                     (Buffer'First + Length_Old
-                      .. Buffer'First + (Length - 1)),
-                   Buffer'First + Length_Old));
-
-         if Length > New_IE_Length then
-            IE_Model.Lemma_Valid_IE_List_Preserved
-              (IE_List_Old,
-               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
-
-            IE_Model.Lemma_IE_List_Length_Preserved
-              (IE_List_Old,
-               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
-
-            IE_Model.Lemma_Last_IE_Header_Field_Preserved
-              (IE_List_Old,
-               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
-         end if;
-
-         IE_Model.Lemma_IE_List_Extend
-           (Buffer => IE_List, L1 => Length_Old, L2 => Length);
-      end;
-   end Append_IE_Inplace;
 
    ------------------------------------
    -- Append_IE_Inplace_With_Context --
@@ -408,54 +98,285 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
       Ctx    : Writer_Context)
    is
       IE_List_Old : constant Byte_Array :=
-        Buffer (Buffer'First .. Buffer'First + (Length - 1))
+        Buffer (Buffer'First .. Buffer'First + (Length - 1));
+
+      Length_Old : constant Natural := Length
       with Ghost;
 
-      Length_Old : constant Natural := Length;
-
-      New_IE_Length : Positive;
-
+      New_IE_Length : Natural;
    begin
+      --  Write the IE
       Write_IE
         (Buffer (Buffer'First + Length .. Buffer'Last), New_IE_Length, Ctx);
 
       Length := Length + New_IE_Length;
 
+      --  Prove the properties needed to prove the postcondition
+
+      pragma
+        Assert
+          (Buffer (Buffer'First .. Buffer'First + (Length - 1))'Initialized);
+
       declare
          IE_List : constant Byte_Array :=
            Buffer (Buffer'First .. Buffer'First + (Length - 1))
          with Ghost;
+
+         New_IE_Pos : constant Positive := Buffer'First + Length_Old
+         with Ghost;
       begin
 
-         pragma Assert (Valid_IE (IE_List, Buffer'First + Length_Old));
+         --  Check properties that should be provable from the postcondition
+         --  of Write_IE
 
+         pragma Assert (Valid_IE (IE_List, New_IE_Pos));
+         pragma Assert (IE_Length (IE_List, New_IE_Pos) = New_IE_Length);
          pragma
            Assert
-             (IE_Header (IE_List, Buffer'First + Length_Old)
-              = IE_Header
-                  (Buffer
-                     (Buffer'First + Length_Old
-                      .. Buffer'First + (Length - 1)),
-                   Buffer'First + Length_Old));
+             (IE_Property
+                (Header  => IE_Header (IE_List, New_IE_Pos),
+                 Content => IE_Content (IE_List, New_IE_Pos)));
 
          if Length > New_IE_Length then
-            IE_Model.Lemma_Valid_IE_List_Preserved
-              (IE_List_Old,
-               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
 
-            IE_Model.Lemma_IE_List_Length_Preserved
-              (IE_List_Old,
-               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
+            --  Prove that properties on the previous IE list are preserved
+            --  after Buffer was modified.
 
-            IE_Model.Lemma_Last_IE_Header_Field_Preserved
-              (IE_List_Old,
-               IE_List (Buffer'First .. Buffer'First + (Length_Old - 1)));
+            Lemma_IE_List_Preserved
+              (B1 => IE_List_Old,
+               B2 => IE_List (IE_List_Old'Range),
+               X  => IE_List'First);
+
+            --  Prove the preservation of Is_Terminated in IE_List
+
+            pragma
+              Assert
+                (By
+                   (Premise     =>
+                      Last_IE_Header
+                        (IE_List (IE_List_Old'Range), IE_List'First)
+                      = Last_IE_Header (IE_List_Old, IE_List_Old'First),
+                    Consequence =>
+                      not Is_Terminated (IE_List (IE_List_Old'Range))));
+
+            --  Prove that appending the new IE results in a new, valid IE list
+            --  which preserves the positions and ordering of existing IEs.
+
+            Lemma_IE_List_Append
+              (Buffer => IE_List, X => IE_List'First, Length => Length_Old);
+
+            --  Prove that the content of existing IEs are preserved
+
+            Lemma_Reachable_IE_Headers_Preserved_Prefix
+              (B1 => IE_List_Old, B2 => IE_List, X => IE_List'First);
+
+            Lemma_Reachable_IE_Content_Preserved_Prefix
+              (B1 => IE_List_Old, B2 => IE_List, X => IE_List'First);
          end if;
-
-         IE_Model.Lemma_IE_List_Extend
-           (Buffer => IE_List, L1 => Length_Old, L2 => Length);
       end;
    end Append_IE_Inplace_With_Context;
+
+   ----------------------------------
+   -- Filter_And_Transform_IE_List --
+   ----------------------------------
+
+   procedure Filter_And_Transform_IE_List
+     (Buffer : in out Byte_Array; Length : out Natural)
+   is
+      Read_Idx : Positive := Buffer'First;
+      --  Index in Buffer of the next IE to read and compare against the Filter
+
+      Write_Idx : Positive := Buffer'First;
+      --  Index of the next position to write to to append an IE the list of
+      --  IEs that pass the filter.
+
+      Is_Last : Boolean;
+
+      IE_Length_Before : Positive;
+      IE_Length_After  : Positive;
+   begin
+      loop
+         pragma Loop_Variant (Increases => Read_Idx);
+
+         pragma Loop_Invariant (Read_Idx in Buffer'Range);
+         pragma Loop_Invariant (Write_Idx in Buffer'Range);
+         pragma Loop_Invariant (Write_Idx <= Read_Idx);
+
+         --  The IE list starting at Read_Idx is always a valid IE list
+         pragma Loop_Invariant (Valid_IE_List (Buffer, Read_Idx));
+
+         pragma
+           Loop_Invariant
+             (if Write_Idx > Buffer'First
+              then
+                --  IEs processed so far form a valid IE list
+                Valid_IE_List (Buffer (Buffer'First .. Write_Idx - 1))
+
+                --  Write_Idx denotes the next byte after the end of the list
+                and then
+                  Write_Idx - Buffer'First
+                  = IE_List_Length (Buffer (Buffer'First .. Write_Idx - 1))
+
+                --  The IE list processed so far does not contain any
+                --  termination IEs.
+                and then
+                  not Is_Terminated (Buffer (Buffer'First .. Write_Idx - 1)));
+
+         declare
+            Buffer_At_Loop_Iteration_Start : constant Byte_Array := Buffer
+            with Ghost;
+
+            Next_Read_Idx : Positive
+            with Relaxed_Initialization;
+         begin
+
+            Is_Last := Is_Last_IE (Buffer, Read_Idx);
+
+            IE_Length_Before := IE_Length (Buffer, Read_Idx);
+
+            if not Is_Last then
+               Next_Read_Idx := Read_Idx + IE_Length_Before;
+            end if;
+
+            if Filter (Buffer (Read_Idx .. Buffer'Last)) then
+               --  Avoid copying unless the IE would actually be moved
+
+               if Write_Idx /= Read_Idx then
+                  Buffer (Write_Idx .. Write_Idx + (IE_Length_Before - 1)) :=
+                    Buffer (Read_Idx .. Read_Idx + (IE_Length_Before - 1));
+               end if;
+
+               pragma
+                 Assert
+                   (IE_Header (Buffer, Write_Idx)
+                    = IE_Header (Buffer_At_Loop_Iteration_Start, Read_Idx));
+
+               Transform
+                 (Buffer (Write_Idx .. Write_Idx + (IE_Length_Before - 1)));
+
+               --  Transform might shorten the IE, but it cannot lengthen it
+
+               IE_Length_After := IE_Length (Buffer, Write_Idx);
+
+               pragma Assert (IE_Length_After <= IE_Length_Before);
+
+               declare
+                  Updated_IE_List : constant Byte_Array :=
+                    Buffer (Buffer'First .. Write_Idx + (IE_Length_After - 1));
+               begin
+
+                  if Write_Idx > Buffer'First then
+
+                     --  Prove that the updated IE list is still valid
+                     Lemma_Valid_IE_List_Append
+                       (Buffer => Updated_IE_List,
+                        X      => Buffer'First,
+                        Length => Write_Idx - Buffer'First);
+
+                     --  Prove that the length has increased by IE_Length_After
+                     Lemma_IE_List_Length_Append
+                       (Buffer => Updated_IE_List,
+                        X      => Buffer'First,
+                        Length => Write_Idx - Buffer'First);
+
+                     --  Prove that Write_Idx currently denotes the position
+                     --  of the last IE
+                     Lemma_Last_IE_Position_Append
+                       (Buffer => Updated_IE_List,
+                        X      => Buffer'First,
+                        Length => Write_Idx - Buffer'First);
+
+                     --  Prove the relation between Write_Idx and the length of
+                     --  the updated IE list.
+                     Lemma_IE_List_Length_Anti_Isometric
+                       (Updated_IE_List, Buffer'First);
+                  end if;
+
+                  Write_Idx := Write_Idx + IE_Length_After;
+
+                  pragma
+                    Assert
+                      (By
+                         (Premise     =>
+                            Write_Idx - IE_Length_After
+                            = Last_IE_Position (Updated_IE_List, Buffer'First),
+                          Consequence =>
+                            Write_Idx - Buffer'First
+                            = IE_List_Length (Updated_IE_List)));
+
+                  pragma
+                    Assert
+                      (By
+                         (Premise     =>
+                            Is_Termination_IE
+                              (Last_IE_Header (Updated_IE_List, Buffer'First))
+                            = Is_Termination_IE
+                                (IE_Header
+                                   (Buffer_At_Loop_Iteration_Start, Read_Idx)),
+                          Consequence =>
+                            (if Is_Terminated (Updated_IE_List)
+                             then Is_Last)));
+               end;
+            end if;
+
+            if not Is_Last then
+               Lemma_Valid_IE_List_Preserved
+                 (B1 => Buffer_At_Loop_Iteration_Start,
+                  B2 => Buffer,
+                  X1 => Next_Read_Idx,
+                  X2 => Next_Read_Idx);
+            end if;
+
+            pragma
+              Assert_And_Cut
+                (Write_Idx in Buffer'First .. Buffer'Last + 1
+
+                 --  If there are still more IEs to process, then Read_Idx
+                 --  denotes the position of the valid IE list in Buffer that
+                 --  contains those IEs.
+                 and then
+                   (if not Is_Last
+                    then
+                      Write_Idx in Buffer'Range
+                      and then Next_Read_Idx'Initialized
+                      and then Next_Read_Idx in Buffer'Range
+                      and then Next_Read_Idx > Read_Idx
+                      and then Write_Idx <= Next_Read_Idx
+                      and then Valid_IE_List (Buffer, Next_Read_Idx))
+
+                 --  IEs processed so far are stored at the start of Buffer,
+                 --  and Write_Idx denotes the next byte after the end of this
+                 --  list.
+                 and then
+                   (if Write_Idx > Buffer'First
+                    then
+                      Valid_IE_List (Buffer (Buffer'First .. Write_Idx - 1))
+                      and then
+                        Write_Idx - Buffer'First
+                        = IE_List_Length
+                            (Buffer (Buffer'First .. Write_Idx - 1))
+
+                      --  If a termination IE was moved, then there are no more
+                      --  IEs to process
+                      and then
+                        (if Is_Terminated
+                              (Buffer (Buffer'First .. Write_Idx - 1))
+                         then Is_Last)));
+
+            exit when Is_Last;
+
+            Read_Idx := Next_Read_Idx;
+         end;
+      end loop;
+
+      Length := Write_Idx - Buffer'First;
+   end Filter_And_Transform_IE_List;
+
+   --------------------
+   -- Null_Transform --
+   --------------------
+
+   procedure Null_Transform (IE : in out Byte_Array) is null;
 
    ----------------------
    -- Validate_IE_List --
@@ -467,15 +388,6 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
       Result  : out Status_Code;
       Last_IE : out Positive)
    is
-      IE_Count : Natural := 0
-      with Ghost;
-      --  Counts the number of IEs visited
-
-      Positions : IE_Positions_Model.Positions_Array (1 .. Buffer'Length) :=
-        [others => 1]
-      with Ghost;
-      --  Keeps track of the position in the Buffer of each IE
-
       Pos : Positive;
 
    begin
@@ -488,55 +400,62 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
          return;
       end if;
 
-      Result := Success;
+      --  Walk through the IE list and check that the length of each IE
+      --  (as reported by the length field in the IE header) does not exceed
+      --  the bounds of the Buffer.
+
       Pos := Buffer'First;
 
       loop
          pragma Loop_Variant (Increases => Pos);
-         pragma Loop_Variant (Increases => IE_Count);
 
-         pragma Loop_Invariant (Result = Success);
          pragma Loop_Invariant (Pos in Buffer'Range);
-         pragma Loop_Invariant (IE_Count <= ((Pos - Buffer'First) + 1) / 2);
 
-         --  Pos always points to the next IE, except for the first iteration
-         --  when it points to the first IE in the buffer.
-
-         pragma
-           Loop_Invariant
-             (if IE_Count = 0
-              then Pos = Buffer'First
-              else Pos = Next_IE_Position (Buffer, Positions (IE_Count)));
-
-         --  Every IE recorded so far in Positions is a valid IE and is not
-         --  the last IE.
+         --  At each loop iteration, maintain that the set of IEs visited so
+         --  far (in the Buffer slice ranging from Buffer'First .. Pos - 1)
+         --  is a valid IE list in itself.
+         --
+         --  Once we prove that the next IE at position Pos is a valid IE,
+         --  then we use the concat lemmas to prove that the concatenation
+         --  of the IEs visited so far and the next IE form a valid IE list.
 
          pragma
            Loop_Invariant
-             (for all I in 1 .. IE_Count =>
-                Positions (I) in Buffer'Range
-                and then Valid_IE (Buffer, Positions (I))
-                and then not Is_Last_IE (Buffer, Positions (I)));
+             (if Pos > Buffer'First
+              then
+                --  The slice of Buffer containing the IEs visited so far
+                --  forms a valid IE list.
+                Formal_Model.Valid_IE_List
+                  (Buffer (Buffer'First .. Pos - 1), Buffer'First)
 
-         --  Each position references the next IE of the one at the position
-         --  before.
+                --  Pos denotes the first byte of the next IE after the ones
+                --  visited so far.
+                and then
+                  Pos - Buffer'First
+                  = Formal_Model.IE_List_Length
+                      (Buffer (Buffer'First .. Pos - 1), Buffer'First)
 
-         pragma
-           Loop_Invariant
-             (for all I in 1 .. IE_Count =>
-                (if I = 1
-                 then Positions (I) = Buffer'First
-                 else
-                   Positions (I)
-                   = Next_IE_Position (Buffer, Positions (I - 1))));
+                --  No termination IEs have been found so far
+                and then
+                  (for all P of
+                     Formal_Model.Reachable_Set
+                       (Buffer (Buffer'First .. Pos - 1), Buffer'First) =>
+                     not Is_Termination_IE (IE_Header (Buffer, P))));
 
-         --  Validity check on the IE to verify that its length field would not
-         --  exceed the bounds of Buffer. If it does, then it is a malformed
-         --  packet.
+         --  Stop when an invalid IE is found
 
          if not Valid_IE (Buffer, Pos) then
-            IE_Positions_Model.Lemma_Invalid_IE_List
-              (Buffer, Positions (1 .. IE_Count));
+
+            pragma Assert (not Formal_Model.Valid_IE_List (Buffer, Pos));
+
+            if Pos > Buffer'First then
+               Lemma_Valid_IE_List_Concat
+                 (Buffer => Buffer,
+                  X      => Buffer'First,
+                  Length => Pos - Buffer'First);
+            end if;
+
+            pragma Assert (not Formal_Model.Valid_IE_List (Buffer));
 
             Result := Malformed_Frame;
             Length := 0;
@@ -544,104 +463,96 @@ package body AdaBee.MAC.Frames.Info_Elements.Generic_Lists is
             return;
          end if;
 
-         IE_Count := IE_Count + 1;
-         Positions (IE_Count) := Pos;
+         --  The next IE is now proven to be valid. This IE forms a valid IE
+         --  list by itself when Buffer is truncated to the end of the IE.
 
-         --  Stop when the last IE is reached (either a termination IE or the
-         --  current IE is the last IE in the buffer).
+         pragma
+           Assert
+             (Formal_Model.Valid_IE_List
+                (Buffer (Buffer'First .. Pos + (IE_Length (Buffer, Pos) - 1)),
+                 Pos));
+
+         pragma
+           Assert
+             (Is_Last_IE
+                (Buffer (Buffer'First .. Pos + (IE_Length (Buffer, Pos) - 1)),
+                 Pos));
+
+         --  Stop when the last IE is found.
+         --
+         --  The last IE can either be a termination IE, or an IE that ends
+         --  at the end of the Buffer.
 
          if Is_Last_IE (Buffer, Pos) then
+
+            --  The IE list starting at position Pos consists only of the last
+            --  IE, so it forms a valid IE list by itself (consisting of a
+            --  single IE).
+
+            pragma Assert (Formal_Model.Valid_IE_List (Buffer, Pos));
+
+            --  If we have visited other IEs before this one, then prove that
+            --  this new IE can be concatenated with those IEs to form a
+            --  complete valid IE list.
+
+            if Pos > Buffer'First then
+               Lemma_Valid_IE_List_Append
+                 (Buffer => Buffer,
+                  X      => Buffer'First,
+                  Length => Pos - Buffer'First);
+
+               Lemma_Reachable_Set_Append
+                 (Buffer => Buffer,
+                  X      => Buffer'First,
+                  Length => Pos - Buffer'First);
+            end if;
+
+            --  The length of an IE list is anti-isometric w.r.t. the positions
+            --  of each IE in that list, and the length of the IE list from
+            --  each position.
+            --
+            --  This allows us to prove that the length of the IE list as a
+            --  whole can be derived from Pos (which denotes the position of
+            --  the last IE) and the length of the last IE, which allows us to
+            --  prove that Length is set to the length of the entire IE list.
+
+            Lemma_IE_List_Length_Anti_Isometric (Buffer, Buffer'First);
+
+            Result := Success;
             Last_IE := Pos;
             Length := (Pos - Buffer'First) + IE_Length (Buffer, Pos);
             exit;
          end if;
 
-         --  Move to the next IE
+         --  If this IE is not the first one, then expand the slice of Buffer
+         --  to include this IE and prove that the resulting IE list in that
+         --  slice is still valid.
+
+         if Pos > Buffer'First then
+            Lemma_Valid_IE_List_Append
+              (Buffer =>
+                 Buffer (Buffer'First .. Pos + (IE_Length (Buffer, Pos) - 1)),
+               X      => Buffer'First,
+               Length => Pos - Buffer'First);
+
+            Lemma_IE_List_Length_Append
+              (Buffer =>
+                 Buffer (Buffer'First .. Pos + (IE_Length (Buffer, Pos) - 1)),
+               X      => Buffer'First,
+               Length => Pos - Buffer'First);
+
+            Lemma_Reachable_Set_Append
+              (Buffer =>
+                 Buffer (Buffer'First .. Pos + (IE_Length (Buffer, Pos) - 1)),
+               X      => Buffer'First,
+               Length => Pos - Buffer'First);
+         end if;
+
+         --  Go to the next IE
 
          Pos := Next_IE_Position (Buffer, Pos);
       end loop;
 
-      pragma Assert (Result = Success);
-
-      --  Help prove postcondition
-
-      IE_Positions_Model.Lemma_Valid_IE_List
-        (Buffer, Positions (1 .. IE_Count));
-
-      IE_Positions_Model.Lemma_IE_List_Length
-        (Buffer, Positions (1 .. IE_Count), Length);
-
-      IE_Positions_Model.Lemma_Position_Reachable
-        (Buffer, Positions (1 .. IE_Count), Last_IE);
-
-      IE_Positions_Model.Lemma_Last_IE_Header
-        (Buffer, Positions (1 .. IE_Count));
    end Validate_IE_List;
-
-   ----------------------------------
-   -- Filter_And_Transform_IE_List --
-   ----------------------------------
-
-   procedure Filter_And_Transform_IE_List
-     (Buffer : in out Byte_Array; Length : out Natural)
-   is
-
-      procedure Move_IE is new Shift_And_Transform_IE (Transform);
-
-      R : Positive := Buffer'First; --  read pointer
-      W : Positive := Buffer'First; --  write pointer
-
-      Is_Last : Boolean;
-   begin
-
-      loop
-         pragma Loop_Variant (Increases => R);
-
-         pragma Loop_Invariant (W in Buffer'Range);
-         pragma Loop_Invariant (R in Buffer'Range);
-         pragma Loop_Invariant (W <= R);
-
-         pragma
-           Loop_Invariant
-             (if W > Buffer'First
-              then
-                IE_Model.Valid_IE_List
-                  (Buffer (Buffer'First .. W - 1), Buffer'First)
-                and then
-                  W - Buffer'First
-                  = IE_Model.IE_List_Length (Buffer (Buffer'First .. W - 1))
-                and then
-                  not Is_Termination_IE
-                        (IE_Model.Last_IE_Header_Field
-                           (Buffer (Buffer'First .. W - 1))));
-
-         pragma
-           Loop_Invariant
-             (IE_Model.Valid_IE_List (Buffer (R .. Buffer'Last), R));
-
-         Is_Last := Is_Last_IE (Buffer (R .. Buffer'Last), R);
-
-         if Filter (Buffer (R .. Buffer'Last)) then
-
-            Move_IE
-              (Buffer        => Buffer,
-               Source_IE_Pos => R,
-               Target_Pos    => W,
-               Is_Last       => Is_Last);
-
-         elsif not Is_Last then
-            R := Next_IE_Position (Buffer (R .. Buffer'Last), R);
-
-            pragma
-              Assert
-                (if not Is_Last
-                 then IE_Model.Valid_IE_List (Buffer (R .. Buffer'Last), R));
-         end if;
-
-         exit when Is_Last;
-      end loop;
-
-      Length := W - Buffer'First;
-   end Filter_And_Transform_IE_List;
 
 end AdaBee.MAC.Frames.Info_Elements.Generic_Lists;

@@ -27,9 +27,8 @@
 with AdaBee.MAC.Frames.Headers.Decoder_Model;
 
 package AdaBee.MAC.Frames.Headers.Encoder_Model
-  with Ghost, Pure, SPARK_Mode, Always_Terminates
+  with Elaborate_Body, Ghost, SPARK_Mode, Always_Terminates
 is
-   use type Interfaces.Unsigned_8;
 
    -----------------------------
    -- MAC Header Layout Model --

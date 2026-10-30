@@ -10,7 +10,7 @@
 with AdaBee.MAC.Frames.Headers.Encoder_Model;
 
 package AdaBee.MAC.Frames.Headers.Encoders
-  with Pure, SPARK_Mode, Always_Terminates
+  with Elaborate_Body, SPARK_Mode, Always_Terminates
 is
 
    procedure Encode_MAC_Header

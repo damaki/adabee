@@ -31,6 +31,8 @@ is
       Transaction_Expired,
       Transaction_Overflow,
       Unavailable_Key,
+      Unavailable_Device,
+      Unavailable_Security_Level,
       Unsupported_Attribute,
       Unsupported_Feature,
       Unsupported_Field,

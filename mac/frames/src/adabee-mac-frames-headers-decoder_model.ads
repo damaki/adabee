@@ -35,13 +35,9 @@ with AdaBee.MAC.Frames.Info_Elements.Headers;
 --  ghost code as it is intended for specification only.
 
 package AdaBee.MAC.Frames.Headers.Decoder_Model
-  with Ghost, Pure, SPARK_mode, Always_Terminates
+  with Ghost, SPARK_mode, Always_Terminates
 is
-   use type Interfaces.Unsigned_8;
    use type AdaBee.MAC.Frames.Info_Elements.Headers.Element_ID_Field;
-
-   package Header_IE_Model renames
-     AdaBee.MAC.Frames.Info_Elements.Headers.Lists.IE_Model;
 
    -------------------------------
    -- Frame Control Field Views --
@@ -947,7 +943,7 @@ is
        then
          Frame'Length > Get_Header_IEs_Offset (Frame)
          and then
-           Info_Elements.Headers.Lists.IE_Model.Valid_IE_List
+           Info_Elements.Headers.Lists.Formal_Model.Valid_IE_List
              (Frame
                 (Frame'First + Get_Header_IEs_Offset (Frame) .. Frame'Last)))
    with Pre => Security_Control_Valid (Frame);
@@ -955,7 +951,7 @@ is
    function Get_Header_IEs_Length (Frame : Byte_Array) return Natural
    is (if Is_Header_IEs_Present (Frame)
        then
-         Info_Elements.Headers.Lists.IE_Model.IE_List_Length
+         Info_Elements.Headers.Lists.Formal_Model.IE_List_Length
            (Frame (Frame'First + Get_Header_IEs_Offset (Frame) .. Frame'Last))
        else 0)
    with
@@ -1027,8 +1023,9 @@ is
    is (Is_MAC_Payload_Present (Frame)
        and then Is_Header_IEs_Present (Frame)
        and then
-         Info_Elements.Headers.Lists.IE_Model.Last_IE_Header_Field
-           (Frame (Frame'First + Get_Header_IEs_Offset (Frame) .. Frame'Last))
+         Info_Elements.Headers.Lists.Formal_Model.Last_IE_Header
+           (Frame (Frame'First + Get_Header_IEs_Offset (Frame) .. Frame'Last),
+            Frame'First + Get_Header_IEs_Offset (Frame))
            .Element_ID
          = Info_Elements.Headers.Header_Termination_1_IE)
    with

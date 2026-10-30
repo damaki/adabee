@@ -44,5 +44,5 @@ adabee_common = "*"
 [[pins]]
 adabee_common = { path='../../common' }
 
-# [[depends-on]]
-# gnatprove = "^15"
+[[depends-on]]
+sparklib = "^16.1.0"

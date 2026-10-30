@@ -22,7 +22,7 @@ with AdaBee.MAC.Frames.Headers.Decoder_Model;
 --  getter functions can be used to read each of the field values.
 
 package AdaBee.MAC.Frames.Headers.Decoders.Views
-  with Pure, SPARK_Mode, Always_Terminates
+  with Elaborate_Body, SPARK_Mode, Always_Terminates
 is
 
    ------------------

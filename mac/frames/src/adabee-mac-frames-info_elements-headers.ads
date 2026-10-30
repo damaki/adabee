@@ -8,12 +8,13 @@ with System;
 
 with AdaBee.MAC.Frames.Beacons;
 with AdaBee.MAC.Frames.Info_Elements.Generic_Lists;
+with AdaBee.MAC.Frames.Info_Elements.Generic_Lists.Lemmas;
 
 --  @summary
 --  Definitions for Header IEs as defined in IEEE 802.15.4-2024 Section 7.4.2
 
 package AdaBee.MAC.Frames.Info_Elements.Headers
-  with Pure, SPARK_Mode, Always_Terminates
+  with SPARK_Mode, Always_Terminates
 is
 
    ----------------------
@@ -102,6 +103,8 @@ is
         Content_Length    => Content_Length,
         Is_Termination_IE => Is_Termination_IE);
 
+   package Lemmas is new Lists.Lemmas;
+
    --------------------------------------------
    -- Simplified Superframe Specification IE --
    --------------------------------------------
@@ -129,7 +132,7 @@ is
        Reserved       at 0 range 13 .. 15;
      end record;
 
-   type Simplified_Superframe_Specification_Field is record
+   type Simplified_Superframe_Spec_Field is record
       Timestamp       : Bits_16;
       Superframe_Spec : Beacons.Superframe_Specification_Field;
       CFP_Spec        : CFP_Specification_Field;
@@ -140,7 +143,7 @@ is
      Bit_Order            => System.Low_Order_First,
      Scalar_Storage_Order => System.Low_Order_First;
 
-   for Simplified_Superframe_Specification_Field use
+   for Simplified_Superframe_Spec_Field use
      record
        Timestamp       at 0 range 0 .. 15;
        Superframe_Spec at 2 range 0 .. 15;
@@ -151,64 +154,42 @@ is
 
    function To_Bytes is new
      Ada.Unchecked_Conversion
-       (Source => Simplified_Superframe_Specification_Field,
+       (Source => Simplified_Superframe_Spec_Field,
         Target => Byte_Array_6);
 
    function From_Bytes is new
      Ada.Unchecked_Conversion
        (Source => Byte_Array_6_Aligned_2,
-        Target => Simplified_Superframe_Specification_Field);
+        Target => Simplified_Superframe_Spec_Field);
 
    Simplified_Superframe_Spec_Header : constant Header_Field :=
      (Element_ID => Simplified_Superframe_Spec_IE,
-      Length     => Length_Field (Simplified_Superframe_Spec_Length),
+      Length     => Simplified_Superframe_Spec_Length,
       IE_Type    => Short);
+   --  IE header content for a Simplified Superframe Specification IE
 
-   function Is_Simplified_Superframe_Specification_IE
+   function Is_Simplified_Superframe_Spec_IE
      (Header : Header_Field) return Boolean
-   is (Header.Element_ID = Simplified_Superframe_Spec_IE
-       and then Natural (Header.Length) = Simplified_Superframe_Spec_Length);
+   is (Header = Simplified_Superframe_Spec_Header);
    --  Returns True if the specified IE header is a simplified superframe
-   --  specification IE with the correct content length.
+   --  specification IE header.
+
+   function Is_Simplified_Superframe_Spec_IE
+     (Header : Header_Field; Content : Byte_Array with Unreferenced)
+      return Boolean
+   is (Is_Simplified_Superframe_Spec_IE (Header));
+   --  Returns True if the specified IE header is a simplified superframe
+   --  specification IE header.
+
+   function Simplified_Superframe_Spec_IE_Content_Length
+     (Spec : Simplified_Superframe_Spec_Field with Unreferenced) return Natural
+   is (Simplified_Superframe_Spec_Field'Size / 8);
+   --  Length of the IE content field for a simplified superframe spec IE
 
    function Always_True
-     (Spec : Simplified_Superframe_Specification_Field with Unreferenced)
-      return Boolean
+     (Spec : Simplified_Superframe_Spec_Field with Unreferenced) return Boolean
    is (True)
    with Ghost;
    --  Dummy function needed to instantiate Append_IE_Inplace_With_Context
-
-   procedure Encode_Simplified_Superframe_Specification_IE
-     (Buffer : out Byte_Array;
-      Length : out Natural;
-      Spec   : Simplified_Superframe_Specification_Field)
-   with
-     Inline,
-     Relaxed_Initialization => Buffer,
-     Pre                    =>
-       Buffer'Length >= IE_Header_Length + Simplified_Superframe_Spec_Length,
-     Post                   =>
-       Length = IE_Header_Length + Simplified_Superframe_Spec_Length
-       and then
-         (declare
-            IE : Byte_Array renames
-              Buffer (Buffer'First .. Buffer'First + (Length - 1));
-          begin
-            IE'Initialized
-            and then Lists.Valid_IE (IE, IE'First)
-            and then
-              Is_Simplified_Superframe_Specification_IE
-                (Lists.IE_Header (IE, IE'First)));
-   --  Encodes a simplified superframe specification IE to a byte array.
-
-   procedure Append_Simplified_Superframe_Specification_IE is new
-     Lists.Append_IE_Inplace_With_Context
-       (Maximum_Content_Length => Simplified_Superframe_Spec_Length,
-        Writer_Context         => Simplified_Superframe_Specification_Field,
-        Precondition           => Always_True,
-        IE_Header_Property     => Is_Simplified_Superframe_Specification_IE,
-        Write_IE               =>
-          Encode_Simplified_Superframe_Specification_IE);
-   --  Appends a simplified superframe specification IE to an IE list
 
 end AdaBee.MAC.Frames.Info_Elements.Headers;
