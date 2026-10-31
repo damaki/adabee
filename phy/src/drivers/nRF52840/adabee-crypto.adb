@@ -34,7 +34,7 @@ is
 
    procedure Disable is
    begin
-      Enabled_Flag := True;
+      Enabled_Flag := False;
    end Disable;
 
    ----------------
