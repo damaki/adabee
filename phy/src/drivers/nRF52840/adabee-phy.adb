@@ -173,6 +173,20 @@ is
    PHY_Rx_Filters : Filter_Array := All_Packets_Allowed_Filter
    with Atomic;
 
+   Radio_Operation_Completed : Boolean := False
+   with Atomic;
+   --  Flag to indicate whether the radio operation (transmit, receive, scan)
+   --  has completed.
+   --
+   --  This flag is set at two times only:
+   --    1. Set to False when the PHY enters an active state (Transmitting,
+   --       Receiving, etc).
+   --    2. Set to True when the radio has completed the operation (e.g. packet
+   --       is received, packet has finished transmitting, scan is completed).
+   --
+   --  This flag is distinct from the Operation_Completed event, as that event
+   --  can be cleared by the user via Clear_Event.
+
    --===============================--
    -- Local Subprogram Declarations --
    --===============================--
@@ -762,6 +776,8 @@ is
             RADIO_Periph.INTENCLR := (DISABLED => Clear, others => <>);
 
             if PHY_API_State = Transmitting then
+               Radio_Operation_Completed := True;
+
                --  Disable the PPI channel used for delayed tx
 
                Clear_Transmit_Interrupts_And_Alarms;
@@ -769,6 +785,7 @@ is
                Set_Event (Operation_Complete);
 
             elsif PHY_API_State = CCA_Scan_Active then
+               Radio_Operation_Completed := True;
 
                --  Disable all PPI channels used for CCA scanning
 
@@ -787,8 +804,8 @@ is
                Set_Event (Operation_Complete);
 
             elsif PHY_API_State = ED_Scan_Active then
+               Radio_Operation_Completed := True;
                Set_Event (Operation_Complete);
-
             end if;
          end if;
 
@@ -1324,6 +1341,7 @@ is
    is
    begin
       PHY_API_State := Transmitting;
+      Radio_Operation_Completed := False;
 
       Prepare_Transmit (Packet, Ignore_CCA);
 
@@ -1350,6 +1368,7 @@ is
 
    begin
       PHY_API_State := Transmitting;
+      Radio_Operation_Completed := False;
 
       Prepare_Transmit (Packet, Ignore_CCA);
 
@@ -1413,7 +1432,7 @@ is
 
    procedure Finish_Transmit is
    begin
-      if RADIO_Periph.STATE.STATE = Disabled then
+      if Radio_Operation_Completed then
          PHY_API_State := Tx_Complete;
          Driver.Clear_Event (Operation_Complete);
       end if;
@@ -1437,6 +1456,7 @@ is
    procedure Start_CCA_Scan is
    begin
       PHY_API_State := CCA_Scan_Active;
+      Radio_Operation_Completed := False;
 
       Prepare_CCA_Scan;
 
@@ -1454,6 +1474,7 @@ is
 
    begin
       PHY_API_State := CCA_Scan_Active;
+      Radio_Operation_Completed := False;
 
       Prepare_CCA_Scan;
 
@@ -1498,7 +1519,7 @@ is
 
    procedure Finish_CCA_Scan is
    begin
-      if RADIO_Periph.STATE.STATE = Disabled then
+      if Radio_Operation_Completed then
          PHY_API_State := CCA_Scan_Complete;
          Driver.Clear_Event (Operation_Complete);
       end if;
@@ -1528,6 +1549,7 @@ is
 
    begin
       PHY_API_State := Receiving;
+      Radio_Operation_Completed := False;
 
       Prepare_Receive;
 
@@ -1562,6 +1584,7 @@ is
 
    begin
       PHY_API_State := Receiving;
+      Radio_Operation_Completed := False;
 
       Prepare_Receive;
 
@@ -1612,8 +1635,7 @@ is
 
    procedure Finish_Receive is
    begin
-      if PHY_API_State = Receiving and then RADIO_Periph.STATE.STATE = Disabled
-      then
+      if Radio_Operation_Completed then
          PHY_API_State := Rx_Complete;
          Driver.Clear_Event (Operation_Complete);
       end if;
@@ -1718,6 +1740,7 @@ is
 
    begin
       PHY_API_State := ED_Scan_Active;
+      Radio_Operation_Completed := False;
 
       Apply_PHY_Config;
 
@@ -1748,7 +1771,7 @@ is
 
    procedure Finish_ED_Scan is
    begin
-      if RADIO_Periph.EVENTS_EDEND.EVENTS_EDEND /= 0 then
+      if Radio_Operation_Completed then
          PHY_API_State := ED_Scan_Complete;
          Driver.Clear_Event (Operation_Complete);
       end if;
