@@ -45,7 +45,10 @@ is
      (Key       : Byte_Array;
       Algorithm : Algorithm_Kind;
       ID        : out Key_ID;
-      Status    : out Status_Code) is
+      Status    : out Status_Code)
+   is
+      pragma Unreferenced (Key);
+      pragma Unreferenced (Algorithm);
    begin
       ID := 0;
       Status := Not_Supported;
