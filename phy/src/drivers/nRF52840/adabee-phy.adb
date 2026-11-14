@@ -187,6 +187,9 @@ is
    --  This flag is distinct from the Operation_Completed event, as that event
    --  can be cleared by the user via Clear_Event.
 
+   Last_CCA_Result : CCA_Result_Kind := Clear
+   with Atomic;
+
    --===============================--
    -- Local Subprogram Declarations --
    --===============================--
@@ -430,6 +433,8 @@ is
    private
 
       procedure Check_Received_Packet (Allow_Rx_Reenable : Boolean);
+      procedure Transmit_End;
+      procedure CCA_Scan_End;
 
       procedure EGU_Interrupt_Handler
       with Attach_Handler => BSP.Config.Radio_EGU_Interrupt;
@@ -615,11 +620,12 @@ is
 
          if (PHY_Rx_Filters (Allow_Invalid_CRC) or else CRC_OK)
            and then
-             (PHY_Rx_Filters (Allow_Empty_Packets)
-              or else PHY_Packet_Buffer.Length = 0)
-           and then PHY_Rx_Filters (Filter_Kind'Val (Frame_Type))
+             (if PHY_Packet_Buffer.Length = 0
+              then PHY_Rx_Filters (Allow_Empty_Packets)
+              else PHY_Rx_Filters (Filter_Kind'Val (Frame_Type)))
          then
             --  Packet passes the rx filters
+            Radio_Operation_Completed := True;
             RADIO_Periph.TASKS_DISABLE := (TASKS_DISABLE => 1, others => <>);
             Have_Rx_Packet := True;
             Clear_Receive_Interrupts_And_Alarms;
@@ -630,6 +636,7 @@ is
             --  deadline has not already passed.
 
             if SFD_Deadline_Reached then
+               Radio_Operation_Completed := True;
                Clear_Receive_Interrupts_And_Alarms;
                Set_Event (Operation_Complete);
 
@@ -652,6 +659,42 @@ is
             end if;
          end if;
       end Check_Received_Packet;
+
+      ------------------
+      -- Transmit_End --
+      ------------------
+
+      procedure Transmit_End is
+      begin
+         Radio_Operation_Completed := True;
+         Clear_Transmit_Interrupts_And_Alarms;
+         Set_Event (Operation_Complete);
+      end Transmit_End;
+
+      ------------------
+      -- CCA_Scan_End --
+      ------------------
+
+      procedure CCA_Scan_End is
+      begin
+         Radio_Operation_Completed := True;
+
+         --  Disable all PPI channels used for CCA scanning
+
+         PPI_Periph.CHENCLR :=
+           (As_Array => True,
+            Arr      =>
+              [PPI_CH_CCA_Delayed_RXEN    => Clear,
+               PPA_CH_CCA_CCAIDLE_DISABLE => Clear,
+               others                     => <>]);
+
+         --  Cancel all CCA alarms
+
+         PPI_Scheduler.Scheduler.Cancel_High_Precision_Alarm
+           (Channel => PPISCH_CH_CCA_Start_Delayed);
+
+         Set_Event (Operation_Complete);
+      end CCA_Scan_End;
 
       ---------------------------
       -- EGU_Interrupt_Handler --
@@ -676,6 +719,7 @@ is
                   Check_Received_Packet (Allow_Rx_Reenable => False);
                end if;
 
+               Radio_Operation_Completed := True;
                Clear_Receive_Interrupts_And_Alarms;
                Set_Event (Operation_Complete);
             end if;
@@ -764,44 +808,32 @@ is
 
             if PHY_API_State = Receiving then
                Check_Received_Packet (Allow_Rx_Reenable => True);
-
             elsif PHY_API_State = Transmitting then
-               Radio_Operation_Completed := True;
-
-               --  Disable the PPI channel used for delayed tx
-
-               Clear_Transmit_Interrupts_And_Alarms;
-
-               Set_Event (Operation_Complete);
+               Transmit_End;
             end if;
          end if;
 
          --  Check for CCA completion
 
-         if RADIO_Periph.EVENTS_CCAIDLE.EVENTS_CCAIDLE /= 0
-           or else RADIO_Periph.EVENTS_CCABUSY.EVENTS_CCABUSY /= 0
-         then
-            RADIO_Periph.EVENTS_CCAIDLE := (EVENTS_CCAIDLE => 0, others => <>);
+         if RADIO_Periph.EVENTS_CCABUSY.EVENTS_CCABUSY /= 0 then
             RADIO_Periph.EVENTS_CCABUSY := (EVENTS_CCABUSY => 0, others => <>);
 
+            Last_CCA_Result := Busy;
+
+            if PHY_API_State = Transmitting then
+               Transmit_End;
+            elsif PHY_API_State = CCA_Scan_Active then
+               CCA_Scan_End;
+            end if;
+         end if;
+
+         if RADIO_Periph.EVENTS_CCAIDLE.EVENTS_CCAIDLE /= 0 then
+            RADIO_Periph.EVENTS_CCAIDLE := (EVENTS_CCAIDLE => 0, others => <>);
+
+            Last_CCA_Result := Clear;
+
             if PHY_API_State = CCA_Scan_Active then
-               Radio_Operation_Completed := True;
-
-               --  Disable all PPI channels used for CCA scanning
-
-               PPI_Periph.CHENCLR :=
-                 (As_Array => True,
-                  Arr      =>
-                    [PPI_CH_CCA_Delayed_RXEN    => Clear,
-                     PPA_CH_CCA_CCAIDLE_DISABLE => Clear,
-                     others                     => <>]);
-
-               --  Cancel all CCA alarms
-
-               PPI_Scheduler.Scheduler.Cancel_High_Precision_Alarm
-                 (Channel => PPISCH_CH_CCA_Start_Delayed);
-
-               Set_Event (Operation_Complete);
+               CCA_Scan_End;
             end if;
          end if;
 
@@ -892,8 +924,6 @@ is
    -------------------
 
    function Get_Device_ID return Bits_64 is
-      use Interfaces;
-
       Nordic_Semi_OUI : constant Bits_24 := 16#F4CE36#;
 
       Vendor_OUI : constant Bits_24 :=
@@ -1535,10 +1565,7 @@ is
 
    procedure Get_CCA_Result (CCA_Result : out CCA_Result_Kind) is
    begin
-      CCA_Result :=
-        (if RADIO_Periph.EVENTS_CCABUSY.EVENTS_CCABUSY = 0
-         then Clear
-         else Busy);
+      CCA_Result := Last_CCA_Result;
    end Get_CCA_Result;
 
    -----------------
@@ -1909,6 +1936,8 @@ is
          --  No CCA, so immediately start transmitting when TXRU has finished,
          --  then disable the radio at the end of the packet.
 
+         Last_CCA_Result := Clear;
+
          RADIO_Periph.SHORTS :=
            (READY_START => Enabled, END_DISABLE => Enabled, others => <>);
       else
@@ -1926,10 +1955,11 @@ is
             others           => <>);
       end if;
 
-      --  We use the DISABLED event to indicate that the transmission has
+      --  We use the END event to indicate that the transmission has
       --  finished, so ensure the event is cleared before we start.
       --  Also clear any CCA-related events.
 
+      RADIO_Periph.EVENTS_END := (EVENTS_END => 0, others => <>);
       RADIO_Periph.EVENTS_DISABLED := (EVENTS_DISABLED => 0, others => <>);
       RADIO_Periph.EVENTS_CCAIDLE := (EVENTS_CCAIDLE => 0, others => <>);
       RADIO_Periph.EVENTS_CCABUSY := (EVENTS_CCABUSY => 0, others => <>);
