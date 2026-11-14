@@ -764,18 +764,8 @@ is
 
             if PHY_API_State = Receiving then
                Check_Received_Packet (Allow_Rx_Reenable => True);
-            end if;
-         end if;
 
-         --  Check for end of Tx/Rx
-
-         if RADIO_Periph.EVENTS_DISABLED.EVENTS_DISABLED /= 0 then
-            RADIO_Periph.EVENTS_DISABLED :=
-              (EVENTS_DISABLED => 0, others => <>);
-
-            RADIO_Periph.INTENCLR := (DISABLED => Clear, others => <>);
-
-            if PHY_API_State = Transmitting then
+            elsif PHY_API_State = Transmitting then
                Radio_Operation_Completed := True;
 
                --  Disable the PPI channel used for delayed tx
@@ -783,8 +773,18 @@ is
                Clear_Transmit_Interrupts_And_Alarms;
 
                Set_Event (Operation_Complete);
+            end if;
+         end if;
 
-            elsif PHY_API_State = CCA_Scan_Active then
+         --  Check for CCA completion
+
+         if RADIO_Periph.EVENTS_CCAIDLE.EVENTS_CCAIDLE /= 0
+           or else RADIO_Periph.EVENTS_CCABUSY.EVENTS_CCABUSY /= 0
+         then
+            RADIO_Periph.EVENTS_CCAIDLE := (EVENTS_CCAIDLE => 0, others => <>);
+            RADIO_Periph.EVENTS_CCABUSY := (EVENTS_CCABUSY => 0, others => <>);
+
+            if PHY_API_State = CCA_Scan_Active then
                Radio_Operation_Completed := True;
 
                --  Disable all PPI channels used for CCA scanning
@@ -802,8 +802,15 @@ is
                  (Channel => PPISCH_CH_CCA_Start_Delayed);
 
                Set_Event (Operation_Complete);
+            end if;
+         end if;
 
-            elsif PHY_API_State = ED_Scan_Active then
+         --  Check for ED scan completion
+
+         if RADIO_Periph.EVENTS_EDEND.EVENTS_EDEND /= 0 then
+            RADIO_Periph.EVENTS_EDEND := (EVENTS_EDEND => 0, others => <>);
+
+            if PHY_API_State = ED_Scan_Active then
                Radio_Operation_Completed := True;
                Set_Event (Operation_Complete);
             end if;
@@ -945,16 +952,13 @@ is
          Driver.Clear_Event (Operation_Complete);
 
       --  The radio is only active while the PHY is in one of these states.
-      --  For all other states the radio is disabled.
+      --  For all other states the radio is already disabled.
 
-      elsif PHY_API_State
-            in Transmitting | Receiving | ED_Scan_Active | CCA_Scan_Active
-      then
+      else
          Cancel_Current_Operation;
 
-         --  Wait for the radio to be disabled.
-         --  I.e. wait for the radio to move to the DISABLED state
-         --  (from either TXDISABLE or RXDISABLE).
+         --  Wait for the radio to move to the DISABLED state (from either
+         --  TXDISABLE or RXDISABLE).
          --
          --  This takes max. 21 us (going from TX to DISABLED).
 
@@ -1755,7 +1759,7 @@ is
       RADIO_Periph.SHORTS :=
         (READY_EDSTART => Enabled, EDEND_DISABLE => Enabled, others => <>);
 
-      RADIO_Periph.INTENSET := (DISABLED => Set, others => <>);
+      RADIO_Periph.INTENSET := (EDEND => Set, others => <>);
 
       --  Start ED scan
 
@@ -1958,7 +1962,7 @@ is
          PHYEND     => Clear,
          others     => <>);
 
-      RADIO_Periph.INTENSET := (DISABLED => Set, others => <>);
+      RADIO_Periph.INTENSET := (END_k => Set, others => <>);
 
       --  Configure timestamp capture on FRAMESTART
 
@@ -2152,7 +2156,7 @@ is
          PHYEND     => Clear,
          others     => <>);
 
-      RADIO_Periph.INTENSET := (DISABLED => Set, others => <>);
+      RADIO_Periph.INTENSET := (CCAIDLE => Set, CCABUSY => Set, others => <>);
    end Prepare_CCA_Scan;
 
    -----------------------------
@@ -2280,7 +2284,7 @@ is
 
       --  Disable the radio, if it isn't already
 
-      if RADIO_Periph.STATE.STATE /= Disabled then
+      if RADIO_Periph.STATE.STATE not in Disabled | RxDisable | TxDisable then
          RADIO_Periph.TASKS_DISABLE := (TASKS_DISABLE => 1, others => <>);
       end if;
    end Cancel_Current_Operation;
