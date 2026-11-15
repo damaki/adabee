@@ -6,6 +6,7 @@
 with Ada.Interrupts.Names;
 with Ada.Unchecked_Conversion;
 with System;
+with System.Machine_Code; use System.Machine_Code;
 
 with Adabee_Phy_Config;
 
@@ -265,6 +266,10 @@ is
    --
    --  For example, To_Frequency (11) returns 5, meaning a frequency of
    --  2405 MHz.
+
+   function Bit_Reverse (Value : Bits_16) return Bits_16
+   with Inline;
+   --  Bit-reverse a 16-bit value
 
    --=====================--
    -- Peripherals Mapping --
@@ -1711,6 +1716,11 @@ is
       Length   : out Packet_Length_Number;
       Metadata : out Receive_Metadata)
    is
+      RXCRC_Register : Bits_16
+      with Volatile, Import, Address => RADIO_Periph.RXCRC'Address;
+
+      RXCRC : Bits_16;
+
       LQI_Correction_Factor : constant := 4;
       --  The LQI reported by hardware must be converted to IEEE 802.15.4
       --  range by an 8-bit saturating multiplication by 4.
@@ -1729,20 +1739,52 @@ is
 
       Get_Packet_Timestamps (Metadata.Timestamps, Length);
 
-      if Length > 2 then
-         --  The LQI is appended immediately after the last received octet.
-         --
-         --  Note that the hardware CRC checking must be enabled, in which
-         --  case the LQI replaces the CRC in the received frame.
+      --  Copy the packet content, except for the CRC (last 2 bytes) as this
+      --  is omitted from the packet buffer by the RADIO peripheral when
+      --  hardware CRC checking is enabled (the received CRC is instead stored
+      --  in the RXCRC register).
 
-         Uncorrected_LQI :=
-           LQI_Number (PHY_Packet_Buffer.Payload (Length - 1));
-      else
-         Uncorrected_LQI := 0;
-      end if;
+      Packet (Packet'First .. Packet'First + (Length - 3)) :=
+        PHY_Packet_Buffer.Payload (1 .. (Length - 2));
 
-      Packet (Packet'First .. Packet'First + (Length - 1)) :=
-        PHY_Packet_Buffer.Payload (1 .. Length);
+      --  Extract the received CRC (from the RXCRC register) and the LQI
+
+      case Length is
+         when 0      =>
+            Uncorrected_LQI := 0;
+
+         when 1      =>
+            RXCRC := Bit_Reverse (RXCRC_Register);
+            Packet (Packet'First) := Bits_8 (RXCRC and 16#FF#);
+
+            Uncorrected_LQI := 0;
+
+         when others =>
+            RXCRC := Bit_Reverse (RXCRC_Register);
+
+            Packet (Packet'First + (Length - 2)) := Bits_8 (RXCRC and 16#FF#);
+            Packet (Packet'First + (Length - 1)) :=
+              Bits_8 ((RXCRC / 2 ** 8) and 16#FF#);
+
+            --  The LQI is only valid for frames equal to or longer than 3
+            --  octets.
+
+            if Length >= 3 then
+
+               --  The LQI is appended immediately after the last received
+               --  octet.
+               --
+               --  Note that the CRC field is omitted in the packet buffer by
+               --  the RADIO peripheral when hardware CRC checking is enabled,
+               --  so the LQI is written to where the CRC would be.
+
+               Uncorrected_LQI :=
+                 LQI_Number (PHY_Packet_Buffer.Payload (Length - 1));
+
+            else
+               Uncorrected_LQI := 0;
+            end if;
+      end case;
 
       --  Correct the LQI (saturating multiplication by 4)
 
@@ -2406,5 +2448,26 @@ is
       PPI_Periph.CH (Channel) := (EEP => 0, TEP => 0);
       PPI_Periph.FORK (Channel).TEP := 0;
    end Disable_PPI;
+
+   -----------------
+   -- Bit_Reverse --
+   -----------------
+
+   function Bit_Reverse (Value : Bits_16) return Bits_16 is
+      Result : Unsigned_32;
+   begin
+      --  The nRF52840 uses a Cortex-M4 CPU, which supports the rbit
+      --  instruction.
+
+      --!format off
+      Asm
+        ("rbit %0, %1",
+         Outputs  => Unsigned_32'Asm_Output ("=r", Result),
+         Inputs   => Unsigned_32'Asm_Input ("r", Bits_32 (Value)),
+         Volatile => False);
+      --!format on
+
+      return Bits_16 (Shift_Right (Result, 16));
+   end Bit_Reverse;
 
 end AdaBee.PHY;
