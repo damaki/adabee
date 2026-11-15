@@ -795,9 +795,21 @@ is
             if PHY_API_State = Receiving then
                PPI_Scheduler.Scheduler.Get_Capture_Timestamp
                  (Channel => PPISCH_CH_Rx_Framestart, Timestamp => SFD_Time);
+
+               --  The receive sequence triggers FRAMESTART at the end of the
+               --  PHR, so adjust it backwards by one octet to calculate the
+               --  time at the end of the SFD.
+
+               SFD_Time :=
+                 SFD_Time
+                 - (Time_Units.Time_Span (Nb_Symbols_Per_Octet) / Symbol_Rate);
+
             elsif PHY_API_State = Transmitting then
                PPI_Scheduler.Scheduler.Get_Capture_Timestamp
                  (Channel => PPISCH_CH_Tx_Framestart, Timestamp => SFD_Time);
+
+               --  The transmit sequence triggers FRAMESTART at the end of the
+               --  SFD, so no adjustment is needed.
             end if;
          end if;
 

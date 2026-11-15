@@ -49,7 +49,8 @@ package AdaBee.PHY
     SPARK_Mode        => On,
     Abstract_State    =>
       ((Radio_Device with
-        External => (Async_Readers, Async_Writers, Effective_Writes)),
+        External =>
+          (Async_Readers, Effective_Reads, Async_Writers, Effective_Writes)),
       --  Models the radio hardware.
 
       (Radio_Clock with
@@ -90,7 +91,6 @@ package AdaBee.PHY
 is
 
    use type AdaBee.Time_Units.Time_Span;
-   use type Interfaces.Unsigned_8;
 
    -----------
    -- Types --
@@ -135,13 +135,16 @@ is
 
    type Packet_Timestamps is record
       Preamble_Start : Radio_Clock_Time_Range;
-      --  Timestamp of the start of the packet (start of the preamble)
+      --  Timestamp of the start of the packet.
+      --
+      --  This is the time of the first bit of the preamble.
 
       SFD : Radio_Clock_Time_Range;
-      --  Timestamp of the end of the SFD part of the frame
+      --  Timestamp at the end of the last bit of the SFD part of the frame.
 
       Payload_End : Radio_Clock_Time_Range;
-      --  Timestamp of the end of the packet (end of the last payload byte)
+      --  Timestamp of the end of the packet (the time at the end of the last
+      --  bit of the frame).
    end record
    with Predicate => Preamble_Start <= SFD and then SFD <= Payload_End;
 
@@ -670,7 +673,7 @@ is
      Inline,
      Volatile_Function,
      Global => (Input => Radio_Events, Proof_In => Radio_State),
-     Post =>
+     Post   =>
        --  Operation_Complete event is only set in a subset of API states
        (if Event = Operation_Complete and then Is_Event_Set'Result
         then
