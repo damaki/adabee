@@ -190,6 +190,11 @@ is
    Last_CCA_Result : CCA_Result_Kind := Clear
    with Atomic;
 
+   CRC_Error_Counter : Bits_32 := 0
+   with Atomic;
+   --  Counts the number of received packets (before filtering) that failed the
+   --  CRC check
+
    --===============================--
    -- Local Subprogram Declarations --
    --===============================--
@@ -612,9 +617,13 @@ is
          Frame_Type : Bits_8;
 
       begin
-         --  Check against filters
-
          CRC_OK := RADIO_Periph.CRCSTATUS.CRCSTATUS = CRCOk;
+
+         --  Increment CRC fail counter if the CRC_OK is False.
+
+         CRC_Error_Counter := CRC_Error_Counter + Boolean'Pos (not CRC_OK);
+
+         --  Check receive filters
 
          Frame_Type := PHY_Packet_Buffer.Payload (1) and 2#0000_0111#;
 
@@ -805,11 +814,13 @@ is
                  - (Time_Units.Time_Span (Nb_Symbols_Per_Octet) / Symbol_Rate);
 
             elsif PHY_API_State = Transmitting then
-               PPI_Scheduler.Scheduler.Get_Capture_Timestamp
-                 (Channel => PPISCH_CH_Tx_Framestart, Timestamp => SFD_Time);
 
                --  The transmit sequence triggers FRAMESTART at the end of the
                --  SFD, so no adjustment is needed.
+
+               PPI_Scheduler.Scheduler.Get_Capture_Timestamp
+                 (Channel => PPISCH_CH_Tx_Framestart, Timestamp => SFD_Time);
+
             end if;
          end if;
 
@@ -1836,6 +1847,24 @@ is
       EDLVL := Natural'Min (EDLVL * ED_RSSISCALE, 255);
       Max_ED := ED_Range (EDLVL);
    end Get_ED_Scan_Result;
+
+   ----------------------------
+   -- Read_CRC_Error_Counter --
+   ----------------------------
+
+   procedure Read_CRC_Error_Counter (Counter : out Bits_32) is
+   begin
+      Counter := CRC_Error_Counter;
+   end Read_CRC_Error_Counter;
+
+   -----------------------------
+   -- Reset_CRC_Error_Counter --
+   -----------------------------
+
+   procedure Reset_CRC_Error_Counter is
+   begin
+      CRC_Error_Counter := 0;
+   end Reset_CRC_Error_Counter;
 
    --------------------
    -- Power_On_Radio --

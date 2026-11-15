@@ -61,6 +61,9 @@ package AdaBee.PHY
       (Radio_Events with Synchronous, External => Async_Writers),
       --  Event flags that are set by various actors.
 
+      (Radio_Counters with External => Async_Writers),
+      --  Counters managed by the radio driver (e.g. CRC fail count)
+
       Radio_State,
       --  Represents the current radio API state (Off, Sleeping,
       --  Transmitting, etc). This state is changed only by
@@ -80,6 +83,7 @@ package AdaBee.PHY
       (Radio_Device,
        Radio_Clock,
        Radio_Events,
+       Radio_Counters,
        Radio_State,
        Packet_Info,
        PIB_Attributes,
@@ -1245,5 +1249,22 @@ is
    --  Get the energy detection scan result and transition to the Idle state.
    --
    --  @param Max_ED The maximum energy level detected during the scan, in dBm.
+
+   --------------
+   -- Counters --
+   --------------
+
+   procedure Read_CRC_Error_Counter (Counter : out Bits_32)
+   with Inline, Global => (Input => Radio_Counters);
+   --  Get the number of packets that were received by the PHY with an invalid
+   --  CRC.
+   --
+   --  This counter is incremented before receive filters are applied.
+   --
+   --  This counter wraps to zero at the end of the 32-bit range.
+
+   procedure Reset_CRC_Error_Counter
+   with Inline, Global => (In_Out => Radio_Counters);
+   --  Reset the CRC fail counter to zero
 
 end AdaBee.PHY;
