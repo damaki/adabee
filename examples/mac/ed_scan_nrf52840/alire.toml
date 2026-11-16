@@ -15,9 +15,12 @@ executables = ["ed_scan_nrf52840"]
 "*".ada_version = "Ada2022"
 release.runtime_checks = "None"
 
+[gpr-set-externals]
+SPARKLIB_MODE = "light"
+
 [[depends-on]]
 adabee_mlme = "*"
-light_tasking_nrf52840 = "^15.4.0"
+light_tasking_nrf52840 = "^16.0.0"
 
 [[pins]]
 adabee_mlme = { path = "../../../mac/mlme" }
