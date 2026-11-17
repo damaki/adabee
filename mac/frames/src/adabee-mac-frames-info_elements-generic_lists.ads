@@ -264,6 +264,12 @@ is
       --  The set of positions of all IEs reachable in the IE list starting at
       --  position From in Buffer.
 
+      function Reachable_Set (Buffer : Byte_Array) return S.Set
+      is (Reachable_Set (Buffer, Buffer'First))
+      with
+        Pre      => Valid_IE_List (Buffer),
+        Annotate => (GNATprove, Inline_For_Proof);
+
       function Model (Buffer : Byte_Array; From : Positive) return V.Sequence
       is (if Is_Last_IE (Buffer, From)
           then V.Add (V.Empty_Sequence, From)
@@ -311,6 +317,12 @@ is
       --  what makes the model of an IE position reachable from From a prefix
       --  of the model of From, so that segments of the structure can be
       --  expressed using "<=" and Range_Shifted on sequences.
+
+      function Model (Buffer : Byte_Array) return V.Sequence
+      is (Model (Buffer, Buffer'First))
+      with
+        Pre      => Valid_IE_List (Buffer),
+        Annotate => (GNATprove, Inline_For_Proof);
 
       ------------------
       -- Reachability --
