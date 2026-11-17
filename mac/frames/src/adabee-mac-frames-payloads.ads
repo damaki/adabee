@@ -37,8 +37,13 @@ is
          (Status = Success)
          = (not Payload_IEs_Present
             or else
-              Info_Elements.Payloads.Lists.Formal_Model.Valid_IE_List
-                (Buffer (Layout.MAC_Payload_First .. Layout.MAC_Payload_Last)))
+              (Info_Elements.Payloads.Lists.Formal_Model.Valid_IE_List
+                 (Buffer (Layout.MAC_Payload_First .. Layout.MAC_Payload_Last))
+               and then
+                 Info_Elements.Payloads.Nested_IE_Lists_Valid
+                   (Buffer
+                      (Layout.MAC_Payload_First .. Layout.MAC_Payload_Last),
+                    Layout.MAC_Payload_First)))
 
        and then
          (if Status = Success
@@ -60,6 +65,13 @@ is
                    (Buffer
                       (Layout.MAC_Payload_First .. Layout.Payload_IEs_Last))
 
+                 --  Any nested IE lists are also valid
+                 and then
+                   Info_Elements.Payloads.Nested_IE_Lists_Valid
+                     (Buffer
+                        (Layout.MAC_Payload_First .. Layout.Payload_IEs_Last),
+                      Layout.MAC_Payload_First)
+
                  --  The calculated length of the payload IE list correctly
                  --  matches the actual length of the IE list in the buffer.
                  and then
@@ -78,8 +90,10 @@ is
    --  Determines the positions and size of the payload IEs and the frame
    --  payload fields of the MAC payload field.
    --
-   --  If Payload_IEs_Present is True, then the payload IE list is validated;
-   --  Status is set to Success if and only if this validation is successful.
+   --  If Payload_IEs_Present is True, then the payload IE list and any nested
+   --  IE lists are validated. Status is set to Success if and only if this
+   --  validation is successful.
+   --
    --  If Payload_IEs_Present is False, then the frame payload is the only
    --  field in the MAC payload.
 
