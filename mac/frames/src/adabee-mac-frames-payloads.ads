@@ -4,6 +4,7 @@
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
 
+with AdaBee.MAC.Frames.Headers.Decoder_Model;
 with AdaBee.MAC.Frames.Layouts;
 with AdaBee.MAC.Frames.Info_Elements.Payloads;
 
@@ -15,16 +16,27 @@ package AdaBee.MAC.Frames.Payloads
 is
 
    procedure Decode_MAC_Payload_Layout
-     (Buffer              : Byte_Array;
+     (Frame               : Byte_Array;
       Layout              : in out Layouts.Frame_Layout;
       Payload_IEs_Present : Boolean;
       Status              : out Status_Code)
    with
      Global => null,
      Pre    =>
-       Layout.MAC_Payload_First <= Layout.MAC_Payload_Last
-       and then Layout.MAC_Payload_First >= Buffer'First
-       and then Layout.MAC_Payload_Last <= Buffer'Last,
+       Headers.Decoder_Model.Is_MHR_Valid (Frame)
+       and then Headers.Decoder_Model.Is_MAC_Payload_Present (Frame)
+       and then
+         Payload_IEs_Present
+         = Headers.Decoder_Model.Is_Payload_IE_Present (Frame)
+       and then
+         Layouts.Formal_Model.MAC_Header_Layout_Matches_Model (Frame, Layout)
+       and then
+         Layout.MAC_Payload_First
+         = Frame'First + Headers.Decoder_Model.Get_MAC_Payload_Offset (Frame)
+       and then
+         Layout.MAC_Payload_Last
+         = Layout.MAC_Payload_First
+           + (Headers.Decoder_Model.Get_MAC_Payload_Length (Frame) - 1),
      Post   =>
        --  Unchanged layout fields
        Layout.Header_IEs_First = Layout'Old.Header_IEs_First
@@ -39,58 +51,18 @@ is
          = (not Payload_IEs_Present
             or else
               (Info_Elements.Payloads.Lists.Formal_Model.Valid_IE_List
-                 (Buffer (Layout.MAC_Payload_First .. Layout.MAC_Payload_Last))
+                 (Frame (Layout.MAC_Payload_First .. Layout.MAC_Payload_Last))
                and then
                  Info_Elements.Payloads.Nested_IE_Lists_Valid
-                   (Buffer
+                   (Frame
                       (Layout.MAC_Payload_First .. Layout.MAC_Payload_Last),
                     Layout.MAC_Payload_First)))
 
        and then
          (if Status = Success
-          then
-            --  Payload_IEs_Last is after the MAC payload start if payload IEs
-            --  are present.
-            (Layout.Payload_IEs_Last > Layout.MAC_Payload_First)
-            = Payload_IEs_Present
-
-            --  Payload_IEs_Last does not exceed the end of the MAC payload
-            and then Layout.Payload_IEs_Last <= Layout.MAC_Payload_Last
-
-            and then
-              (if Payload_IEs_Present
-               then
-                 --  The slice of Buffer containing the payload IEs is a valid
-                 --  IE list.
-                 Info_Elements.Payloads.Lists.Formal_Model.Valid_IE_List
-                   (Buffer
-                      (Layout.MAC_Payload_First .. Layout.Payload_IEs_Last))
-
-                 --  Any nested IE lists are also valid
-                 and then
-                   Info_Elements.Payloads.Nested_IE_Lists_Valid
-                     (Buffer
-                        (Layout.MAC_Payload_First .. Layout.Payload_IEs_Last),
-                      Layout.MAC_Payload_First)
-
-                 --  The calculated length of the payload IE list correctly
-                 --  matches the actual length of the IE list in the buffer.
-                 and then
-                   Layouts.Payload_IEs_Length (Layout)
-                   = Info_Elements.Payloads.Lists.Formal_Model.IE_List_Length
-                       (Buffer
-                          (Layout.MAC_Payload_First
-                           .. Layout.MAC_Payload_Last)))
-
-            --  If payload IEs are not present, then the frame payload makes
-            --  up the entirety of the MAC payload.
-            and then
-              (if not Payload_IEs_Present
-               then
-                 Layouts.Frame_Payload_Length (Layout)
-                 = Layouts.MAC_Payload_Length (Layout)));
-   --  Determines the positions and size of the payload IEs and the frame
-   --  payload fields of the MAC payload field.
+          then Layouts.Formal_Model.Layout_Matches_Model (Frame, Layout));
+   --  Determines the positions and size of the payload IEs and the Frame
+   --  Payload fields within the MAC payload field.
    --
    --  If Payload_IEs_Present is True, then the payload IE list and any nested
    --  IE lists are validated. Status is set to Success if and only if this

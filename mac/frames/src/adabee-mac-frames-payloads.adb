@@ -13,7 +13,7 @@ is
    -------------------------------
 
    procedure Decode_MAC_Payload_Layout
-     (Buffer              : Byte_Array;
+     (Frame              : Byte_Array;
       Layout              : in out Layouts.Frame_Layout;
       Payload_IEs_Present : Boolean;
       Status              : out Status_Code)
@@ -24,7 +24,7 @@ is
       if Payload_IEs_Present then
          Info_Elements.Payloads.Validate_Payload_And_Nested_IE_Lists
            (Buffer  =>
-              Buffer (Layout.MAC_Payload_First .. Layout.MAC_Payload_Last),
+              Frame (Layout.MAC_Payload_First .. Layout.MAC_Payload_Last),
             Length  => Length,
             Result  => Status,
             Last_IE => Unused);
@@ -34,17 +34,17 @@ is
 
             Info_Elements.Payloads.Lemmas.Lemma_Valid_IE_List_Preserved
               (B1 =>
-                 Buffer (Layout.MAC_Payload_First .. Layout.MAC_Payload_Last),
+                 Frame (Layout.MAC_Payload_First .. Layout.MAC_Payload_Last),
                B2 =>
-                 Buffer (Layout.MAC_Payload_First .. Layout.Payload_IEs_Last),
+                 Frame (Layout.MAC_Payload_First .. Layout.Payload_IEs_Last),
                X1 => Layout.MAC_Payload_First,
                X2 => Layout.MAC_Payload_First);
 
             Info_Elements.Payloads.Lemmas.Lemma_Reachable_Set_Preserved
               (B1 =>
-                 Buffer (Layout.MAC_Payload_First .. Layout.MAC_Payload_Last),
+                 Frame (Layout.MAC_Payload_First .. Layout.MAC_Payload_Last),
                B2 =>
-                 Buffer (Layout.MAC_Payload_First .. Layout.Payload_IEs_Last),
+                 Frame (Layout.MAC_Payload_First .. Layout.Payload_IEs_Last),
                X  => Layout.MAC_Payload_First);
          end if;
       else
