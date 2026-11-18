@@ -1003,6 +1003,22 @@ is
      Pre =>
        Security_Control_Valid (Frame) and then Is_Header_IEs_Valid (Frame);
 
+   function Get_MAC_Payload_Content (Frame : Byte_Array) return Byte_Array
+   is (if Is_MAC_Payload_Present (Frame)
+       then
+         Frame
+           (Frame'First + Get_MAC_Payload_Offset (Frame)
+            ..
+              Frame'First
+              + Get_MAC_Payload_Offset (Frame)
+              + (Get_MAC_Payload_Length (Frame) - 1))
+       else Empty_Byte_Array)
+   with
+     Pre  =>
+       Security_Control_Valid (Frame) and then Is_Header_IEs_Valid (Frame),
+     Post =>
+       Get_MAC_Payload_Content'Result'Length = Get_MAC_Payload_Length (Frame);
+
    -----------------
    -- Payload IEs --
    -----------------
