@@ -4,6 +4,7 @@
 --  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 --
 
+with AdaBee.MAC.Frames.Layouts;
 with AdaBee.MAC.Frames.Info_Elements.Payloads;
 
 --  This package provides utilties for decoding the MAC payload field of
@@ -15,7 +16,7 @@ is
 
    procedure Decode_MAC_Payload_Layout
      (Buffer              : Byte_Array;
-      Layout              : in out Frame_Layout;
+      Layout              : in out Layouts.Frame_Layout;
       Payload_IEs_Present : Boolean;
       Status              : out Status_Code)
    with
@@ -31,8 +32,8 @@ is
        and then Layout.MAC_Payload_First = Layout'Old.MAC_Payload_First
        and then Layout.MAC_Payload_Last = Layout'Old.MAC_Payload_Last
 
-       --  Status is set to Success if and only if the payload IE list was
-       --  correctly parsed.
+       --  Status is set to Success if and only if the payload and nested IE
+       --  lists were successfully validated.
        and then
          (Status = Success)
          = (not Payload_IEs_Present
@@ -75,7 +76,7 @@ is
                  --  The calculated length of the payload IE list correctly
                  --  matches the actual length of the IE list in the buffer.
                  and then
-                   Payload_IEs_Length (Layout)
+                   Layouts.Payload_IEs_Length (Layout)
                    = Info_Elements.Payloads.Lists.Formal_Model.IE_List_Length
                        (Buffer
                           (Layout.MAC_Payload_First
@@ -86,7 +87,8 @@ is
             and then
               (if not Payload_IEs_Present
                then
-                 Frame_Payload_Length (Layout) = MAC_Payload_Length (Layout)));
+                 Layouts.Frame_Payload_Length (Layout)
+                 = Layouts.MAC_Payload_Length (Layout)));
    --  Determines the positions and size of the payload IEs and the frame
    --  payload fields of the MAC payload field.
    --

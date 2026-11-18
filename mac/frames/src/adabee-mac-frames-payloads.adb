@@ -14,7 +14,7 @@ is
 
    procedure Decode_MAC_Payload_Layout
      (Buffer              : Byte_Array;
-      Layout              : in out Frame_Layout;
+      Layout              : in out Layouts.Frame_Layout;
       Payload_IEs_Present : Boolean;
       Status              : out Status_Code)
    is
