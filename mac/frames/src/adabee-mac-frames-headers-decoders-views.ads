@@ -276,9 +276,9 @@ is
        = Decoder_Model.Get_Destination_PAN_ID (Frame);
    --  Read the Destination PAN ID field from the MAC header
 
-   ------------------------------
+   -------------------------------
    -- Destination Address Field --
-   ------------------------------
+   -------------------------------
 
    function Get_Destination_Address
      (Frame : Byte_Array; Ctx : View_Context) return Variant_Address
