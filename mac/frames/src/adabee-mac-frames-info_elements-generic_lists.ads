@@ -336,6 +336,14 @@ is
         Annotate => (GNATprove, Inline_For_Proof);
       --  True if the IE at position Y is reachable from the IE at position X
 
+      function Reachable (Buffer : Byte_Array; Y : Positive) return Boolean
+      is (Reachable (Buffer'First, Buffer, Y))
+      with
+        Pre      => Valid_IE_List (Buffer),
+        Annotate => (GNATprove, Inline_For_Proof);
+      --  True if the IE at position Y is reachable from the start of the
+      --  IE list in Buffer.
+
       ---------------------
       -- Last IE headers --
       ---------------------
