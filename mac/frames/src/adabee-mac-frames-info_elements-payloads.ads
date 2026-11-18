@@ -109,6 +109,10 @@ is
    --  Returns True if and only if all MLME IEs in the payload IE list that
    --  have a non-empty content field contain a valid nested IE list.
 
+   function Nested_IE_Lists_Valid (Buffer : Byte_Array) return Boolean
+   is (Nested_IE_Lists_Valid (Buffer, Buffer'First))
+   with Ghost, Pre => Payloads.Lists.Formal_Model.Valid_IE_List (Buffer);
+
    procedure Validate_Payload_And_Nested_IE_Lists
      (Buffer  : Byte_Array;
       Length  : out Natural;
