@@ -150,6 +150,9 @@ is
                    + (Headers.Decoder_Model.Get_Header_IEs_Length (Frame)
                       - 1)))
       with Pre => Headers.Decoder_Model.Is_MHR_Valid (Frame);
+      --  Returns True if the Header_IEs_First and Header_IEs_Last indices
+      --  correctly denote the header IE part of the MAC header, according to
+      --  the decoder model's view of the frame.
 
       function MAC_Payload_Layout_Matches_Model
         (Frame : Byte_Array; Layout : Layouts.Frame_Layout) return Boolean
@@ -157,11 +160,6 @@ is
           --  MAC payload presence
           Has_MAC_Payload (Layout)
           = Headers.Decoder_Model.Is_MAC_Payload_Present (Frame)
-
-          --  Payload IEs presence
-          and then
-            (Has_Payload_IEs (Layout)
-             = Headers.Decoder_Model.Is_Payload_IE_Present (Frame))
 
           and then
             (if Has_MAC_Payload (Layout)
@@ -176,26 +174,35 @@ is
                --  field.
                and then
                  (Layout.MAC_Payload_Last - Layout.MAC_Payload_First) + 1
-                 = Headers.Decoder_Model.Get_MAC_Payload_Length (Frame)
+                 = Headers.Decoder_Model.Get_MAC_Payload_Length (Frame)))
+      with Pre => Headers.Decoder_Model.Is_MHR_Valid (Frame);
+      --  Returns True if the MAC_Payload_First and MAC_Payload_Last indices
+      --  correctly denote the MAC Payload field in the frame, according to
+      --  the decoder model's view of the frame.
 
-               --  Payload_IEs_Last does not exceed the MAC payload field
-               and then Layout.Payload_IEs_Last <= Layout.MAC_Payload_Last
+      function Payload_IEs_Layout_Matches_Model
+        (Frame : Byte_Array; Layout : Layouts.Frame_Layout) return Boolean
+      is (MAC_Payload_Layout_Matches_Model (Frame, Layout)
 
+          --  Payload IEs presence
+          and then
+            (Has_Payload_IEs (Layout)
+             = Headers.Decoder_Model.Is_Payload_IE_Present (Frame))
+
+          and then
+            --  Payload_IEs_Last does not exceed the MAC payload field
+            Layout.Payload_IEs_Last <= Layout.MAC_Payload_Last
+
+          and then
+            (if Has_Payload_IEs (Layout)
+             then
                --  Payload_IEs_Last denotes the last byte of the payload IE
                --  list.
-               and then
-                 (if Has_Payload_IEs (Layout)
-                  then
-                    Layout.Payload_IEs_Last
-                    = Layout.MAC_Payload_First
-                      + (Info_Elements
-                           .Payloads
-                           .Lists
-                           .Formal_Model
-                           .IE_List_Length
-                              (Headers.Decoder_Model.Get_MAC_Payload_Content
-                                 (Frame))
-                         - 1))))
+               Layout.Payload_IEs_Last
+               = Layout.MAC_Payload_First
+                 + (Info_Elements.Payloads.Lists.Formal_Model.IE_List_Length
+                      (Headers.Decoder_Model.Get_MAC_Payload_Content (Frame))
+                    - 1)))
       with
         Pre =>
           Headers.Decoder_Model.Is_MHR_Valid (Frame)
@@ -204,11 +211,15 @@ is
              then
                Info_Elements.Payloads.Lists.Formal_Model.Valid_IE_List
                  (Headers.Decoder_Model.Get_MAC_Payload_Content (Frame)));
+      --  Returns True if the Payload_IEs_Last index correctly denote the
+      --  end of the payload IEs sub-field of the MAC Payload field, according
+      --  to the decoder model's view of the frame.
 
       function Layout_Matches_Model
         (Frame : Byte_Array; Layout : Layouts.Frame_Layout) return Boolean
       is (MAC_Header_Layout_Matches_Model (Frame, Layout)
-          and then MAC_Payload_Layout_Matches_Model (Frame, Layout))
+          and then MAC_Payload_Layout_Matches_Model (Frame, Layout)
+          and then Payload_IEs_Layout_Matches_Model (Frame, Layout))
       with
         Pre =>
           Headers.Decoder_Model.Is_MHR_Valid (Frame)
@@ -217,6 +228,9 @@ is
              then
                Info_Elements.Payloads.Lists.Formal_Model.Valid_IE_List
                  (Headers.Decoder_Model.Get_MAC_Payload_Content (Frame)));
+      --  Returns True if all fields in Layout correctly denote the positions
+      --  of their respective parts of the frame according to the decoder
+      --  model's view of the frame.
 
    end Formal_Model;
 
