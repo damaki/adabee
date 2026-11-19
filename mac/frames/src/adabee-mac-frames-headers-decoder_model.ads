@@ -235,8 +235,6 @@ is
               --  states:
               --    b) The Frame Version field shall not contain a reserved
               --       value.
-              --
-              --  Section 7.2.2.9 states: ""
               and then Get_FC (Frame).Frame_Version /= Reserved
 
               --  IEEE 802.15.4-2024 Section 7.2.2.9 states:
