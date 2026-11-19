@@ -19,8 +19,8 @@ package AdaBee.MAC.MLME
   with
     SPARK_Mode,
     Always_Terminates,
-    Abstract_State => PIB_Attributes_Data,
-    Initializes    => PIB_Attributes_Data
+    Abstract_State => (PIB_Attributes_Data, MAC_Metrics),
+    Initializes    => (PIB_Attributes_Data, MAC_Metrics)
 is
 
 private
