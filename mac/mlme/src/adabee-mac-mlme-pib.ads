@@ -34,6 +34,10 @@ is
      array (SAP.Sec_Device_List_Index range <>)
      of AdaBee.MAC.MLME.Security_Types.Device_Descriptor;
 
+   type Security_Level_Descriptor_Array is
+     array (SAP.Sec_Security_Level_List_Index range <>)
+     of AdaBee.MAC.MLME.Security_Types.Security_Level_Descriptor;
+
    type PIB_Attributes is record
       MAC_PAN_ID                 : Frames.Headers.PAN_ID_Field := 16#FFFF#;
       MAC_Short_Address          : Frames.Headers.Short_Address_Field :=
@@ -62,6 +66,11 @@ is
       Sec_Device_List :
         Device_Descriptor_Array
           (1 .. Adabee_Mlme_Config.Sec_Device_List_Max_Length) :=
+          [others => <>];
+
+      Sec_Security_Level_List :
+        Security_Level_Descriptor_Array
+          (1 .. Adabee_Mlme_Config.Sec_Security_Level_List_Max_Length) :=
           [others => <>];
 
       Sec_Frame_Counter :

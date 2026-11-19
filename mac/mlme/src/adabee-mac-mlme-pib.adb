@@ -20,6 +20,9 @@ is
    Sec_Device_List_Enabled : constant Boolean :=
      Adabee_Mlme_Config.Sec_Device_List_Max_Length > 0;
 
+   Sec_Security_Level_List_Enabled : constant Boolean :=
+     Adabee_Mlme_Config.Sec_Security_Level_List_Max_Length > 0;
+
    procedure Install_Key_And_Set_Descriptor
      (Source : Security_Types.Key_ID_Lookup_Descriptor;
       Target : in out Security_Types.Key_ID_Lookup_Descriptor;
@@ -161,6 +164,32 @@ is
                if Sec_Device_List_Enabled then
                   DB.Sec_Device_List (Request.SET.Device_Index) :=
                     Request.SET.Device_Descriptor;
+               else
+                  Confirm.SET.Status := Not_Supported;
+               end if;
+
+               pragma Warnings (GNATprove, On);
+
+            when Sec_Security_Level_List             =>
+
+               pragma
+                 Warnings
+                   (GNATprove,
+                    Off,
+                    "statement has no effect",
+                    Reason => "Conditionally compiled code");
+
+               pragma
+                 Warnings
+                   (GNATprove,
+                    Off,
+                    "this statement is never reached",
+                    Reason => "Conditionally compiled code");
+
+               if Sec_Security_Level_List_Enabled then
+                  DB.Sec_Security_Level_List
+                    (Request.SET.Security_Level_Index) :=
+                    Request.SET.Security_Level_Descriptor;
                else
                   Confirm.SET.Status := Not_Supported;
                end if;
@@ -362,6 +391,24 @@ is
                     (Kind => MLME_GET_Cfm,
                      GET  =>
                        (PIB_Attribute => Sec_Device_List,
+                        Status        => Not_Supported));
+               end if;
+
+            when Sec_Security_Level_List             =>
+               if Sec_Security_Level_List_Enabled then
+                  Confirm :=
+                    (Kind => MLME_GET_Cfm,
+                     GET  =>
+                       (PIB_Attribute             => Sec_Security_Level_List,
+                        Status                    => Success,
+                        Security_Level_Descriptor =>
+                          PIB.DB.Sec_Security_Level_List
+                            (Request.GET.Security_Level_Index)));
+               else
+                  Confirm :=
+                    (Kind => MLME_GET_Cfm,
+                     GET  =>
+                       (PIB_Attribute => Sec_Security_Level_List,
                         Status        => Not_Supported));
                end if;
 

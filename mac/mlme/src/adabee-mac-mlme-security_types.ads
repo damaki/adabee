@@ -40,25 +40,24 @@ is
 
    --  Ref. IEEE 802.15.4-2024 Table 9-14
 
-   type Key_IE_Type_Kind is (Header, Payload, Nested_Short, Nested_Long)
+   type IE_Kind is (Header_IE, Payload_IE, Nested_Short_IE, Nested_Long_IE)
    with Size => 2;
 
-   type Key_IE_Usage_Descriptor (Key_IE_Type : Key_IE_Type_Kind := Header) is
-   record
+   type Key_IE_Usage_Descriptor (Key_IE_Type : IE_Kind := Header_IE) is record
       case Key_IE_Type is
-         when Header =>
+         when Header_IE =>
             Header_Key_IE_ID :
               AdaBee.MAC.Frames.Info_Elements.Headers.Element_ID_Field := 0;
 
-         when Payload =>
+         when Payload_IE =>
             Payload_Key_IE_ID :
               AdaBee.MAC.Frames.Info_Elements.Payloads.Group_ID_Field := 0;
 
-         when Nested_Short =>
+         when Nested_Short_IE =>
             Nested_Short_Key_IE_ID :
               AdaBee.MAC.Frames.Info_Elements.Nested.Short_Sub_ID_Field := 0;
 
-         when Nested_Long =>
+         when Nested_Long_IE =>
             Nested_Long_Key_IE_ID :
               AdaBee.MAC.Frames.Info_Elements.Nested.Long_Sub_ID_Field := 0;
       end case;
@@ -75,7 +74,7 @@ is
    --  Arrays of secIeUsageDescriptor
 
    type Key_IE_Usage_Descriptor_Count is
-     range 0 .. Adabee_Mlme_Config.Sec_Max_IE_Usage_Descriptors
+     range 0 .. Adabee_Mlme_Config.Sec_Max_Key_IE_Usage_Descriptors
    with Size => 6;
 
    type Key_IE_Usage_Descriptor_Array is
@@ -83,7 +82,7 @@ is
    with Pack;
 
    Key_IE_Usage_Descriptor_List_Max_Bit_Size : constant :=
-     Adabee_Mlme_Config.Sec_Max_IE_Usage_Descriptors * 16;
+     Adabee_Mlme_Config.Sec_Max_Key_IE_Usage_Descriptors * 16;
 
    --  To reduce memory usage, multiple MAC commands (secKeyUsageCommandId)
    --  are packed into the same secKeyUsageDescriptor. This allows a single
@@ -93,7 +92,7 @@ is
    --  Supporting all 256 possible MAC command values as a packed Boolean array
    --  would require 32 bytes, but this is further reduced to 8 bytes by
    --  limiting the range of allowed values for the MAC command to the values
-   --  defined in Table 7-11 of IEEE 802.15.4-2024, and additional commands
+   --  defined in Table 7-11 of IEEE 802.15.4-2024, plus additional commands
    --  defined in the IEEE Std 805.15 ANA database (January 2026), which
    --  define MAC commands up to 0x34.
 
@@ -115,7 +114,8 @@ is
       Key_Usage_Frame_Types : Frame_Type_Boolean_Array := [others => False];
       Key_Usage_Command_IDs : MAC_Command_Boolean_Array := [others => False];
    end record
-   with Size => 72 + (Adabee_Mlme_Config.Sec_Max_IE_Usage_Descriptors * 16);
+   with
+     Size => 72 + (Adabee_Mlme_Config.Sec_Max_Key_IE_Usage_Descriptors * 16);
    --  secKeyUsageDescriptor
 
    for Key_Usage_Descriptor use
@@ -188,6 +188,13 @@ is
    --  keys to be securely stored in a platform-specific crypto engine instead
    --  of storing them as plaintext in memory.
 
+   type Key_Usage_Descriptor_Count is
+     range 0 .. Adabee_Mlme_Config.Sec_Max_Key_Usage_Descriptors
+   with Size => 6;
+
+   type Key_Usage_Descriptor_Array is
+     array (Key_Usage_Descriptor_Count range <>) of Key_Usage_Descriptor;
+
    type Key_Descriptor (Frame_Counter_Per_Key : Boolean := True) is record
       Key : Key_Holder := (others => <>);
 
@@ -195,6 +202,12 @@ is
         Key_Device_Frame_Counter_Descriptor_Array
           (1 .. Key_Device_Frame_Counter_Descriptor_Count'Last) :=
           [others => <>];
+
+      Key_Usage_Descriptor_List :
+        Key_Usage_Descriptor_Array (1 .. Key_Usage_Descriptor_Count'Last) :=
+          [others => <>];
+
+      Key_Usage_Descriptor_List_Length : Key_Usage_Descriptor_Count := 0;
 
       case Frame_Counter_Per_Key is
          when True =>
@@ -279,16 +292,41 @@ is
      of Boolean
    with Component_Size => 1, Size => 32;
 
-   type IE_Security_Level_Descriptor is record
-      IE : Key_IE_Usage_Descriptor := (others => <>);
-      --  Combines secIeType and secIeId
-
+   type IE_Security_Level_Descriptor (IE_Type : IE_Kind := Header_IE) is record
       IE_Allowed_Security_Levels : Allowed_Security_Levels_Array :=
         [others => [others => False]];
 
       IE_Device_Override_Security_Levels : Boolean := False;
-   end record;
+
+      case IE_Type is
+         when Header_IE =>
+            Header_IE_ID : Frames.Info_Elements.Headers.Element_ID_Field := 0;
+
+         when Payload_IE =>
+            Payload_IE_ID : Frames.Info_Elements.Payloads.Group_ID_Field := 0;
+
+         when Nested_Short_IE =>
+            Nested_Short_IE_ID :
+              Frames.Info_Elements.Nested.Short_Sub_ID_Field := 0;
+
+         when Nested_Long_IE =>
+            Nested_Long_IE_ID :
+              Frames.Info_Elements.Nested.Long_Sub_ID_Field := 0;
+      end case;
+   end record
+   with Size => 48;
    --  secIeSecurityLevelDescriptor
+
+   for IE_Security_Level_Descriptor use
+     record
+       IE_Allowed_Security_Levels         at 0 range 0 .. 31;
+       Header_IE_ID                       at 0 range 32 .. 39;
+       Payload_IE_ID                      at 0 range 32 .. 35;
+       Nested_Short_IE_ID                 at 0 range 32 .. 38;
+       Nested_Long_IE_ID                  at 0 range 32 .. 35;
+       IE_Type                            at 0 range 40 .. 41;
+       IE_Device_Override_Security_Levels at 0 range 42 .. 42;
+     end record;
 
    --------------------------------
    -- secSecurityLevelDescriptor --

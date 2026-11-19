@@ -169,6 +169,7 @@ is
       --  Security-related MAC PIB attributes
       Sec_Key_ID_Lookup_List,
       Sec_Device_List,
+      Sec_Security_Level_List,
       Sec_Frame_Counter,
       Sec_Auto_Request_Security_Params,
       Sec_Enhanced_Beacon_Security_Params,
@@ -207,10 +208,18 @@ is
       then Adabee_Mlme_Config.Sec_Device_List_Max_Length
       else 1);
 
+   Sec_Security_Level_List_Index_Last : constant :=
+     (if Adabee_Mlme_Config.Sec_Security_Level_List_Max_Length > 0
+      then Adabee_Mlme_Config.Sec_Security_Level_List_Max_Length
+      else 1);
+
    type Sec_Key_ID_Lookup_List_Index is
      range 1 .. Sec_Key_ID_Lookup_List_Index_Last;
 
    type Sec_Device_List_Index is range 1 .. Sec_Device_List_Index_Last;
+
+   type Sec_Security_Level_List_Index is
+     range 1 .. Sec_Security_Level_List_Index_Last;
 
    type MLME_SET_Req_Type
      (PIB_Attribute : Writable_PIB_Attributes := MAC_Auto_Request)
@@ -268,6 +277,14 @@ is
               AdaBee.MAC.MLME.Security_Types.Device_Descriptor :=
                 (others => <>);
 
+         when Sec_Security_Level_List =>
+            Security_Level_Index : Sec_Security_Level_List_Index :=
+              Sec_Security_Level_List_Index'First;
+
+            Security_Level_Descriptor :
+              AdaBee.MAC.MLME.Security_Types.Security_Level_Descriptor :=
+                (others => <>);
+
          when Sec_Frame_Counter =>
             Frame_Counter :
               AdaBee.MAC.MLME.Security_Types.Frame_Counter_Number := 0;
@@ -314,6 +331,10 @@ is
          when Sec_Device_List =>
             Device_Index : Sec_Device_List_Index :=
               Sec_Device_List_Index'First;
+
+         when Sec_Security_Level_List =>
+            Security_Level_Index : Sec_Security_Level_List_Index :=
+              Sec_Security_Level_List_Index'First;
 
          when others =>
             null;
@@ -380,6 +401,11 @@ is
                when Sec_Device_List =>
                   Device_Descriptor :
                     AdaBee.MAC.MLME.Security_Types.Device_Descriptor :=
+                      (others => <>);
+
+               when Sec_Security_Level_List =>
+                  Security_Level_Descriptor :
+                    AdaBee.MAC.MLME.Security_Types.Security_Level_Descriptor :=
                       (others => <>);
 
                when Sec_Frame_Counter =>
