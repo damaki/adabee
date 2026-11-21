@@ -72,16 +72,21 @@ MCPS_Indication_Queue_Capacity = { type = "Integer", first = 1, default = 2 }
 # Higher values result in higher RAM usage.
 MCPS_Max_MSDU_Length = { type = "Integer", first = 1, last = 124, default = 124 }
 
+# Configures the maximum length of the secKeyUsageDescriptorList field in
+# each secKeyDescriptor.
+# Higher values result in higher RAM usage.
+Sec_Max_Key_Usage_Descriptors = { type = "Integer", first = 1, last = 63, default = 1 }
+
 # Configures the maximum length of the secKeyIeUsageDescriptorList field in
 # each secKeyUsageDescriptor.
 # Setting this to zero will disable the incoming IE key usage policy checking
 # procedure defined in IEEE 802.15.4-2024 Section 9.2.9, resulting in IEs always
 # being allowed.
 # Higher values result in higher RAM usage.
-Sec_Max_IE_Usage_Descriptors = { type = "Integer", first = 0, last = 63, default = 1 }
+Sec_Max_Key_IE_Usage_Descriptors = { type = "Integer", first = 0, last = 63, default = 1 }
 
 # Configures the maximum length of the secIeSecurityLevelDescriptorList field in
-# each secSeccurityLevelDescriptor.
+# each secSecurityLevelDescriptor.
 # Setting this to zero will disable the incoming IE security level checking
 # procedure defined in IEEE 802.15.4-2024 Section 9.2.8, resulting in IEs always
 # being allowed.
@@ -91,7 +96,6 @@ Sec_Max_IE_Security_Level_Descriptors = { type = "Integer", first = 0, last = 63
 # Configures the maximum length of the secKeyDeviceFrameCounterList in a
 # secKeyDescriptor. This determines the maximum number of devices whose frame
 # counters can be tracked for each key.
-# Anti-replay protection for incoming frames will not be
 # Higher values result in higher RAM usage.
 Sec_Max_Key_Device_Frame_Counter_Descriptors = { type = "Integer", first = 0, default = 0 }
 
@@ -100,6 +104,12 @@ Sec_Key_ID_Lookup_List_Max_Length = { type = "Integer", first = 0, default = 1 }
 
 # Configures the maximum length of the secDeviceList MAC PIB attribute.
 Sec_Device_List_Max_Length = { type = "Integer", first = 0, default = 1 }
+
+# Configures the maximum length of the secSecurityLevelList MAC PIB attribute.
+Sec_Security_Level_List_Max_Length = { type = "Integer", first = 0, default = 1 }
+
+# Sets the value of the macCounterOctets MAC PIB attribute
+MAC_Counter_Octets = { type = "Integer", first = 1, last = 4, default = 4 }
 
 [configuration.values]
 # The MLME uses the tasking SAPs from LibSAP
