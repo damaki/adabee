@@ -6,6 +6,7 @@
 
 with AdaBee.MAC.Frames.Payloads;
 with AdaBee.MAC.MLME.Security_Procedures.IE_Procedures;
+with AdaBee.MAC.MLME.Metrics;
 
 package body AdaBee.MAC.MLME.Security_Procedures
   with SPARK_Mode
@@ -36,6 +37,7 @@ is
        and then
          Payload_IEs_Present
          = Frames.Headers.Decoder_Model.Is_Payload_IE_Present (Frame)
+       and then Frames.Headers.Decoder_Model.Is_Payload_IE_Valid (Frame)
        and then
          Frames.Layouts.Formal_Model.Layout_Matches_Model (Frame, Layout),
      Post   =>
@@ -115,30 +117,17 @@ is
       Status              : out Status_Code;
       MAC_Command         : out Bits_8) is
    begin
-      if Payload_IEs_Present then
-         if Layout.Payload_IEs_Last >= Layout.MAC_Payload_Last then
-            --  There is no frame payload after the payload IEs
-
-            MAC_Command := 0;
-            Status := Malformed_Frame;
-         else
-            --  The MAC command is the first byte after the payload IEs
-            --  (i.e. the first byte of the frame payload field).
-
-            MAC_Command := Frame (Layout.Payload_IEs_Last + 1);
-            Status := Success;
-         end if;
-      elsif Layout.MAC_Payload_First <= Layout.MAC_Payload_Last then
-         --  There are no payload IEs, so the MAC command is the first byte
-         --  of the MAC payload.
-
-         MAC_Command := Frame (Layout.MAC_Payload_First);
-         Status := Success;
-      else
-         --  The MAC payload is empty
+      if Layout.Frame_Payload_Last < Layout.Frame_Payload_First then
+         --  There is no frame payload after the payload IEs
 
          MAC_Command := 0;
          Status := Malformed_Frame;
+      else
+         --  The MAC command is the first byte after the payload IEs
+         --  (i.e. the first byte of the frame payload field).
+
+         MAC_Command := Frame (Layout.Frame_Payload_First);
+         Status := Success;
       end if;
    end Lookup_MAC_Command;
 
@@ -196,15 +185,12 @@ is
       if not PIB.DB.MAC_Security_Enabled then
          IE_Status_List := [others => Passed];
 
-         if AdaBee.MAC.Frames.Layouts.Has_MAC_Payload (Layout) then
-            AdaBee.MAC.Frames.Payloads.Decode_MAC_Payload_Layout
-              (Frame               => Frame,
-               Layout              => Layout,
-               Payload_IEs_Present => Payload_IEs_Present,
-               Status              => Status);
-         else
-            Status := Success;
-         end if;
+         AdaBee.MAC.Frames.Payloads.Decode_MAC_Payload_Layout
+           (Frame               => Frame,
+            MHR                 => MHR,
+            Layout              => Layout,
+            Payload_IEs_Present => Payload_IEs_Present,
+            Status              => Status);
 
          return;
       end if;
@@ -234,16 +220,15 @@ is
       --  extract the MAC command (if present) to feed into the security level
       --  lookup procedure.
 
-      if AdaBee.MAC.Frames.Layouts.Has_MAC_Payload (Layout) then
-         AdaBee.MAC.Frames.Payloads.Decode_MAC_Payload_Layout
-           (Frame               => Frame,
-            Layout              => Layout,
-            Payload_IEs_Present => Payload_IEs_Present,
-            Status              => Status);
+      AdaBee.MAC.Frames.Payloads.Decode_MAC_Payload_Layout
+        (Frame               => Frame,
+         MHR                 => MHR,
+         Layout              => Layout,
+         Payload_IEs_Present => Payload_IEs_Present,
+         Status              => Status);
 
-         if Status /= Success then
-            return;
-         end if;
+      if Status /= Success then
+         return;
       end if;
 
       if MHR.Frame_Type = AdaBee.MAC.Frames.Headers.MAC_Command then

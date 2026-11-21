@@ -5,6 +5,7 @@
 --
 
 with AdaBee.MAC.Frames.Info_Elements.Headers;
+with AdaBee.MAC.Frames.Info_Elements.Payloads;
 
 --  @summary
 --  Formal model of the MAC header decoder
@@ -804,6 +805,24 @@ is
        Security_Control_Valid (Frame)
        and then Is_Security_Control_Present (Frame);
 
+   function Get_MIC_Length (Frame : Byte_Array) return Natural
+   is (if not Is_Security_Control_Present (Frame)
+       then 0
+       else
+         (case Get_Security_Control (Frame).Security_Level is
+            when None                  => 0,
+            when MIC_32 | ENC_MIC_32   => 4,
+            when MIC_64 | ENC_MIC_64   => 8,
+            when MIC_128 | ENC_MIC_128 => 16,
+            when Reserved              => raise Program_Error))
+   with
+     Pre  => Security_Control_Valid (Frame),
+     Post => Get_MIC_Length'Result in 0 | 4 | 8 | 16;
+   --  Get the length of the Message Integrity Code (MIC) required by the
+   --  Security Control field.
+   --
+   --  Ref. IEEE 802.15.4-2024 Table 9-6
+
    -------------------------
    -- Frame Counter Field --
    -------------------------
@@ -1017,6 +1036,25 @@ is
      Post =>
        Get_MAC_Payload_Content'Result'Length = Get_MAC_Payload_Length (Frame);
 
+   function Get_MAC_Payload_Content_Excluding_MIC
+     (Frame : Byte_Array) return Byte_Array
+   is (if Is_MAC_Payload_Present (Frame)
+       then
+         Frame
+           (Frame'First + Get_MAC_Payload_Offset (Frame)
+            ..
+              Frame'First
+              + Get_MAC_Payload_Offset (Frame)
+              + (Get_MAC_Payload_Length (Frame)
+                 - (Get_MIC_Length (Frame) + 1)))
+       else Empty_Byte_Array)
+   with
+     Pre  =>
+       Security_Control_Valid (Frame) and then Is_Header_IEs_Valid (Frame),
+     Post =>
+       Get_MAC_Payload_Content_Excluding_MIC'Result'Length
+       <= Get_MAC_Payload_Length (Frame);
+
    -----------------
    -- Payload IEs --
    -----------------
@@ -1032,6 +1070,15 @@ is
    --  The content of the payload IEs are not modelled here, but a formal
    --  model of the payload IE list is given in package
    --  AdaBee.MAC.Frames.Info_Elements.Payloads.Lists.
+   --
+   --  The payload IE list can optionally be terminated with a termination IE,
+   --  which allows a Frame Payload to be located after it. If the payload IE
+   --  list does not end in a termination IE then the payload IE list goes up
+   --  to the end of the MAC Payload field.
+   --
+   --  Note that if the frame is secured (and therefore contains the MIC
+   --  field), then a non-terminated payload IE list ends at the start of the
+   --  MIC field.
 
    function Is_Payload_IE_Present (Frame : Byte_Array) return Boolean
    is (Is_MAC_Payload_Present (Frame)
@@ -1045,6 +1092,87 @@ is
    with
      Pre =>
        Security_Control_Valid (Frame) and then Is_Header_IEs_Valid (Frame);
+
+   function Is_Payload_IE_Valid (Frame : Byte_Array) return Boolean
+   is (if Is_Payload_IE_Present (Frame)
+       then
+         Info_Elements.Payloads.Lists.Formal_Model.Valid_IE_List
+           (Get_MAC_Payload_Content_Excluding_MIC (Frame)))
+   with
+     Pre =>
+       Security_Control_Valid (Frame) and then Is_Header_IEs_Valid (Frame);
+
+   function Get_Payload_IE_Offset (Frame : Byte_Array) return Natural
+   renames Get_MAC_Payload_Offset;
+
+   function Get_Payload_IE_Length (Frame : Byte_Array) return Natural
+   is (if Is_Payload_IE_Present (Frame)
+       then
+         Info_Elements.Payloads.Lists.Formal_Model.IE_List_Length
+           (Get_MAC_Payload_Content_Excluding_MIC (Frame))
+       else 0)
+   with
+     Pre  =>
+       Security_Control_Valid (Frame)
+       and then Is_Header_IEs_Valid (Frame)
+       and then Is_Payload_IE_Valid (Frame),
+     Post => Get_Payload_IE_Length'Result <= Get_MAC_Payload_Length (Frame);
+
+   --------------------
+   --  Frame Payload --
+   --------------------
+
+   function Is_Frame_Payload_Present (Frame : Byte_Array) return Boolean
+   is (Get_MAC_Payload_Length (Frame)
+       - Get_Payload_IE_Length (Frame)
+       - Get_MIC_Length (Frame)
+       > 0)
+   with
+     Pre =>
+       Security_Control_Valid (Frame)
+       and then Is_Header_IEs_Valid (Frame)
+       and then Is_Payload_IE_Valid (Frame);
+
+   function Get_Frame_Payload_Offset (Frame : Byte_Array) return Natural
+   is (Get_Payload_IE_Offset (Frame) + Get_Payload_IE_Length (Frame))
+   with
+     Pre =>
+       Security_Control_Valid (Frame)
+       and then Is_Header_IEs_Valid (Frame)
+       and then Is_Payload_IE_Valid (Frame);
+
+   function Get_Frame_Payload_Length (Frame : Byte_Array) return Natural
+   is (Integer'Max
+         (Get_MAC_Payload_Length (Frame)
+          - Get_Payload_IE_Length (Frame)
+          - Get_MIC_Length (Frame),
+          0))
+   with
+     Pre =>
+       Security_Control_Valid (Frame)
+       and then Is_Header_IEs_Valid (Frame)
+       and then Is_Payload_IE_Valid (Frame);
+
+   ---------
+   -- MIC --
+   ---------
+
+   --  The MIC (Message Integrity Code) is present in frames that have Security
+   --  Enabled, and with a Security Level higher than zero. It is present at
+   --  the end of the MAC payload in the secured frame, after the Frame Payload
+   --  (if present).
+
+   function Get_MIC_Offset (Frame : Byte_Array) return Natural
+   is (Get_Frame_Payload_Offset (Frame) + Get_Frame_Payload_Length (Frame))
+   with
+     Pre =>
+       Security_Control_Valid (Frame)
+       and then Is_Header_IEs_Valid (Frame)
+       and then Is_Payload_IE_Valid (Frame);
+   --  Get the offset of the Message Integrity Code (MIC) relative to the start
+   --  of the frame.
+   --
+   --  The MIC is located immediately before the FCS.
 
    -----------------------
    -- MAC Header Length --
@@ -1112,6 +1240,22 @@ is
        and then Frame'Length >= MHR_Length (Frame));
    --  Returns True if all fields in the MAC header (including header IEs)
    --  are valid.
+
+   --------------------------
+   -- MAC Payload Validity --
+   --------------------------
+
+   --  The MAC payload is considered valid when it is large enough to store
+   --  at least the Payload IEs and MIC fields.
+
+   function Is_MAC_Payload_Valid (Frame : Byte_Array) return Boolean
+   is (Is_MHR_Valid (Frame)
+       and then Is_Payload_IE_Valid (Frame)
+       and then
+         Get_MAC_Payload_Length (Frame)
+         - Get_Payload_IE_Length (Frame)
+         - Get_MIC_Length (Frame)
+         >= 0);
 
 private
 

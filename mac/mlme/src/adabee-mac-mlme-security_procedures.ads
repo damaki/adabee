@@ -10,7 +10,6 @@ with AdaBee.MAC.Frames.Headers.Encoder_Model;
 with AdaBee.MAC.Frames.Info_Elements.Headers;
 with AdaBee.MAC.Frames.Info_Elements.Payloads;
 with AdaBee.MAC.Frames.Layouts;
-with AdaBee.PHY_Constants;
 
 private with AdaBee.MAC.MLME.PIB;
 private with AdaBee.MAC.MLME.SAP;
@@ -46,22 +45,14 @@ is
    -- Incoming Frame Security Procedures --
    ----------------------------------------
 
-   procedure Unsecure_Incoming_Frame_Security_Disabled
+   function Incoming_Frame_Security_Preconditions
      (Frame               : Byte_Array;
       MHR                 : AdaBee.MAC.Frames.Headers.Valid_MAC_Header;
-      Layout              : in out AdaBee.MAC.Frames.Layouts.Frame_Layout;
-      Payload_IEs_Present : Boolean;
-      IE_Status_List      : out IE_Status_Array;
-      Status              : out Status_Code)
-   with
-     Relaxed_Initialization => IE_Status_List,
-     Pre                    =>
-       --  This security procedure is used when the Security Enabled field is
-       --  set to zero (disabled).
-       MHR.Aux_Security_Header.Security_Enabled = Disabled
-
+      Layout              : AdaBee.MAC.Frames.Layouts.Frame_Layout;
+      Payload_IEs_Present : Boolean) return Boolean
+   is (
        --  The Frame buffer must hold a frame with a valid MAC header (MHR)
-       and then Frames.Headers.Decoder_Model.Is_MHR_Valid (Frame)
+       Frames.Headers.Decoder_Model.Is_MHR_Valid (Frame)
 
        --  The MAC header and FCS fields must fit within the Frame buffer
        and then
@@ -95,7 +86,37 @@ is
        --  the frame.
        and then
          Payload_IEs_Present
-         = Frames.Headers.Decoder_Model.Is_Payload_IE_Present (Frame)
+         = Frames.Headers.Decoder_Model.Is_Payload_IE_Present (Frame))
+   with Ghost;
+   --  Defines the preconditions required for the incoming frame security
+   --  procedures.
+   --
+   --  The incoming frame security procedures require that:
+   --    * the MAC header in the frame has been validated, and MHR contains the
+   --      decoded data from that MAC header;
+   --    * the Layout record denotes the correct positions of the header IEs
+   --      and MAC payload fields;
+   --    * if header IEs are present, then the IE list has been validated; and
+   --    * Payload_IEs_Present correctly denotes whether a payload IE list is
+   --      expected to be in the MAC payload field.
+
+   procedure Unsecure_Incoming_Frame_Security_Disabled
+     (Frame               : Byte_Array;
+      MHR                 : AdaBee.MAC.Frames.Headers.Valid_MAC_Header;
+      Layout              : in out AdaBee.MAC.Frames.Layouts.Frame_Layout;
+      Payload_IEs_Present : Boolean;
+      IE_Status_List      : out IE_Status_Array;
+      Status              : out Status_Code)
+   with
+     Relaxed_Initialization => IE_Status_List,
+     Pre                    =>
+       --  This security procedure is used when the Security Enabled field is
+       --  set to zero (disabled).
+       MHR.Aux_Security_Header.Security_Enabled = Disabled
+
+       and then
+         Incoming_Frame_Security_Preconditions
+           (Frame, MHR, Layout, Payload_IEs_Present)
 
        --  If IE lists are present, then the IE_Status_List must span at least
        --  the range of the Frame where IEs can be located.

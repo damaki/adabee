@@ -37,6 +37,13 @@ is
       Payload_IEs_Last : Natural;
       --  Index of the last byte of the payload IEs in the frame buffer.
       --  This is < MAC_Payload_First when the payload IEs are not present.
+
+      Frame_Payload_First : Positive;
+      --  Index of the first byte of the Frame Payload in the frame buffer.
+
+      Frame_Payload_Last : Natural;
+      --  Index of the last byte of the Frame Payload in the frame buffer.
+      --  This is < Frame_Payload_First when the Frame Payload is empty.
    end record
    with Predicate => Payload_IEs_Last <= MAC_Payload_Last;
    --  Stores the first/last indices that mark the positions of the following
@@ -44,6 +51,13 @@ is
    --   * header IEs
    --   * payload IEs
    --   * frame payload
+   --
+   --  +-----+----+------------+--------+---------+---------+-----+-----+
+   --  | FCF | SN | Addressing | Header | Payload |  Frame  | MIC | FCS |
+   --  |     |    |   Fields   |   IEs  |   IEs   | Payload | MIC | FCS |
+   --  +-----+----+------------+--------+---------+---------+-----+-----+
+   --  |       MAC Header (MHR)         |    MAC Payload    |           |
+   --  +--------------------------------+-------------------+-----------+
 
    ----------------
    -- Attributes --
@@ -62,16 +76,8 @@ is
    --  Returns True if the payload IE list is not empty in the frame layout
 
    function Has_Frame_Payload (Layout : Frame_Layout) return Boolean
-   is (Layout.MAC_Payload_First <= Layout.MAC_Payload_Last
-       and then Layout.Payload_IEs_Last < Layout.MAC_Payload_Last);
+   is (Layout.Frame_Payload_First <= Layout.Frame_Payload_Last);
    --  Returns True if the frame payload is not empty in the frame layout
-
-   function Frame_Payload_First (Layout : Frame_Layout) return Positive
-   is (if Layout.Payload_IEs_Last < Layout.MAC_Payload_First
-       then Layout.MAC_Payload_First
-       else Layout.Payload_IEs_Last + 1)
-   with Pre => Has_Frame_Payload (Layout);
-   --  Get the index of the first byte of the frame payload field
 
    function Header_IEs_Length (Layout : Frame_Layout) return Natural
    is (if Has_Header_IEs (Layout)
@@ -93,7 +99,7 @@ is
 
    function Frame_Payload_Length (Layout : Frame_Layout) return Natural
    is (if Has_Frame_Payload (Layout)
-       then (Layout.MAC_Payload_Last - Frame_Payload_First (Layout)) + 1
+       then (Layout.Frame_Payload_Last - Layout.Frame_Payload_First) + 1
        else 0);
    --  Returns the length (in bytes) of the frame payload part of the frame
 
@@ -201,33 +207,57 @@ is
                Layout.Payload_IEs_Last
                = Layout.MAC_Payload_First
                  + (Info_Elements.Payloads.Lists.Formal_Model.IE_List_Length
-                      (Headers.Decoder_Model.Get_MAC_Payload_Content (Frame))
+                      (Headers
+                         .Decoder_Model
+                         .Get_MAC_Payload_Content_Excluding_MIC (Frame))
                     - 1)))
       with
         Pre =>
           Headers.Decoder_Model.Is_MHR_Valid (Frame)
-          and then
-            (if Headers.Decoder_Model.Is_Payload_IE_Present (Frame)
-             then
-               Info_Elements.Payloads.Lists.Formal_Model.Valid_IE_List
-                 (Headers.Decoder_Model.Get_MAC_Payload_Content (Frame)));
+          and then Headers.Decoder_Model.Is_Payload_IE_Valid (Frame);
       --  Returns True if the Payload_IEs_Last index correctly denote the
       --  end of the payload IEs sub-field of the MAC Payload field, according
       --  to the decoder model's view of the frame.
+
+      function Frame_Payload_Layout_Matches_Model
+        (Frame : Byte_Array; Layout : Layouts.Frame_Layout) return Boolean
+      is (
+          --  Frame Payload presence
+          Has_Frame_Payload (Layout)
+          = Headers.Decoder_Model.Is_Frame_Payload_Present (Frame)
+
+          and then
+            (if Has_Frame_Payload (Layout)
+             then
+               --  Frame_Payload_First denotes the first byte of the
+               --  Frame Payload field.
+               Layout.Frame_Payload_First
+               = Frame'First
+                 + Headers.Decoder_Model.Get_Frame_Payload_Offset (Frame)
+
+               --  Frame_Payload_Last denotes the last byte of the
+               --  Frame Payload field.
+               and then
+                 (Layout.Frame_Payload_Last - Layout.Frame_Payload_First) + 1
+                 = Headers.Decoder_Model.Get_Frame_Payload_Length (Frame)))
+      with
+        Pre =>
+          Headers.Decoder_Model.Is_MHR_Valid (Frame)
+          and then Headers.Decoder_Model.Is_Payload_IE_Valid (Frame);
+      --  Returns True if the Frame_Payload_First and Frame_Payload_Last
+      --  indices correctly denotes the Frame Payload part of the frame
+      --  according to the decode model's view of the frame.
 
       function Layout_Matches_Model
         (Frame : Byte_Array; Layout : Layouts.Frame_Layout) return Boolean
       is (MAC_Header_Layout_Matches_Model (Frame, Layout)
           and then MAC_Payload_Layout_Matches_Model (Frame, Layout)
-          and then Payload_IEs_Layout_Matches_Model (Frame, Layout))
+          and then Payload_IEs_Layout_Matches_Model (Frame, Layout)
+          and then Frame_Payload_Layout_Matches_Model (Frame, Layout))
       with
         Pre =>
           Headers.Decoder_Model.Is_MHR_Valid (Frame)
-          and then
-            (if Headers.Decoder_Model.Is_Payload_IE_Present (Frame)
-             then
-               Info_Elements.Payloads.Lists.Formal_Model.Valid_IE_List
-                 (Headers.Decoder_Model.Get_MAC_Payload_Content (Frame)));
+          and then Headers.Decoder_Model.Is_Payload_IE_Valid (Frame);
       --  Returns True if all fields in Layout correctly denote the positions
       --  of their respective parts of the frame according to the decoder
       --  model's view of the frame.

@@ -5,6 +5,7 @@
 --
 
 with AdaBee.MAC.Frames.Headers.Decoder_Model;
+with AdaBee.MAC.Frames.Headers.Encoder_Model;
 with AdaBee.MAC.Frames.Layouts;
 with AdaBee.MAC.Frames.Info_Elements.Payloads;
 
@@ -17,14 +18,22 @@ is
 
    procedure Decode_MAC_Payload_Layout
      (Frame               : Byte_Array;
+      MHR                 : Headers.Valid_MAC_Header;
       Layout              : in out Layouts.Frame_Layout;
       Payload_IEs_Present : Boolean;
       Status              : out Status_Code)
    with
      Global => null,
      Pre    =>
+       --  The MAC Header (MHR) must have been validated
        Headers.Decoder_Model.Is_MHR_Valid (Frame)
-       and then Headers.Decoder_Model.Is_MAC_Payload_Present (Frame)
+
+       --  The content of the MHR must match the frame content
+       and then Headers.Encoder_Model.Frame_Control_Equal (MHR, Frame)
+       and then Headers.Encoder_Model.Security_Control_Equal (MHR, Frame)
+
+       --  Payload_IEs_Present denotes whether payload IEs are present in the
+       --  frame.
        and then
          Payload_IEs_Present
          = Headers.Decoder_Model.Is_Payload_IE_Present (Frame)
@@ -47,14 +56,13 @@ is
        --  the MAC payload field of the frame.
        and then
          (Status = Success)
-         = (not Payload_IEs_Present
-            or else
-              (Info_Elements.Payloads.Lists.Formal_Model.Valid_IE_List
-                 (Frame (Layout.MAC_Payload_First .. Layout.MAC_Payload_Last))
-               and then
+         = (Headers.Decoder_Model.Is_MAC_Payload_Valid (Frame)
+            and then
+              (if Payload_IEs_Present
+               then
                  Info_Elements.Payloads.Nested_IE_Lists_Valid
-                   (Frame
-                      (Layout.MAC_Payload_First .. Layout.MAC_Payload_Last),
+                   (Headers.Decoder_Model.Get_MAC_Payload_Content_Excluding_MIC
+                      (Frame),
                     Layout.MAC_Payload_First)))
 
        and then
